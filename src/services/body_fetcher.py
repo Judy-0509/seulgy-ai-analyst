@@ -12,6 +12,7 @@ Status 분기 (모두 결정론적 캐시 — 재시도하려면 cache clear 필
   - 200 + body < 200자 → 'empty' (의미있는 본문 없음)
   - 200 + body >= 200자 → 'ok'
 """
+import os
 import re
 import httpx
 from bs4 import BeautifulSoup
@@ -71,7 +72,10 @@ def fetch_or_cached(url: str, source: str = "") -> str:
         return ""
 
     try:
-        with httpx.Client(headers=HEADERS, follow_redirects=True, timeout=20) as c:
+        _proxy = os.environ.get("PROXY_URL") or None
+        _verify = os.environ.get("SSL_VERIFY", "true").lower() != "false"
+        with httpx.Client(headers=HEADERS, follow_redirects=True, timeout=20,
+                          proxy=_proxy, verify=_verify) as c:
             r = c.get(url)
         if r.status_code in (401, 403, 429, 202):
             body_cache.put_body(url, "", source, "blocked", "httpx")
