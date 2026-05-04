@@ -100,14 +100,88 @@ class GLMBackend:
         return json.loads(msg.content or "{}")
 
 
+class QwenBackend:
+    def __init__(self):
+        self.client = AsyncOpenAI(
+            api_key=os.getenv("QWEN_API_KEY", "EMPTY"),
+            base_url=os.getenv("QWEN_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
+        )
+        self.analysis_model = os.getenv("QWEN_MODEL", "qwen3-32b")
+        self.extraction_model = os.getenv("QWEN_FAST_MODEL", "qwen3-8b")
+
+    async def complete(self, system: str, user: str, **kwargs) -> LLMResponse:
+        max_tokens = kwargs.get("max_tokens", 4000)
+        params = dict(
+            model=self.analysis_model,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            max_tokens=max_tokens,
+            temperature=kwargs.get("temperature", 0.3),
+        )
+        if kwargs.get("response_format"):
+            params["response_format"] = kwargs["response_format"]
+        thinking = kwargs.get("thinking")
+        if thinking is True or thinking == "enabled":
+            params["extra_body"] = {"enable_thinking": True}
+        elif thinking is False or thinking == "disabled":
+            params["extra_body"] = {"enable_thinking": False}
+
+        retry_delays = [30, 60, 120]
+        last_err = None
+        for attempt, delay in enumerate([0] + retry_delays):
+            if delay:
+                print(f"   [Rate Limit] {delay}초 대기 후 재시도 (시도 {attempt}/{len(retry_delays)})...")
+                await asyncio.sleep(delay)
+            try:
+                response = await self.client.chat.completions.create(**params)
+                msg = response.choices[0].message
+                reasoning = getattr(msg, "reasoning_content", None) or ""
+                return LLMResponse(
+                    content=msg.content or "",
+                    usage=TokenUsage(
+                        prompt_tokens=response.usage.prompt_tokens,
+                        completion_tokens=response.usage.completion_tokens,
+                    ),
+                    backend="qwen",
+                    reasoning=reasoning,
+                )
+            except RateLimitError as e:
+                last_err = e
+                if attempt == len(retry_delays):
+                    break
+                continue
+        raise last_err
+
+    async def extract(self, system: str, user: str, schema: dict) -> dict:
+        import json
+        prompt = f"{user}\n\n반드시 다음 JSON 스키마에 맞게 응답하세요:\n{json.dumps(schema, ensure_ascii=False)}"
+        response = await self.client.chat.completions.create(
+            model=self.extraction_model,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": prompt},
+            ],
+            max_tokens=2000,
+            temperature=0.1,
+            extra_body={"enable_thinking": False},
+            response_format={"type": "json_object"},
+        )
+        msg = response.choices[0].message
+        return json.loads(msg.content or "{}")
+
+
 class LLMService:
     def __init__(self, backend: LLMBackend = None):
         if backend is None:
             backend_name = os.getenv("LLM_BACKEND", "glm")
             if backend_name == "glm":
                 backend = GLMBackend()
+            elif backend_name == "qwen":
+                backend = QwenBackend()
             else:
-                raise ValueError(f"Unknown LLM backend: {backend_name}. Only 'glm' is supported.")
+                raise ValueError(f"Unknown LLM backend: {backend_name}. Supported: 'glm', 'qwen'")
         self.backend = backend
 
     async def complete(self, system: str, user: str, **kwargs) -> LLMResponse:
