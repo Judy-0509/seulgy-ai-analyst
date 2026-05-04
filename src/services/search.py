@@ -1,6 +1,5 @@
 import asyncio
 import json
-import os
 import random
 import re
 import time
@@ -65,18 +64,10 @@ class SearchService:
     _edge_driver = None  # shared singleton
 
     def __init__(self):
-        _proxy = os.environ.get("PROXY_URL") or None
-        _verify = os.environ.get("SSL_VERIFY", "true").lower() != "false"
-        # feedparser는 urllib 기반 — 표준 env var로 프록시 전달
-        if _proxy:
-            os.environ.setdefault("HTTP_PROXY", _proxy)
-            os.environ.setdefault("HTTPS_PROXY", _proxy)
         self._httpx_client = httpx.AsyncClient(
             timeout=SEARCH_CONFIG["httpx_timeout"],
             headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"},
             follow_redirects=True,
-            proxy=_proxy,
-            verify=_verify,
         )
         self.core_terms: dict | None = None  # {"required": [...], "anchor": [...]}
         self._archives: list[dict] = self._load_archives()  # Tier 0: institutional archive
