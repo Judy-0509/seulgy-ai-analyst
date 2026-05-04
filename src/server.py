@@ -11,6 +11,7 @@ from typing import Optional
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 
 from src.models import (
     PipelineState,
@@ -21,7 +22,7 @@ from src.models import (
 from src.state_machine import AnalysisPipeline
 
 ROOT = Path(__file__).parent.parent
-INDEX_HTML     = ROOT / "index.html"
+FRONTEND_DIST  = ROOT / "frontend" / "dist"
 DASHBOARD_HTML = ROOT / "web" / "dashboard.html"
 ARCHIVES_DIR   = ROOT / "data" / "archives"
 ALL_ARCHIVES_SCRIPT = ROOT / "scripts" / "build_all_archives.py"
@@ -46,6 +47,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# frontend/dist 빌드가 있으면 정적 파일 서빙 (npm run build 후 사용)
+if (FRONTEND_DIST / "assets").exists():
+    app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST / "assets")), name="assets")
 
 
 # ── Session management ─────────────────────────────────────────────────────
@@ -147,7 +152,15 @@ async def _run_phase0(sess: Session):
 # ── Endpoints ──────────────────────────────────────────────────────────────
 @app.get("/")
 async def root():
-    return FileResponse(INDEX_HTML)
+    dist_index = FRONTEND_DIST / "index.html"
+    if dist_index.exists():
+        return FileResponse(dist_index)
+    from fastapi.responses import JSONResponse
+    return JSONResponse({
+        "message": "Research Helper API",
+        "frontend": "http://localhost:5173  (cd frontend && npm run dev)",
+        "reports": "http://localhost:8000/reports/glm_topic_suggestions.html",
+    })
 
 
 @app.post("/api/start")
