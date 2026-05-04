@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+/* App-specific base overrides — inside @layer base so utilities still win */
+@layer base {
+  html, body, #root { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    font-family: "Apple SD Gothic Neo", -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif;
+    background: #f7f6f3;
+    color: #0f172a;
+  }
+  button { font-family: inherit; }
+  input  { font-family: inherit; }
+  a      { text-decoration: none; color: inherit; }
+  ::-webkit-scrollbar       { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 99px; }
+  ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+}
+
+@keyframes fadeUp   { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+@keyframes fadeIn   { from { opacity:0; } to { opacity:1; } }
+@keyframes slideInR { from { opacity:0; transform:translateX(28px); } to { opacity:1; transform:translateX(0); } }
+@keyframes slideInL { from { opacity:0; transform:translateX(-16px); } to { opacity:1; transform:translateX(0); } }
+@keyframes pulse    { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:.4;transform:scale(.7);} }
+@keyframes spin     { from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
+@keyframes blink    { 0%,100%{opacity:1;} 50%{opacity:0;} }
+@keyframes glow     { 0%,100%{box-shadow:0 0 0 0 rgba(79,70,229,.18);} 50%{box-shadow:0 0 0 7px rgba(79,70,229,0);} }
+@keyframes shimmer  { from{background-position:-200% 0;} to{background-position:200% 0;} }
+@keyframes lineGrow { from{height:0;} to{height:100%;} }
+@keyframes scaleIn  { from{opacity:0;transform:scale(.92);} to{opacity:1;transform:scale(1);} }
+@keyframes sway1    { 0%,100%{transform:rotate(-2deg) translateX(0);} 50%{transform:rotate(2.5deg) translateX(3px);} }
+@keyframes sway2    { 0%,100%{transform:rotate(1.5deg) translateX(0);} 50%{transform:rotate(-2deg) translateX(-2px);} }
+@keyframes sway3    { 0%,100%{transform:rotate(-1deg);} 50%{transform:rotate(3deg);} }
+@keyframes gradShift { 0%{background-position:0% 50%;}50%{background-position:100% 50%;}100%{background-position:0% 50%;} }
+@keyframes rankIn      { from{opacity:0;transform:translateX(-12px);}to{opacity:1;transform:translateX(0);} }
+@keyframes fadeSlideIn { from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);} }
+
+.forest-pan {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.96;
+}

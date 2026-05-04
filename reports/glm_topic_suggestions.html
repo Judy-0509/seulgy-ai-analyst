@@ -1,0 +1,1175 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>주제 선정 비교 — GLM vs Claude</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --surface2: #22263a;
+    --border: #2e3248; --text: #e2e4f0; --muted: #8b90a8;
+    --multi: #e5c07b; --new: #56b6c2; --both: #c678dd;
+    --tab-active-glm: #6c8ef5; --tab-active-claude: #56b6c2;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 14px; line-height: 1.6;
+    padding: 32px 24px; max-width: 1400px; margin: 0 auto;
+  }
+  h1 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+  .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 6px; }
+  .meta { color: var(--muted); font-size: 12px; margin-bottom: 16px; }
+  .meta span { color: var(--text); font-weight: 600; }
+
+  /* 탭 네비게이션 */
+  .tab-nav {
+    display: flex; gap: 0; margin-bottom: 28px;
+    border-bottom: 2px solid var(--border);
+  }
+  .tab-btn {
+    padding: 10px 28px; font-size: 14px; font-weight: 600;
+    color: var(--muted); background: transparent; border: none;
+    cursor: pointer; position: relative; transition: color .15s;
+    letter-spacing: .01em;
+  }
+  .tab-btn::after {
+    content: ''; position: absolute; bottom: -2px; left: 0; right: 0;
+    height: 2px; background: transparent; transition: background .15s;
+  }
+  .tab-btn.active-glm { color: var(--tab-active-glm); }
+  .tab-btn.active-glm::after { background: var(--tab-active-glm); }
+  .tab-btn.active-claude { color: var(--tab-active-claude); }
+  .tab-btn.active-claude::after { background: var(--tab-active-claude); }
+  .tab-btn .tab-count {
+    display: inline-block; margin-left: 7px; font-size: 11px;
+    font-weight: 700; padding: 1px 7px; border-radius: 10px;
+    background: var(--surface2);
+  }
+
+  /* 탭 패널 */
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* 기존 레포트 제외 목록 */
+  .excl-row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:28px; align-items:center; }
+  .excl-label { font-size:11px; color:var(--muted); font-weight:700;
+                 text-transform:uppercase; letter-spacing:.08em; white-space:nowrap; }
+  .excl-tag {
+    font-size:11px; padding:2px 8px; border-radius:4px;
+    background:rgba(255,255,255,.05); border:1px solid var(--border); color:var(--muted);
+    text-decoration: line-through;
+  }
+
+  /* 기준 설명 */
+  .criteria-row { display:flex; gap:12px; margin-bottom:36px; flex-wrap:wrap; }
+  .criteria-box {
+    flex:1; min-width:220px;
+    background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:14px 16px;
+  }
+  .criteria-box-multi { border-top:3px solid var(--multi); }
+  .criteria-box-new   { border-top:3px solid var(--new); }
+  .criteria-box-both  { border-top:3px solid var(--both); }
+  .crit-lbl { font-size:11px; font-weight:700; letter-spacing:.08em;
+               text-transform:uppercase; margin-bottom:5px; }
+  .crit-lbl-multi { color:var(--multi); }
+  .crit-lbl-new   { color:var(--new); }
+  .crit-lbl-both  { color:var(--both); }
+  .crit-desc { font-size:12px; color:var(--muted); line-height:1.5; }
+
+  /* 섹션 */
+  .section-title {
+    display:flex; align-items:center; gap:10px;
+    font-size:11px; font-weight:700; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--muted);
+    margin:36px 0 16px; padding-bottom:8px; border-bottom:1px solid var(--border);
+  }
+  .section-title .label { color:var(--text); font-size:14px;
+                           text-transform:none; letter-spacing:0; font-weight:600; }
+  .section-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+
+  /* 카드 */
+  .card { background:var(--surface); border:1px solid var(--border);
+           border-radius:10px; margin-bottom:20px; overflow:hidden; }
+  .card-multi { border-top:3px solid var(--multi); }
+  .card-new   { border-top:3px solid var(--new); }
+  .card-both  { border-top:3px solid var(--both); }
+
+  .card-header {
+    display:flex; align-items:flex-start; gap:14px;
+    padding:16px 20px 14px; border-bottom:1px solid var(--border);
+  }
+  .topic-num {
+    width:28px; height:28px; background:var(--surface2); border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:13px; font-weight:700; color:var(--muted);
+    flex-shrink:0; margin-top:2px;
+  }
+  .topic-info { flex:1; }
+  .topic-title { font-size:15px; font-weight:600; margin-bottom:8px; }
+  .badges { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+  .badge { font-size:11px; font-weight:600; padding:2px 8px;
+            border-radius:4px; letter-spacing:.02em; }
+  .crit-badge { font-size:11px; font-weight:700; padding:2px 9px; border-radius:4px; }
+  .crit-2    { background:rgba(229,192,123,.12); color:var(--multi); border:1px solid rgba(229,192,123,.3); }
+  .crit-3    { background:rgba(86,182,194,.12);  color:var(--new);   border:1px solid rgba(86,182,194,.3); }
+  .crit-both { background:rgba(198,120,221,.12); color:var(--both);  border:1px solid rgba(198,120,221,.3); }
+  .coverage { font-size:11px; color:var(--muted); margin-left:2px; }
+
+  .badge-cp { background: rgba(0,0,0,.25); color: #6c8ef5; border: 1px solid #6c8ef544; }
+  .src-cp { color: #6c8ef5; }
+  .badge-tf { background: rgba(0,0,0,.25); color: #e5c07b; border: 1px solid #e5c07b44; }
+  .src-tf { color: #e5c07b; }
+  .badge-om { background: rgba(0,0,0,.25); color: #e06c75; border: 1px solid #e06c7544; }
+  .src-om { color: #e06c75; }
+  .badge-idc { background: rgba(0,0,0,.25); color: #98c379; border: 1px solid #98c37944; }
+  .src-idc { color: #98c379; }
+  .badge-ms { background: rgba(0,0,0,.25); color: #c678dd; border: 1px solid #c678dd44; }
+  .src-ms { color: #c678dd; }
+
+  /* 3컬럼 */
+  .flow { display:grid; grid-template-columns:1.1fr 1fr 1fr; }
+  .flow-col { padding:16px 18px; border-right:1px solid var(--border); }
+  .flow-col:last-child { border-right:none; }
+  .col-label { font-size:10px; font-weight:700; letter-spacing:.1em;
+                text-transform:uppercase; color:var(--muted); margin-bottom:12px; }
+
+  /* 소스 */
+  .src-group { margin-bottom:14px; }
+  .src-name { font-size:11px; font-weight:700; margin-bottom:6px; letter-spacing:.03em; }
+  .ev { margin-bottom:8px; padding-left:10px; border-left:2px solid var(--border); }
+  .ev-title { font-size:12px; line-height:1.4; color:var(--text); }
+  .ev-date { font-size:11px; color:var(--muted); margin-top:2px; }
+
+  /* 핵심 데이터 */
+  .kd { margin-bottom:8px; padding:8px 10px; background:var(--surface2);
+         border-radius:6px; font-size:12px; line-height:1.5; color:var(--text); }
+  .kd.accent { border-left:2px solid var(--new); }
+
+  /* 선정 근거 */
+  .reasoning { font-size:12px; line-height:1.75; color:var(--text); }
+
+  /* 레포트 생성 버튼 */
+  .report-btn {
+    background: rgba(108,142,245,.12); border: 1px solid rgba(108,142,245,.35);
+    color: #6c8ef5; padding: 5px 12px; border-radius: 6px;
+    font-size: 11px; font-weight: 600; cursor: pointer;
+    transition: all .15s; white-space: nowrap; flex-shrink: 0;
+  }
+  .report-btn:hover { background: rgba(108,142,245,.28); }
+  .report-btn:disabled { opacity: .4; cursor: default; }
+
+  /* 레포트 모달 */
+  #report-modal {
+    position: fixed; inset: 0; z-index: 900;
+    display: none; align-items: center; justify-content: center;
+  }
+  #report-modal.open { display: flex; }
+  #report-modal-bg {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,.65); backdrop-filter: blur(3px);
+  }
+  #report-panel {
+    position: relative; z-index: 1;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; width: min(760px, 93vw);
+    max-height: 88vh; display: flex; flex-direction: column;
+    box-shadow: 0 24px 80px rgba(0,0,0,.55); overflow: hidden;
+  }
+  #report-panel-hdr {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 18px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  #report-panel-hdr h2 { font-size: 14px; font-weight: 600; flex: 1; margin: 0; color: var(--text); }
+  #report-close {
+    background: none; border: none; color: var(--muted);
+    font-size: 20px; cursor: pointer; line-height: 1; padding: 0 2px;
+  }
+  #report-close:hover { color: var(--text); }
+  #report-body { flex: 1; overflow-y: auto; padding: 14px 18px; display: flex; flex-direction: column; gap: 10px; }
+
+  /* 로그 */
+  #report-log { font-size: 12px; font-family: monospace; }
+  .log-line { padding: 2px 0 2px 8px; color: var(--muted); line-height: 1.5; border-left: 2px solid transparent; }
+  .log-line.gate { color: #e5c07b; border-left-color: #e5c07b; font-weight: 600; }
+  .log-line.err { color: #e06c75; border-left-color: #e06c75; }
+
+  /* Gate 패널 공통 */
+  .gate-panel { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; display: none; }
+  .gate-panel.on { display: block; }
+  .gate-panel-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  .gate-sec { margin-bottom: 12px; }
+  .gate-sec-title { font-size: 12px; font-weight: 600; color: #6c8ef5; margin-bottom: 5px; }
+  .gate-queries { display: flex; flex-direction: column; gap: 3px; margin-bottom: 5px; }
+  .gate-q-row { display: flex; align-items: center; gap: 7px; font-size: 12px; cursor: pointer; padding: 3px 5px; border-radius: 4px; }
+  .gate-q-row:hover { background: rgba(255,255,255,.04); }
+  .gate-q-row input[type=checkbox] { accent-color: #6c8ef5; flex-shrink: 0; }
+  .gate-q-txt { color: var(--text); font-family: monospace; font-size: 11px; }
+  .gate-add { display: flex; gap: 6px; margin-top: 4px; }
+  .gate-inp {
+    flex: 1; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text); padding: 4px 9px;
+    font-size: 11px; font-family: monospace;
+  }
+  .gate-inp:focus { outline: none; border-color: #6c8ef5; }
+  .btn-sm {
+    background: rgba(108,142,245,.12); border: 1px solid rgba(108,142,245,.35);
+    color: #6c8ef5; padding: 4px 10px; border-radius: 6px;
+    font-size: 11px; font-weight: 600; cursor: pointer; white-space: nowrap;
+  }
+  .btn-sm:hover { background: rgba(108,142,245,.25); }
+  .gate-results { display: flex; flex-direction: column; gap: 2px; margin-bottom: 5px; }
+  .gate-res-item { font-size: 11px; color: var(--muted); padding: 1px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .gate-res-src { color: #e06c75; font-weight: 600; margin-right: 3px; }
+  .gate-res-more { font-size: 11px; color: var(--muted); font-style: italic; }
+  .gate-footer { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+  .gate-ok-btn { background: #6c8ef5; border: none; color: #fff; padding: 8px 22px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .gate-ok-btn:hover { background: #5a7de0; }
+
+  /* 완료 패널 */
+  #report-done { background: rgba(86,182,194,.07); border: 1px solid rgba(86,182,194,.3); border-radius: 10px; padding: 16px 18px; display: none; }
+  #report-done.on { display: block; }
+  .done-title { font-weight: 700; color: #56b6c2; margin-bottom: 10px; font-size: 14px; }
+  .done-link { display: inline-block; background: #56b6c2; color: #0f1117; padding: 8px 22px; border-radius: 8px; font-weight: 700; font-size: 13px; text-decoration: none; }
+  .done-link:hover { background: #3ea0ae; }
+</style>
+</head>
+<body>
+
+<h1>스마트폰 시장 주제 선정 비교</h1>
+<p class="subtitle">GLM-4.7 Thinking Mode vs Claude 수동 분석</p>
+
+<nav class="tab-nav">
+  <button class="tab-btn active-glm" onclick="switchTab('glm', this)">
+    GLM 제안
+    <span class="tab-count">6</span>
+  </button>
+  <button class="tab-btn" onclick="switchTab('claude', this)">
+    Claude 제안
+    <span class="tab-count">11</span>
+  </button>
+</nav>
+
+<!-- GLM 탭 -->
+<div id="panel-glm" class="tab-panel active">
+  
+<p class="meta">
+  출처: <span>GLM-4.7 (Thinking Mode)</span> &nbsp;|&nbsp;
+  생성: <span>2026-05-03 15:45</span> &nbsp;|&nbsp;
+  분석 기사: <span>152개</span> (최근 30일) &nbsp;|&nbsp;
+  Thinking: <span>16,140 chars</span> &nbsp;|&nbsp;선정 주제: <span>6개</span>
+</p>
+  <div class="excl-row">
+  <span class="excl-label">기준3 제외 (기존 레포트)</span>
+  
+</div>
+  
+<div class="criteria-row">
+  <div class="criteria-box criteria-box-multi">
+    <div class="crit-lbl crit-lbl-multi">기준2 — 멀티소스 신호</div>
+    <div class="crit-desc">서로 독립적인 Tier-1 기관 2곳 이상이 같은 현상을 14일 이내에 다룰 때 구조적 전환 신호로 인식. OEM 경쟁 우위·전략 변화도 포함.</div>
+  </div>
+  <div class="criteria-box criteria-box-new">
+    <div class="crit-lbl crit-lbl-new">기준3 — 신규 등장 주제</div>
+    <div class="crit-desc">최근 30일 DB에 처음 등장한 주제. 기존 레포트에 없는 OEM 전략 신호, 브랜드 최초 달성, 기술 자립 등 단일 기관도 포함.</div>
+  </div>
+  <div class="criteria-box criteria-box-both">
+    <div class="crit-lbl crit-lbl-both">기준2+3 — 동시 충족</div>
+    <div class="crit-desc">멀티소스 신호이면서 기존 레포트에도 없는 완전히 새로운 구조적 전환 신호.</div>
+  </div>
+</div>
+  
+<div class="section-title">
+  <span class="section-dot" style="background:#e5c07b"></span>
+  <span class="label">기준2 — 멀티소스 신호</span>
+  <span style="color:var(--muted);font-size:12px;font-weight:400">— 6개 주제</span>
+</div>
+
+<div class="card card-multi">
+  <div class="card-header">
+    <div class="topic-num">1</div>
+    <div class="topic-info">
+      <div class="topic-title">메모리 가격 급등과 공급망 위기에 따른 글로벌 스마트폰 시장 구조적 수축</div>
+      <div class="badges">
+        <span class="crit-badge crit-2">기준2 멀티소스</span>
+        <span class="badge badge-om">Omdia</span> <span class="badge badge-cp">Counterpoint Research</span> <span class="badge badge-tf">TrendForce</span>
+        <span class="coverage">3개 기관</span>
+      </div>
+    </div>
+  </div>
+  <div class="flow">
+    <div class="flow-col">
+      <div class="col-label">참조 원문</div>
+      <div class="src-group"><div class="src-name src-om">Omdia</div><div class="ev">
+  <span class="ev-title">NAND Market Tracker – 1Q26 Analysis</span>
+  <div class="ev-date">2026-04-07</div>
+</div><div class="ev">
+  <span class="ev-title">Display Dynamics – April 2026: Panel makers revised up fab utilization plans for four consecutive months</span>
+  <div class="ev-date">2026-04-10</div>
+</div><div class="ev">
+  <span class="ev-title">Rising Memory Costs and Macro Volatility Weigh on Global Smartphone Shipments in 2026</span>
+  <div class="ev-date">2026-04-16</div>
+</div></div><div class="src-group"><div class="src-name src-cp">Counterpoint Research</div><div class="ev">
+  <span class="ev-title">Global Smartphone Shipments Fall 6% YoY in Q1 2026 Amid Memory Crunch; Apple Leads Q1 for First Time</span>
+  <div class="ev-date">2026-04-10</div>
+</div></div><div class="src-group"><div class="src-name src-tf">TrendForce</div><div class="ev">
+  <span class="ev-title">[News] Micron Reportedly Urges Tighter U.S. Chip Equipment Curbs on China; Toolmakers Seek Relief</span>
+  <div class="ev-date">2026-04-23</div>
+</div><div class="ev">
+  <span class="ev-title">Samsung, Kingston Reportedly Lift SSD Prices by Over 10%, More Hikes Likely in Coming Weeks</span>
+  <div class="ev-date">2026-04-24</div>
+</div><div class="ev">
+  <span class="ev-title">[News] U.S. Reportedly Moves to Block Chip Tool Shipments to China No.2 Foundry Hua Hong as It Seeks 7nm After SMIC</span>
+  <div class="ev-date">2026-04-29</div>
+</div></div>
+    </div>
+    <div class="flow-col">
+      <div class="col-label">핵심 데이터</div>
+      <div class="kd ">Global smartphone shipments declined 6% YoY in Q1 2026</div><div class="kd accent">Omdia forecasts market contraction exceeding 15% if memory inflation persists</div><div class="kd ">SSD prices lifted by over 10% with further hikes expected</div><div class="kd accent">Tight NAND supply expected to extend through 2026</div><div class="kd ">NAND market revenue projected to reach $300bn</div><div class="kd accent">Pull-in demand for panels driven by key component shortages</div>
+    </div>
+    <div class="flow-col">
+      <div class="col-label">선정 근거</div>
+      <div class="reasoning">Multiple independent sources confirm that DRAM and NAND shortages constitute a structural shock extending through 2026, driven by strong enterprise demand and geopolitical restrictions on chip equipment. This supply crunch, projected to drive NAND revenue to $300bn, is forcing a sustained market contraction and compelling OEMs to shift strategies toward premiumization and cost-pass-through.</div>
+    </div>
+  </div>
+</div>
+<div class="card card-multi">
+  <div class="card-header">
+    <div class="topic-num">2</div>
+    <div class="topic-info">
+      <div class="topic-title">애플의 1분기 글로벌 선두 탈환 및 북미 폴더블 시장 점유율 독점 예상</div>
+      <div class="badges">
+        <span class="crit-badge crit-2">기준2 멀티소스</span>
+        <span class="badge badge-cp">Counterpoint Research</span> <span class="badge badge-idc">IDC</span>
+        <span class="coverage">2개 기관</span>
+      </div>
+    </div>
+  </div>
+  <div class="flow">
+    <div class="flow-col">
+      <div class="col-label">참조 원문</div>
+      <div class="src-group"><div class="src-name src-cp">Counterpoint Research</div><div class="ev">
+  <span class="ev-title">Global Smartphone Shipments Fall 6% YoY in Q1 2026 Amid Memory Crunch; Apple Leads Q1 for First Time</span>
+  <div class="ev-date">2026-04-10</div>
+</div><div class="ev">
+  <span class="ev-title">Apple Set to Capture 46% Share in North America Foldables Market in 2026, Pressuring Competitors</span>
+  <div class="ev-date">2026-04-13</div>
+</div></div><div class="src-group"><div class="src-name src-idc">IDC</div><div class="ev">
+  <span class="ev-title">Huawei and Apple Support China Smartphone Market Resilience as Shipments Decline 3.3% in Q1 2026</span>
+  <div class="ev-date">2026-04-15</div>
+</div></div>
+    </div>
+    <div class="flow-col">
+      <div class="col-label">핵심 데이터</div>
+      <div class="kd ">Apple leads global Q1 smartphone shipments for the first time</div><div class="kd accent">Apple projected to capture 46% share in North America foldables market in 2026</div><div class="kd ">iPhone shipments surged 20% in China despite overall market decline</div>
+    </div>
+    <div class="flow-col">
+      <div class="col-label">선정 근거</div>
+      <div class="reasoning">Apple is achieving a rare competitive 'double-first': leading global shipments during a severe downturn (Counterpoint) and simultaneously poised to dominate the emerging North American foldable segment (Counterpoint). IDC's confirmation of Apple's resilience in China further validates a structural competitive advantage that allows Apple to gain share while rivals retreat.</div>
+    </div>
+  </div>
+</div>
+<div class="card card-multi">
+  <div class="card-header">
+    <div class="topic-num">3</div>
+    <div class="topic-info">
+      <div class="topic-title">화웨이의 중국 시장 5년 만의 최고 점유율 회복 및 수평형 폴더블 경쟁 우위</div>
+      <div class="badges">
+        <span class="crit-badge crit-2">기준2 멀티소스</span>
+        <span class="badge badge-cp">Counterpoint Research</span> <span class="badge badge-idc">IDC</span> <span class="badge badge-tf">TrendForce</span>
+        <span class="coverage">3개 기관</span>
+      </div>
+    </div>
+  </div>
+  <div class="flow">
+    <div class="flow-col">
+      <div class="col-label">참조 원문</div>
+      <div class="src-group"><div class="src-name src-cp">Counterpoint Research</div><div class="ev">
+  <span class="ev-title">China Smartphone Market in Q1 2026: Huawei Share Highest in 5 years, Apple Fastest Growing</span>
+  <div class="ev-date">2026-04-17</div>
+</div></div><div class="src-group"><div class="src-name src-idc">IDC</div><div class="ev">
+  <span class="ev-title">Huawei and Apple Support China Smartphone Market Resilience as Shipments Decline 3.3% in Q1 2026</span>
+  <div class="ev-date">2026-04-15</div>
+</div></div><div class="src-group"><div class="src-name src-tf">TrendForce</div><div class="ev">
+  <span class="ev-title">Huawei Takes Early Lead in Horizontal Foldable Race vs Samsung and Apple, Eyes April Pura X Max Launch</span>
+  <div class="ev-date">2026-04-14</div>
+</div></div>
+    </div>
+    <div class="flow-col">
+      <div class="col-label">핵심 데이터</div>
+      <div class="kd ">Huawei recorded its highest market share in China in 5 years in Q1 2026</div><div class="kd accent">Huawei takes early lead in horizontal foldable race against Samsung and Apple</div><div class="kd ">Huawei and Apple drove premium demand in China while overall market fell 3.3%</div>
+    </div>
+    <div class="flow-col">
+      <div class="col-label">선정 근거</div>
+      <div class="reasoning">Huawei's resurgence is structurally confirmed by its highest China share in five years (Counterpoint, IDC) and its strategic leadership in the next-generation form factor of horizontal foldables (TrendForce). This signals a successful pivot to domestic self-sufficiency and high-end differentiation, posing a direct threat to Samsung's global foldable dominance.</div>
+    </div>
+  </div>
+</div>
+<div class="card card-multi">
+  <div class="card-header">
+    <div class="topic-num">4</div>
+    <div class="topic-info">
+      <div class="topic-title">온디바이스 AI 에이전트 도입에 대한 OEM 공급 로드맵과 소비자 수요의 괴리</div>
+      <div class="badges">
+        <span class="crit-badge crit-2">기준2 멀티소스</span>
+        <span class="badge badge-cp">Counterpoint Research</span> <span class="badge badge-om">Omdia</span>
+        <span class="coverage">2개 기관</span>
+      </div>
+    </div>
+  </div>
+  <div class="flow">
+    <div class="flow-col">
+      <div class="col-label">참조 원문</div>
+      <div class="src-group"><div class="src-name src-cp">Counterpoint Research</div><div class="ev">
+  <span class="ev-title">Counterpoint Conversations: AGI on How On-device AI Agents Will Replace Apps on Your Smartphone</span>
+  <div class="ev-date">2026-04-07</div>
+</div><div class="ev">
+  <span class="ev-title">Counterpoint Conversations: 6G is More Than Just Speed –Qualcomm's AI-native Blueprint from Edge to Cloud</span>
+  <div class="ev-date">2026-04-13</div>
+</div></div><div class="src-group"><div class="src-name src-om">Omdia</div><div class="ev">
+  <span class="ev-title">AI User Engagement on Smartphones: 2026 Reality Check</span>
+  <div class="ev-date">2026-04-17</div>
+</div></div>
+    </div>
+    <div class="flow-col">
+      <div class="col-label">핵심 데이터</div>
+      <div class="kd ">Shift toward Agentic AI and app-less computing highlighted at MWC 2026</div><div class="kd accent">Qualcomm announced a roadmap to commercialize 'AI-native' 6G by 2029, backed by 58 partners including device makers</div><div class="kd ">Consumers show low readiness and default behavior for Agentic AI adoption</div>
+    </div>
+    <div class="flow-col">
+      <div class="col-label">선정 근거</div>
+      <div class="reasoning">The topic underscores the growing disconnect between the aggressive supply-side roadmap for an AI-native ecosystem—spanning the shift from apps to on-device agents and the development of AI-native 6G infrastructure—and the current lack of consumer readiness. While industry stakeholders are mobilizing extensive resources and partnerships to deliver Agentic AI, Omdia's reality check indicates that user engagement remains low, highlighting a strategic risk of over-investment in features the market is not yet prepared to embrace.</div>
+    </div>
+  </div>
+</div>
+<div class="card card-multi">
+  <div class="card-header">
+    <div class="topic-num">5</div>
+    <div class="topic-info">
+      <div class="topic-title">아마존의 글로벌스타 인수와 D2D 위성 통신 생태계의 구조적 확장</div>
+      <div class="badges">
+        <span class="crit-badge crit-2">기준2 멀티소스</span>
+        <span class="badge badge-cp">Counterpoint Research</span> <span class="badge badge-om">Omdia</span>
+        <span class="coverage">2개 기관</span>
+      </div>
+    </div>
+  </div>
+  <div class="flow">
+    <div class="flow-col">
+      <div class="col-label">참조 원문</div>
+      <div class="src-group"><div class="src-name src-cp">Counterpoint Research</div><div class="ev">
+  <span class="ev-title">Smartphones With Satellite Connectivity to Reach 46% of Global Shipments by 2030</span>
+  <div class="ev-date">2026-04-29</div>
+</div><div class="ev">
+  <span class="ev-title">Amazon Leo's Globalstar Acquisition: Amazon Heading for the Stars</span>
+  <div class="ev-date">2026-04-15</div>
+</div></div><div class="src-group"><div class="src-name src-om">Omdia</div><div class="ev">
+  <span class="ev-title">Amazon hurries to buy Globalstar for $11.6bn to seize the ephemeral D2D opportunity</span>
+  <div class="ev-date">2026-04-15</div>
+</div><div class="ev">
+  <span class="ev-title">Acquiring Globalstar provides Amazon Leo a fast lane to enter the D2D market</span>
+  <div class="ev-date">2026-04-21</div>
+</div><div class="ev">
+  <span class="ev-title">European Space Race: Overview of the Telco D2D Satellite Market</span>
+  <div class="ev-date">2026-04-27</div>
+</div><div class="ev">
+  <span class="ev-title">Ofcom authorizes satellite direct-to-device (D2D) services in mobile spectrum bands ahead of WRC-27 standardization discussions</span>
+  <div class="ev-date">2026-04-30</div>
+</div></div>
+    </div>
+    <div class="flow-col">
+      <div class="col-label">핵심 데이터</div>
+      <div class="kd ">Amazon to acquire Globalstar for $11.57 billion (announced April 14, 2026)</div><div class="kd accent">Satellite connectivity expected to reach 46% of global smartphone shipments by 2030</div><div class="kd ">Ofcom authorized satellite D2D services in mobile spectrum bands in February 2026</div>
+    </div>
+    <div class="flow-col">
+      <div class="col-label">선정 근거</div>
+      <div class="reasoning">Amazon's $11.57 billion acquisition of Globalstar, confirmed by multiple sources, accelerates its entry into the D2D market and validates forecasts that satellite connectivity will reach 46% of smartphone shipments by 2030. This strategic move is further supported by regulatory advancements, such as Ofcom's authorization of D2D services in mobile spectrum, signaling a structural expansion of the satellite ecosystem and a paradigm shift in global connectivity standards.</div>
+    </div>
+  </div>
+</div>
+<div class="card card-multi">
+  <div class="card-header">
+    <div class="topic-num">6</div>
+    <div class="topic-info">
+      <div class="topic-title">AI 메모리 수요에 힘입은 삼성전자의 기록적인 반도체 수익성과 스마트폰 사업 경쟁 우위</div>
+      <div class="badges">
+        <span class="crit-badge crit-2">기준2 멀티소스</span>
+        <span class="badge badge-cp">Counterpoint Research</span> <span class="badge badge-tf">TrendForce</span> <span class="badge badge-om">Omdia</span> <span class="badge badge-idc">IDC</span>
+        <span class="coverage">4개 기관</span>
+      </div>
+    </div>
+  </div>
+  <div class="flow">
+    <div class="flow-col">
+      <div class="col-label">참조 원문</div>
+      <div class="src-group"><div class="src-name src-cp">Counterpoint Research</div><div class="ev">
+  <span class="ev-title">Samsung Hits Record Profit as Memory Revenue Soars to $50.4 Billion</span>
+  <div class="ev-date">2026-04-09</div>
+</div></div><div class="src-group"><div class="src-name src-tf">TrendForce</div><div class="ev">
+  <span class="ev-title">Samsung Sees Explosive 755% Profit Growth as Q1 Tops Full-Year 2025 Earnings amid Memory Boom</span>
+  <div class="ev-date">2026-04-07</div>
+</div></div><div class="src-group"><div class="src-name src-om">Omdia</div><div class="ev">
+  <span class="ev-title">NAND Market Tracker – 1Q26 Analysis</span>
+  <div class="ev-date">2026-04-07</div>
+</div></div><div class="src-group"><div class="src-name src-idc">IDC</div><div class="ev">
+  <span class="ev-title">AI Infrastructure Spending Caps Historic Year at ~$90 Billion in Q4 2025; 2029 Spending to Eclipse $1 Trillion</span>
+  <div class="ev-date">2026-04-16</div>
+</div></div>
+    </div>
+    <div class="flow-col">
+      <div class="col-label">핵심 데이터</div>
+      <div class="kd ">Samsung memory division revenue reached $50.4 billion in Q1 2026</div><div class="kd accent">Samsung Q1 2026 profit projected to exceed full-year 2025 earnings</div><div class="kd ">Operating margin hit 65.7% in the DS division</div><div class="kd accent">Global NAND market revenue is projected to reach $300 billion as tight supply extends through 2026</div><div class="kd ">AI infrastructure spending hit $89.9 billion in Q4 2025, with the market racing toward $1 trillion by 2029</div>
+    </div>
+    <div class="flow-col">
+      <div class="col-label">선정 근거</div>
+      <div class="reasoning">Samsung is generating record profits driven by a sustained AI memory supercycle, supported by tight NAND supply pushing the market toward $300 billion (Omdia) and AI infrastructure spending racing toward $1 trillion (IDC). This creates a structural financial advantage for its smartphone division, allowing it to absorb component cost inflation that is crippling competitors, while funding aggressive R&D in vertical integration areas like advanced packaging and foundry services.</div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- Claude 탭 -->
+<div id="panel-claude" class="tab-panel">
+  
+<p class="meta">
+  출처: <span>Claude (수동 분석)</span> &nbsp;|&nbsp;
+  생성: <span>2026-05-03 (Clau</span> &nbsp;|&nbsp;
+  분석 기사: <span>154개</span> (최근 30일) &nbsp;|&nbsp;
+  선정 주제: <span>11개</span>
+</p>
+  <div class="excl-row">
+  <span class="excl-label">기준3 제외 (기존 레포트)</span>
+  <span class="excl-tag">AI 에이전트 스마트폰 OEM 로드맵 vs 소비자 수용</span><span class="excl-tag">EU 배터리 규제 테스트</span><span class="excl-tag">메모리 위기 중고폰 시장 구조성장</span><span class="excl-tag">아이폰 폴더블 출시에 따른 폴더블 시장 영향성</span><span class="excl-tag">위성 연결 스마트폰 D2D 구조전환</span><span class="excl-tag">현재 메모리 가격 상승에 따른 스마트폰 시장 영향성</span>
+</div>
+  
+<div class="criteria-row">
+  <div class="criteria-box criteria-box-multi">
+    <div class="crit-lbl crit-lbl-multi">기준2 — 멀티소스 신호</div>
+    <div class="crit-desc">서로 독립적인 Tier-1 기관 2곳 이상이 같은 현상을 14일 이내에 다룰 때 구조적 전환 신호로 인식. OEM 경쟁 우위·전략 변화도 포함.</div>
+  </div>
+  <div class="criteria-box criteria-box-new">
+    <div class="crit-lbl crit-lbl-new">기준3 — 신규 등장 주제</div>
+    <div class="crit-desc">최근 30일 DB에 처음 등장한 주제. 기존 레포트에 없는 OEM 전략 신호, 브랜드 최초 달성, 기술 자립 등 단일 기관도 포함.</div>
+  </div>
+  <div class="criteria-box criteria-box-both">
+    <div class="crit-lbl crit-lbl-both">기준2+3 — 동시 충족</div>
+    <div class="crit-desc">멀티소스 신호이면서 기존 레포트에도 없는 완전히 새로운 구조적 전환 신호.</div>
+  </div>
+</div>
+  
+<div class="section-title">
+  <span class="section-dot" style="background:#c678dd"></span>
+  <span class="label">기준2+3 — 멀티소스 & 신규 동시</span>
+  <span style="color:var(--muted);font-size:12px;font-weight:400">— 6개 주제</span>
+</div>
+
+<div class="card card-both">
+  <div class="card-header">
+    <div class="topic-num">1</div>
+    <div class="topic-info">
+      <div class="topic-title">위성 연결 스마트폰 — 긴급 SOS에서 상시 D2D로의 구조 전환</div>
+      <div class="badges">
+        <span class="crit-badge crit-both">기준2+3</span>
+        <span class="badge badge-cp">Counterpoint Research</span> <span class="badge badge-om">Omdia</span>
+        <span class="coverage">2개 기관</span>
+      </div>
+    </div>
+  </div>
+  <div class="flow">
+    <div class="flow-col">
+      <div class="col-label">참조 원문</div>
+      <div class="src-group"><div class="src-name src-cp">Counterpoint Research</div><div class="ev">
+  <span class="ev-title">Smartphones With Satellite Connectivity to Reach 46% of Global Shipments by 2030</span>
+  <div class="ev-date">2026-04-29</div>
+</div></div><div class="src-group"><div class="src-name src-om">Omdia</div><div class="ev">
+  <span class="ev-title">LEO Satellite Communication Market Dynamics – Network Vendor Perspectives</span>
+  <div class="ev-date">2026-04-30</div>
+</div><div class="ev">
+  <span class="ev-title">Amazon hurries to buy Globalstar for $11.6bn to seize the ephemeral D2D opportunity</span>
+  <div class="ev-date">2026-04-15</div>
+</div><div class="ev">
+  <span class="ev-title">SATShow 2026 presented a market poised between tradition and disruption</span>
+  <div class="ev-date">2026-04-10</div>
+</div></div>
+    </div>
+    <div class="flow-col">
+      <div class="col-label">핵심 데이터</div>
+      <div class="kd ">2030년 전 세계 스마트폰 출하량의 46% 위성 연결 탑재 (Counterpoint)</div><div class="kd accent">Amazon, Globalstar $11.6bn 인수 → D2D 경쟁 본격화</div><div class="kd ">주도 OEM: Apple, Samsung, Google, Huawei — 프리미엄 기기 중심</div><div class="kd accent">LEO: 2019~2025 배포 완료 → 수익화 단계 전환 (Omdia)</div>
+    </div>
+    <div class="flow-col">
+      <div class="col-label">선정 근거</div>
+      <div class="reasoning">Counterpoint이 Apr 29에 OEM 채택률 전망을 발표한 같은 주, Omdia가 Amazon-Globalstar 인수를 D2D 인프라 구조 변화로 독립 분석. 두 기관이 공급(OEM)과 인프라(위성 사업자) 양쪽에서 동시에 같은 방향을 주목한다는 것은 구조적 전환 신호.</div>
+    </div>
+  </div>
+</div>
+<div class="card card-both">
+  <div class="card-header">
+    <div class="topic-num">2</div>
+    <div class="topic-info">
+      <div class="topic-title">AI 글래스 — 스마트폰 다음 폼팩터 경쟁 가시화</div>
+      <div class="badges">
+        <span class="crit-badge crit-both">기준2+3</span>
+        <span class="badge badge-tf">TrendForce</span> <span class="badge badge-om">Omdia</span>
+        <span class="coverage">2개 기관</span>
+      </div>
+    </div>
+  </div>
+  <div class="flow">
+    <div class="flow-col">
+      <div class="col-label">참조 원문</div>
+      <div class="src-group"><div class="src-name src-tf">TrendForce</div><div class="ev">
+  <span class="ev-title">Huawei Launches AI Glasses as Meta Leads the Market; Samsung, Apple Reportedly Eye 2026–2027 Entry</span>
+  <div class="ev-date">2026-04-24</div>
+</div></div><div class="src-group"><div class="src-name src-om">Omdia</div><div class="ev">
+  <span class="ev-title">Huawei launches its first AI glasses with enhanced ecosystem integration and seamless AI experiences</span>
+  <div class="ev-date">2026-04-27</div>
+</div></div>
+    </div>
+    <div class="flow-col">
+      <div class="col-label">핵심 데이터</div>
+      <div class="kd ">Huawei AI 글래스 Apr 2026 출시 — 경량 디자인, 처방 렌즈 연동, 생태계 통합</div><div class="kd accent">Meta 현재 시장 선도; Samsung·Apple 2026–2027 출시 예정 (TrendForce)</div><div class="kd ">스마트폰 생태계에서 웨어러블 AI 기기로의 폼팩터 전환 첫 경쟁 구도 가시화</div>
+    </div>
+    <div class="flow-col">
+      <div class="col-label">선정 근거</div>
+      <div class="reasoning">TrendForce와 Omdia가 Apr 24–27 같은 주에 Huawei AI 글래스를 독립적으로 보도. Meta 선도 → Huawei 선제 출시 → Samsung/Apple 예정이라는 3단계 경쟁 구도가 동시에 확인됨. 기존 레포트에 없는 완전히 새로운 폼팩터 신호.</div>
+    </div>
+  </div>
+</div>
+<div class="card card-both">
+  <div class="card-header">
+    <div class="topic-num">3</div>
+    <div class="topic-info">
+      <div class="topic-title">Apple — 전체 시장 역성장 속 Q1 사상 최고 실적·점유율 1위 첫 달성</div>
+      <div class="badges">
+        <span class="crit-badge crit-both">기준2+3</span>
+        <span class="badge badge-cp">Counterpoint Research</span> <span class="badge badge-om">Omdia</span> <span class="badge badge-idc">IDC</span>
+        <span class="coverage">3개 기관</span>
+      </div>
+    </div>
+  </div>
+  <div class="flow">
+    <div class="flow-col">
+      <div class="col-label">참조 원문</div>
+      <div class="src-group"><div class="src-name src-cp">Counterpoint Research</div><div class="ev">
+  <span class="ev-title">Apple Weathers Component Supply Headwinds to Post All-time Record March Quarter Revenues</span>
+  <div class="ev-date">2026-04-30</div>
+</div><div class="ev">
+  <span class="ev-title">Global Smartphone Shipments Fall 6% YoY in Q1 2026; Apple Leads Q1 for First Time</span>
+  <div class="ev-date">2026-04-10</div>
+</div></div><div class="src-group"><div class="src-name src-om">Omdia</div><div class="ev">
+  <span class="ev-title">Apple Smartphone Technology Outlook 2026</span>
+  <div class="ev-date">2026-04-09</div>
+</div></div><div class="src-group"><div class="src-name src-idc">IDC</div><div class="ev">
+  <span class="ev-title">Huawei and Apple Support China Smartphone Market Resilience as Shipments Decline 3.3% in Q1 2026</span>
+  <div class="ev-date">2026-04-15</div>
+</div></div>
+    </div>
+    <div class="flow-col">
+      <div class="col-label">핵심 데이터</div>
+      <div class="kd ">Apple 2026 Q1 역대 최고 매출 달성 (하드웨어·서비스 모두 두 자릿수 성장)</div><div class="kd accent">전체 시장 -6% 역성장 속 Apple Q1 점유율 1위 사상 첫 달성 (Counterpoint)</div><div class="kd ">중국 iPhone 출하 Q1 +20% YoY — Counterpoint·IDC 양쪽 공통 확인</div><div class="kd accent">메모리 위기로 경쟁사 공급망 교란 → Apple 상대적 우위 구조화</div>
+    </div>
+    <div class="flow-col">
+      <div class="col-label">선정 근거</div>
+      <div class="reasoning">시장이 -6% 수축하는 환경에서 Apple이 사상 최고 실적과 Q1 점유율 1위를 동시에 달성한 사실을 3개 기관이 독립적으로 확인. 공급망 압박을 회피하는 Apple 특유의 수직 통합 전략이 경쟁 우위로 굳어지는 구조적 신호.</div>
+    </div>
+  </div>
+</div>
+<div class="card card-both">
+  <div class="card-header">
+    <div class="topic-num">4</div>
+    <div class="topic-info">
+      <div class="topic-title">Huawei — 중국 시장 5년 만의 최고 점유율, 전방위 재도약</div>
+      <div class="badges">
+        <span class="crit-badge crit-both">기준2+3</span>
+        <span class="badge badge-cp">Counterpoint Research</span> <span class="badge badge-idc">IDC</span> <span class="badge badge-tf">TrendForce</span>
+        <span class="coverage">2개 기관</span>
+      </div>
+    </div>
+  </div>
+  <div class="flow">
+    <div class="flow-col">
+      <div class="col-label">참조 원문</div>
+      <div class="src-group"><div class="src-name src-cp">Counterpoint Research</div><div class="ev">
+  <span class="ev-title">China Smartphone Market in Q1 2026: Huawei Share Highest in 5 years, Apple Fastest Growing</span>
+  <div class="ev-date">2026-04-17</div>
+</div></div><div class="src-group"><div class="src-name src-idc">IDC</div><div class="ev">
+  <span class="ev-title">Huawei and Apple Support China Smartphone Market Resilience as Shipments Decline 3.3% in Q1 2026</span>
+  <div class="ev-date">2026-04-15</div>
+</div></div><div class="src-group"><div class="src-name src-tf">TrendForce</div><div class="ev">
+  <span class="ev-title">Huawei Takes Early Lead in Horizontal Foldable Race vs Samsung and Apple</span>
+  <div class="ev-date">2026-04-14</div>
+</div></div>
+    </div>
+    <div class="flow-col">
+      <div class="col-label">핵심 데이터</div>
+      <div class="kd ">Huawei, Q1 2026 중국 점유율 5년 최고 (Counterpoint)</div><div class="kd accent">중국 전체 -3.3% 역성장 속 Huawei·Apple만 성장 (IDC 공통 확인)</div><div class="kd ">수평 폴더블에서 Samsung·Apple 대비 선제 출시 (TrendForce Apr 14)</div><div class="kd accent">AI 글래스 출시 + 스마트워치 Top 7 중 7개 Huawei — 생태계 전방위 복귀</div>
+    </div>
+    <div class="flow-col">
+      <div class="col-label">선정 근거</div>
+      <div class="reasoning">Counterpoint와 IDC가 Apr 15–17 같은 주에 Huawei의 중국 시장 5년 최고 점유율을 독립 보고. 폴더블·AI글래스·스마트워치까지 동시에 확장하는 Huawei의 복귀는 중국 시장 구도 재편의 구조적 신호.</div>
+    </div>
+  </div>
+</div>
+<div class="card card-both">
+  <div class="card-header">
+    <div class="topic-num">5</div>
+    <div class="topic-info">
+      <div class="topic-title">AI 에이전트 스마트폰 — OEM 로드맵과 소비자 수용 현실의 격차</div>
+      <div class="badges">
+        <span class="crit-badge crit-both">기준2+3</span>
+        <span class="badge badge-cp">Counterpoint Research</span> <span class="badge badge-om">Omdia</span>
+        <span class="coverage">2개 기관</span>
+      </div>
+    </div>
+  </div>
+  <div class="flow">
+    <div class="flow-col">
+      <div class="col-label">참조 원문</div>
+      <div class="src-group"><div class="src-name src-cp">Counterpoint Research</div><div class="ev">
+  <span class="ev-title">AGI on How On-device AI Agents Will Replace Apps on Your Smartphone</span>
+  <div class="ev-date">2026-04-07</div>
+</div></div><div class="src-group"><div class="src-name src-om">Omdia</div><div class="ev">
+  <span class="ev-title">AI User Engagement on Smartphones: 2026 Reality Check</span>
+  <div class="ev-date">2026-04-17</div>
+</div></div>
+    </div>
+    <div class="flow-col">
+      <div class="col-label">핵심 데이터</div>
+      <div class="kd ">Counterpoint: On-device AI 에이전트가 앱을 대체하는 시점 임박, OEM 로드맵 본격화</div><div class="kd accent">Omdia: 소비자 실제 AI 기능 참여도는 vendor 기대치와 큰 괴리 (Reality Check)</div><div class="kd ">MWC 2026 주요 테마 아젠틱 AI였으나 실사용 사례 미성숙</div>
+    </div>
+    <div class="flow-col">
+      <div class="col-label">선정 근거</div>
+      <div class="reasoning">Counterpoint(공급 측 로드맵 관점)와 Omdia(소비자 수용 현실 관점)가 같은 기간에 AI 에이전트를 독립적으로 다루되 정반대 각도에서 접근. 이 격차 자체가 2026년 스마트폰 시장의 핵심 긴장 구조.</div>
+    </div>
+  </div>
+</div>
+<div class="card card-both">
+  <div class="card-header">
+    <div class="topic-num">6</div>
+    <div class="topic-info">
+      <div class="topic-title">OLED 디스플레이 — 메모리 위기로 손익분기점 붕괴</div>
+      <div class="badges">
+        <span class="crit-badge crit-both">기준2+3</span>
+        <span class="badge badge-cp">Counterpoint Research</span> <span class="badge badge-om">Omdia</span>
+        <span class="coverage">2개 기관</span>
+      </div>
+    </div>
+  </div>
+  <div class="flow">
+    <div class="flow-col">
+      <div class="col-label">참조 원문</div>
+      <div class="src-group"><div class="src-name src-cp">Counterpoint Research</div><div class="ev">
+  <span class="ev-title">Memory Cost Inflation to Stall Smartphone OLED Growth in 2026</span>
+  <div class="ev-date">2026-04-14</div>
+</div></div><div class="src-group"><div class="src-name src-om">Omdia</div><div class="ev">
+  <span class="ev-title">Display Dynamics: The price of smartphone OLED will hit cash breakeven in 2026</span>
+  <div class="ev-date">2026-04-10</div>
+</div><div class="ev">
+  <span class="ev-title">Display Dynamics: smartphone panel shipments decreased 13% MoM in Feb 2026</span>
+  <div class="ev-date">2026-04-13</div>
+</div></div>
+    </div>
+    <div class="flow-col">
+      <div class="col-label">핵심 데이터</div>
+      <div class="kd ">스마트폰 OLED 가격이 2026년 손익분기점 도달 — 패널사 마진 붕괴 (Omdia)</div><div class="kd accent">메모리 비용 인플레이션으로 2026년 스마트폰 OLED 출하 성장 정체 (Counterpoint)</div><div class="kd ">Feb 2026 스마트폰 패널 출하 -13% MoM (Omdia)</div>
+    </div>
+    <div class="flow-col">
+      <div class="col-label">선정 근거</div>
+      <div class="reasoning">Counterpoint와 Omdia가 독립적으로 메모리 위기가 OLED 디스플레이 시장에 미치는 구조적 영향을 분석. 스마트폰 OLED 가격이 손익분기점에 도달한다는 것은 패널 공급 구조 재편 신호.</div>
+    </div>
+  </div>
+</div>
+<div class="section-title">
+  <span class="section-dot" style="background:#56b6c2"></span>
+  <span class="label">기준3 — 신규 등장 주제</span>
+  <span style="color:var(--muted);font-size:12px;font-weight:400">— 5개 주제</span>
+</div>
+
+<div class="card card-new">
+  <div class="card-header">
+    <div class="topic-num">7</div>
+    <div class="topic-info">
+      <div class="topic-title">iPhone 17e — Apple AI 대중화 전략 (중저가 AI 폰 첫 사례)</div>
+      <div class="badges">
+        <span class="crit-badge crit-3">기준3 신규</span>
+        <span class="badge badge-om">Omdia</span> <span class="badge badge-cp">Counterpoint Research</span>
+        <span class="coverage">2개 기관</span>
+      </div>
+    </div>
+  </div>
+  <div class="flow">
+    <div class="flow-col">
+      <div class="col-label">참조 원문</div>
+      <div class="src-group"><div class="src-name src-om">Omdia</div><div class="ev">
+  <span class="ev-title">iPhone 17e Poised to Accelerate Apple's AI Ambitions in 2026</span>
+  <div class="ev-date">2026-04-16</div>
+</div></div><div class="src-group"><div class="src-name src-cp">Counterpoint Research</div><div class="ev">
+  <span class="ev-title">Galaxy S26 Series, iPhone 17e Spark Surge in US Smartphone Sales</span>
+  <div class="ev-date">2026-04-17</div>
+</div></div>
+    </div>
+    <div class="flow-col">
+      <div class="col-label">핵심 데이터</div>
+      <div class="kd ">iPhone 17e: AI 기능을 규율된 가격대로 확장하는 전략적 포지셔닝 (Omdia)</div><div class="kd accent">iPhone 17e + Galaxy S26 출시 주 미국 판매 +24% WoW, +3% YoY (Counterpoint)</div><div class="kd ">Apple AI 서비스 수익화를 위한 설치 기반 확대 경로 구축</div>
+    </div>
+    <div class="flow-col">
+      <div class="col-label">선정 근거</div>
+      <div class="reasoning">AI 스마트폰이 프리미엄 전용에서 중가 라인으로 확산되는 첫 실제 사례. Apple의 AI 수익화 전략과 시장 확장성 문제를 다룰 수 있으며, 기존 레포트에 없는 새로운 각도.</div>
+    </div>
+  </div>
+</div>
+<div class="card card-new">
+  <div class="card-header">
+    <div class="topic-num">8</div>
+    <div class="topic-info">
+      <div class="topic-title">인도 스마트폰 제조 굴기 — 내수 부진·수출 급증 동시 발생</div>
+      <div class="badges">
+        <span class="crit-badge crit-3">기준3 신규</span>
+        <span class="badge badge-cp">Counterpoint Research</span>
+        <span class="coverage">1개 기관</span>
+      </div>
+    </div>
+  </div>
+  <div class="flow">
+    <div class="flow-col">
+      <div class="col-label">참조 원문</div>
+      <div class="src-group"><div class="src-name src-cp">Counterpoint Research</div><div class="ev">
+  <span class="ev-title">India Smartphone Production up 8% YoY in 2025: Dixon Leads EMS Rankings, Bhagwati Enters Top 5</span>
+  <div class="ev-date">2026-04-23</div>
+</div><div class="ev">
+  <span class="ev-title">India smartphone shipments fall to 6-year low in Q1 amid price hikes</span>
+  <div class="ev-date">2026-04-24</div>
+</div></div>
+    </div>
+    <div class="flow-col">
+      <div class="col-label">핵심 데이터</div>
+      <div class="kd ">인도 스마트폰 생산 +8% YoY, 수출 +28% 급증 (2025년)</div><div class="kd accent">Dixon Technologies EMS 1위, Bhagwati 5위 신규 진입</div><div class="kd ">인도 내수 Q1 6년 최저 (-3% YoY) — 생산↑ 내수↓ 역설적 구조</div>
+    </div>
+    <div class="flow-col">
+      <div class="col-label">선정 근거</div>
+      <div class="reasoning">인도가 소비 시장에서 제조·수출 기지로 역할 전환 중. 생산과 내수가 반대 방향으로 움직이는 구조적 분기점 신호. 기존 레포트에 없는 주제.</div>
+    </div>
+  </div>
+</div>
+<div class="card card-new">
+  <div class="card-header">
+    <div class="topic-num">9</div>
+    <div class="topic-info">
+      <div class="topic-title">Xiaomi 자체 칩셋(XRING O3) — 중국 OEM 반도체 자립 가속</div>
+      <div class="badges">
+        <span class="crit-badge crit-3">기준3 신규</span>
+        <span class="badge badge-tf">TrendForce</span>
+        <span class="coverage">1개 기관</span>
+      </div>
+    </div>
+  </div>
+  <div class="flow">
+    <div class="flow-col">
+      <div class="col-label">참조 원문</div>
+      <div class="src-group"><div class="src-name src-tf">TrendForce</div><div class="ev">
+  <span class="ev-title">Xiaomi's Next Foldable Reportedly to Feature Self-Developed XRING O3 Chip, May Use 3nm Process</span>
+  <div class="ev-date">2026-04-28</div>
+</div></div>
+    </div>
+    <div class="flow-col">
+      <div class="col-label">핵심 데이터</div>
+      <div class="kd ">Xiaomi, 차기 폴더블에 자체 설계 XRING O3 탑재 예정 (3nm 공정)</div><div class="kd accent">Huawei Kirin에 이어 Xiaomi까지 자체 칩셋 → 중국 OEM 반도체 자립 흐름 가속</div><div class="kd ">Qualcomm·MediaTek 의존 탈피 시도, 미중 갈등 대비 공급망 내재화 전략</div>
+    </div>
+    <div class="flow-col">
+      <div class="col-label">선정 근거</div>
+      <div class="reasoning">Apple, Huawei에 이어 Xiaomi까지 자체 SoC 개발에 나선 것은 중국 OEM의 수직 통합 전략이 확산되는 구조적 신호. 단일 기관이나 완전히 새로운 시장 방향 전환.</div>
+    </div>
+  </div>
+</div>
+<div class="card card-new">
+  <div class="card-header">
+    <div class="topic-num">10</div>
+    <div class="topic-info">
+      <div class="topic-title">Google Pixel — 일본에서 Samsung 추월, 글로벌 OEM 3위 도전</div>
+      <div class="badges">
+        <span class="crit-badge crit-3">기준3 신규</span>
+        <span class="badge badge-cp">Counterpoint Research</span>
+        <span class="coverage">1개 기관</span>
+      </div>
+    </div>
+  </div>
+  <div class="flow">
+    <div class="flow-col">
+      <div class="col-label">참조 원문</div>
+      <div class="src-group"><div class="src-name src-cp">Counterpoint Research</div><div class="ev">
+  <span class="ev-title">Pixel 9a Helps Google Surpass Samsung to Rank 2nd in Japan in February 2026</span>
+  <div class="ev-date">2026-04-29</div>
+</div></div>
+    </div>
+    <div class="flow-col">
+      <div class="col-label">핵심 데이터</div>
+      <div class="kd ">Pixel 9a 흥행으로 Google이 일본 시장 Samsung 제치고 2위 달성</div><div class="kd accent">캐리어 반납 프로그램과 보급형 Pixel 전략의 성과</div><div class="kd ">Apple·Samsung 중심 프리미엄 구도에서 Google의 틈새 점유 전략 가시화</div>
+    </div>
+    <div class="flow-col">
+      <div class="col-label">선정 근거</div>
+      <div class="reasoning">Google이 일본이라는 주요 시장에서 Samsung을 최초로 추월한 것은 Pixel 전략의 구조적 성과 신호. 기존 레포트에 없는 완전히 새로운 OEM 경쟁 구도 변화.</div>
+    </div>
+  </div>
+</div>
+<div class="card card-new">
+  <div class="card-header">
+    <div class="topic-num">11</div>
+    <div class="topic-info">
+      <div class="topic-title">MediaTek 데이터센터 진출 — 스마트폰 SoC 의존도 탈피</div>
+      <div class="badges">
+        <span class="crit-badge crit-3">기준3 신규</span>
+        <span class="badge badge-cp">Counterpoint Research</span>
+        <span class="coverage">1개 기관</span>
+      </div>
+    </div>
+  </div>
+  <div class="flow">
+    <div class="flow-col">
+      <div class="col-label">참조 원문</div>
+      <div class="src-group"><div class="src-name src-cp">Counterpoint Research</div><div class="ev">
+  <span class="ev-title">Data Center Opportunities Accelerate MediaTek's Diversification Strategy</span>
+  <div class="ev-date">2026-04-24</div>
+</div><div class="ev">
+  <span class="ev-title">Counterpoint Conversations: MediaTek on NVIDIA Partnership, Growth Strategy, Memory Headwinds</span>
+  <div class="ev-date">2026-04-14</div>
+</div></div>
+    </div>
+    <div class="flow-col">
+      <div class="col-label">핵심 데이터</div>
+      <div class="kd ">MediaTek, NVIDIA 파트너십으로 데이터센터 시장 진출 본격화</div><div class="kd accent">스마트폰 SoC 시장 Q1 -8% 역성장 → 데이터센터·자동차로 다변화</div><div class="kd ">스마트폰 칩셋 공급 구조가 AI 인프라 수요로 재편되는 신호</div>
+    </div>
+    <div class="flow-col">
+      <div class="col-label">선정 근거</div>
+      <div class="reasoning">MediaTek이 NVIDIA와의 파트너십을 통해 데이터센터 시장에 진입하는 것은 모바일 SoC 시장의 구조적 수축에 대한 전략적 대응. 스마트폰 칩셋 생태계의 경쟁 구도 재편 신호.</div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- 레포트 생성 모달 -->
+<div id="report-modal">
+  <div id="report-modal-bg" onclick="closeReportModal()"></div>
+  <div id="report-panel">
+    <div id="report-panel-hdr">
+      <h2 id="report-topic-title">보고서 생성</h2>
+      <button id="report-close" onclick="closeReportModal()">×</button>
+    </div>
+    <div id="report-body">
+      <div id="report-log"></div>
+      <div id="gate1-panel" class="gate-panel"></div>
+      <div id="gate2-panel" class="gate-panel"></div>
+      <div id="report-done"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── 탭 전환 ────────────────────────────────────────────────────────────
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.className = 'tab-btn');
+  document.getElementById('panel-' + name).classList.add('active');
+  btn.classList.add('active-' + name);
+}
+
+// ── 레포트 생성 버튼 자동 삽입 ─────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.card-header').forEach(header => {
+    const titleEl = header.querySelector('.topic-title');
+    if (!titleEl) return;
+    const topic = titleEl.textContent.trim();
+    const btn = document.createElement('button');
+    btn.className = 'report-btn';
+    btn.textContent = '레포트 생성';
+    btn.title = '이 주제로 보고서 생성';
+    btn.onclick = e => { e.stopPropagation(); startReport(topic, btn); };
+    header.appendChild(btn);
+  });
+});
+
+// ── 상태 ────────────────────────────────────────────────────────────────
+let _sid = null, _sse = null;
+let _g1secs = [], _g2secs = [];
+
+// ── 모달 열기/닫기 ─────────────────────────────────────────────────────
+function startReport(topic, btnEl) {
+  document.getElementById('report-topic-title').textContent = topic;
+  document.getElementById('report-log').innerHTML = '';
+  document.getElementById('gate1-panel').classList.remove('on');
+  document.getElementById('gate2-panel').classList.remove('on');
+  document.getElementById('report-done').classList.remove('on');
+  document.getElementById('report-modal').classList.add('open');
+  if (btnEl) btnEl.disabled = true;
+
+  addLog('보고서 생성 요청 중...');
+  fetch('/api/report/start', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({topic})
+  })
+  .then(r => r.json())
+  .then(data => {
+    _sid = data.session_id;
+    if (_sse) _sse.close();
+    _sse = new EventSource(`/api/report/stream/${_sid}`);
+    _sse.onmessage = handleEv;
+    _sse.onerror = () => addLog('SSE 연결 오류', 'err');
+    if (btnEl) {
+      const onDone = e => {
+        if (JSON.parse(e.data).type === 'done') {
+          btnEl.disabled = false;
+          _sse.removeEventListener('message', onDone);
+        }
+      };
+      _sse.addEventListener('message', onDone);
+    }
+  })
+  .catch(e => { addLog(`시작 오류: ${e}`, 'err'); if (btnEl) btnEl.disabled = false; });
+}
+
+function closeReportModal() {
+  document.getElementById('report-modal').classList.remove('open');
+  if (_sse) { _sse.close(); _sse = null; }
+}
+
+// ── SSE 이벤트 처리 ─────────────────────────────────────────────────────
+function handleEv(e) {
+  const ev = JSON.parse(e.data);
+  if (ev.type === 'report_log')   addLog(ev.text);
+  else if (ev.type === 'report_gate1') showGate1(ev.sections);
+  else if (ev.type === 'report_gate2') showGate2(ev.sections);
+  else if (ev.type === 'report_done')  showDone(ev.report_url);
+  else if (ev.type === 'report_error') addLog(ev.text, 'err');
+  else if (ev.type === 'error')        addLog(ev.text, 'err');
+  else if (ev.type === 'done' && _sse) _sse.close();
+}
+
+function addLog(text, cls) {
+  const el = document.getElementById('report-log');
+  const d = document.createElement('div');
+  d.className = 'log-line' + (cls ? ' ' + cls : '');
+  d.textContent = text;
+  el.appendChild(d);
+  el.scrollTop = el.scrollHeight;
+}
+
+// ── GATE 1 ─────────────────────────────────────────────────────────────
+function showGate1(sections) {
+  _g1secs = sections.map(s => ({
+    title: s.title, causal_role: s.causal_role, angle: s.angle || '',
+    queries: [...s.queries], included: [...s.included],
+  }));
+  renderGate1();
+  addLog('[GATE 1] 목차 + 검색어 확인 필요', 'gate');
+}
+
+function renderGate1() {
+  let h = '<div class="gate-panel-title">목차 + 검색어 확인</div>';
+  _g1secs.forEach((sec, si) => {
+    h += `<div class="gate-sec"><div class="gate-sec-title">[목차 ${si+1}] ${esc(sec.title)}</div>
+      <div class="gate-queries">`;
+    sec.queries.forEach((q, qi) => {
+      const chk = sec.included[qi] !== false ? 'checked' : '';
+      h += `<label class="gate-q-row"><input type="checkbox" class="g1c" data-si="${si}" data-qi="${qi}" ${chk}><span class="gate-q-txt">${esc(q)}</span></label>`;
+    });
+    h += `</div><div class="gate-add">
+      <input type="text" id="g1a${si}" class="gate-inp" placeholder="새 검색어 추가..." onkeydown="if(event.key==='Enter')g1add(${si})">
+      <button class="btn-sm" onclick="g1add(${si})">추가</button>
+    </div></div>`;
+  });
+  h += '<div class="gate-footer"><button class="gate-ok-btn" onclick="g1confirm()">확정</button></div>';
+  const p = document.getElementById('gate1-panel');
+  p.innerHTML = h;
+  p.classList.add('on');
+}
+
+function g1add(si) {
+  const inp = document.getElementById(`g1a${si}`);
+  const q = inp.value.trim();
+  if (!q) return;
+  _g1secs[si].queries.push(q);
+  _g1secs[si].included.push(true);
+  inp.value = '';
+  renderGate1();
+}
+
+function g1confirm() {
+  document.querySelectorAll('.g1c').forEach(cb => {
+    _g1secs[+cb.dataset.si].included[+cb.dataset.qi] = cb.checked;
+  });
+  fetch('/api/report/gate1', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({session_id: _sid, sections: _g1secs})
+  });
+  document.getElementById('gate1-panel').classList.remove('on');
+  addLog('목차 확정');
+}
+
+// ── GATE 2 ─────────────────────────────────────────────────────────────
+function showGate2(sections) {
+  _g2secs = sections.map(s => ({
+    title: s.title, queries: [...(s.queries||[])],
+    included: [...(s.included||[])], results: s.results || [],
+  }));
+  let h = '<div class="gate-panel-title">검색 결과 확인</div>';
+  _g2secs.forEach((sec, si) => {
+    const cnt = sec.results.length;
+    h += `<div class="gate-sec"><div class="gate-sec-title">[목차 ${si+1}] ${esc(sec.title)} (${cnt}건)</div>
+      <div class="gate-results">`;
+    sec.results.slice(0, 5).forEach(r => {
+      h += `<div class="gate-res-item"><span class="gate-res-src">[${esc(r.source)}]</span>${esc(r.title||r.url)}</div>`;
+    });
+    if (cnt > 5) h += `<div class="gate-res-more">+ ${cnt-5}건 더...</div>`;
+    h += `</div><div class="gate-add">
+      <input type="text" id="g2a${si}" class="gate-inp" placeholder="검색어 추가 후 재검색 (선택)..." onkeydown="if(event.key==='Enter')g2add(${si})">
+      <button class="btn-sm" onclick="g2add(${si})">추가 후 재검색</button>
+    </div></div>`;
+  });
+  h += '<div class="gate-footer"><button class="gate-ok-btn" onclick="g2confirm()">분석 시작</button></div>';
+  const p = document.getElementById('gate2-panel');
+  p.innerHTML = h;
+  p.classList.add('on');
+  addLog('[GATE 2] 검색 결과 확인 필요', 'gate');
+}
+
+function g2add(si) {
+  const inp = document.getElementById(`g2a${si}`);
+  const q = inp.value.trim();
+  if (!q) return;
+  _g2secs[si].queries.push(q);
+  _g2secs[si].included.push(true);
+  const slim = _g2secs.map(s => ({title: s.title, queries: s.queries, included: s.included}));
+  fetch('/api/report/gate2', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({session_id: _sid, proceed: false, sections: slim})
+  });
+  document.getElementById('gate2-panel').classList.remove('on');
+  addLog('검색어 추가 → 재검색 중...');
+}
+
+function g2confirm() {
+  const slim = _g2secs.map(s => ({title: s.title, queries: s.queries, included: s.included}));
+  fetch('/api/report/gate2', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({session_id: _sid, proceed: true, sections: slim})
+  });
+  document.getElementById('gate2-panel').classList.remove('on');
+  addLog('분석 시작...');
+}
+
+// ── 완료 ───────────────────────────────────────────────────────────────
+function showDone(url) {
+  const p = document.getElementById('report-done');
+  p.innerHTML = `<div class="done-title">✓ 보고서 생성 완료</div>
+    <a href="${url}" target="_blank" class="done-link">보고서 보기 →</a>`;
+  p.classList.add('on');
+  addLog('저장 완료');
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+
+</body>
+</html>

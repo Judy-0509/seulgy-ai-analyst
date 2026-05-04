@@ -1,0 +1,154 @@
+{
+  "topic": "iPhone 폴더블 2026 출시 시장",
+  "eng_topic": "iPhone foldable launch 2026 market",
+  "pre_queries": [
+    "iPhone foldable 2026 launch",
+    "Samsung Galaxy Fold response",
+    "foldable market share data"
+  ],
+  "excluded_perspectives": ["build"],
+  "excluded_topics": ["공급망"],
+  "time_horizon": {
+    "label": "2025-2027",
+    "rationale": "출시 전후 2년 시장 반응 관찰"
+  },
+  "key_questions": [
+    {
+      "id": "Q1",
+      "question": "iPhone 폴더블 출시가 프리미엄 스마트폰 시장 점유율에 미치는 영향은?",
+      "perspective": "sell_through",
+      "related_dimensions": ["시장 점유율"],
+      "related_linkages": []
+    },
+    {
+      "id": "Q2",
+      "question": "삼성 Galaxy Fold 시리즈는 Apple 진입 후 어떻게 대응할 것인가?",
+      "perspective": "sell_in",
+      "related_dimensions": ["경쟁 구도"],
+      "related_linkages": ["L1"]
+    },
+    {
+      "id": "Q3",
+      "question": "폴더블 폼팩터에 대한 소비자 수용성은 어느 수준인가?",
+      "perspective": "sell_through",
+      "related_dimensions": ["소비자 수용"],
+      "related_linkages": []
+    },
+    {
+      "id": "Q4",
+      "question": "iPhone 폴더블의 초기 판매 채널 전략은 무엇인가?",
+      "perspective": "sell_in",
+      "related_dimensions": ["유통 채널"],
+      "related_linkages": ["L1"]
+    },
+    {
+      "id": "Q5",
+      "question": "폴더블 시장 전체 규모 전망 및 ASP 추이는?",
+      "perspective": "composite",
+      "related_dimensions": ["시장 점유율", "소비자 수용"],
+      "related_linkages": []
+    }
+  ],
+  "dimensions": [
+    {
+      "dimension": "시장 점유율",
+      "headline": "Apple 진입으로 프리미엄 폴더블 세그먼트 재편 예상",
+      "subtopics": [
+        {
+          "label": "글로벌 폴더블 시장 성장",
+          "perspective": "sell_through",
+          "evidence": [
+            {
+              "source_url": "https://example-test-1.test",
+              "finding": "2025년 글로벌 폴더블 출하량은 2,200만 대로 전년 대비 38% 증가 추정"
+            },
+            {
+              "source_url": "https://example-test-2.test",
+              "finding": "Apple 진입 시 프리미엄 폴더블 ASP는 1,800달러 이상 유지 전망"
+            }
+          ]
+        },
+        {
+          "label": "삼성 점유율 변화",
+          "perspective": "sell_in",
+          "evidence": [
+            {
+              "source_url": "https://example-test-3.test",
+              "finding": "삼성의 폴더블 시장 점유율은 2024년 68%에서 Apple 출시 후 50% 미만으로 하락 예상"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "dimension": "경쟁 구도",
+      "headline": "Apple-삼성 양강 구도로 중국 OEM 입지 축소 우려",
+      "subtopics": [
+        {
+          "label": "삼성 대응 전략",
+          "perspective": "sell_in",
+          "evidence": [
+            {
+              "source_url": "https://example-test-4.test",
+              "finding": "삼성은 Fold 7에서 힌지 내구성을 20만 회 이상으로 개선해 차별화 시도"
+            },
+            {
+              "source_url": "https://example-test-5.test",
+              "finding": "Galaxy AI 기능 선제 출시로 소프트웨어 우위 방어 전략 추진"
+            }
+          ]
+        },
+        {
+          "label": "중국 OEM 반응",
+          "perspective": "composite",
+          "evidence": [
+            {
+              "source_url": "https://example-test-6.test",
+              "finding": "화웨이·샤오미는 중저가 폴더블로 가격 세분화 전략 채택"
+            },
+            {
+              "source_url": "https://example-test-7.test",
+              "finding": "중국 OEM 폴더블 점유율은 2025년 22%에서 2027년 18%로 소폭 감소 예상"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "dimension": "소비자 수용",
+      "headline": "내구성·가격 우려 해소가 대중 확산의 핵심 변수",
+      "subtopics": [
+        {
+          "label": "구매 의향 조사",
+          "perspective": "sell_through",
+          "evidence": [
+            {
+              "source_url": "https://example-test-8.test",
+              "finding": "iPhone 사용자 중 폴더블 구매 의향은 31%로 타 브랜드 대비 2배 이상"
+            },
+            {
+              "source_url": "https://example-test-9.test",
+              "finding": "주요 구매 장벽 1위는 가격(62%), 2위는 내구성 우려(48%)"
+            }
+          ]
+        },
+        {
+          "label": "앱 생태계 준비도",
+          "perspective": "sell_through",
+          "evidence": [
+            {
+              "source_url": "https://example-test-10.test",
+              "finding": "iOS 앱 중 폴더블 최적화(멀티태스킹) 지원 비율은 2024년 기준 12% 수준"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "linkages": [
+    {
+      "id": "L1",
+      "description": "삼성의 sell_in 채널 전략 변화가 독립 유통 채널의 폴더블 판매 방식에 영향"
+    }
+  ]
+}

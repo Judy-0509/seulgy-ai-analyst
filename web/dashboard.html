@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Research Helper</title>
+<style>
+:root {
+  --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --bd:#30363d;
+  --fg:#e6edf3; --mut:#8b949e; --acc:#58a6ff; --ok:#3fb950;
+  --warn:#d29922; --err:#f85149; --nav-w:220px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font-family:-apple-system,Segoe UI,sans-serif;
+     font-size:14px;line-height:1.5;display:flex;height:100vh;overflow:hidden}
+
+/* ── Sidebar ── */
+.sidebar{width:var(--nav-w);background:var(--panel);border-right:1px solid var(--bd);
+         display:flex;flex-direction:column;flex-shrink:0}
+.sidebar-logo{padding:20px 16px 16px;border-bottom:1px solid var(--bd)}
+.sidebar-logo h1{font-size:15px;font-weight:700;color:var(--fg)}
+.sidebar-logo p{font-size:11px;color:var(--mut);margin-top:2px}
+nav{padding:12px 8px;flex:1}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:6px;
+          cursor:pointer;color:var(--mut);font-size:13px;font-weight:500;
+          transition:background 0.15s,color 0.15s;margin-bottom:2px}
+.nav-item:hover{background:var(--panel2);color:var(--fg)}
+.nav-item.active{background:#1f3a5f;color:var(--acc)}
+.nav-icon{font-size:16px;width:20px;text-align:center;flex-shrink:0}
+.sidebar-footer{padding:12px 16px;border-top:1px solid var(--bd);font-size:11px;color:var(--mut)}
+
+/* ── Main ── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{padding:16px 24px;border-bottom:1px solid var(--bd);display:flex;
+        align-items:center;justify-content:space-between;flex-shrink:0}
+.topbar h2{font-size:16px;font-weight:600}
+.topbar-meta{font-size:12px;color:var(--mut)}
+.content{flex:1;overflow-y:auto;padding:24px}
+
+/* ── Sections ── */
+.section{display:none}
+.section.active{display:block}
+
+/* ── Buttons ── */
+button{background:var(--acc);color:#fff;border:0;padding:9px 16px;border-radius:6px;
+       cursor:pointer;font-weight:600;font-size:13px;transition:opacity 0.15s}
+button:hover{opacity:0.85}
+button:disabled{background:#444c56;cursor:not-allowed;opacity:1}
+.btn-sm{padding:6px 12px;font-size:12px}
+.btn-outline{background:transparent;border:1px solid var(--bd);color:var(--fg)}
+.btn-outline:hover{background:var(--panel2)}
+
+/* ── DB grid ── */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;
+      margin-top:16px}
+.card{background:var(--panel);border:1px solid var(--bd);border-radius:8px;padding:14px;
+      transition:border-color 0.15s}
+.card.running{border-color:var(--acc)}
+.card.result-ok{border-left:3px solid var(--ok)}
+.card.result-err{border-left:3px solid var(--err)}
+.card-title{font-weight:600;font-size:13px;margin-bottom:8px;display:flex;
+            justify-content:space-between;align-items:center}
+.badge{font-size:11px;padding:2px 8px;border-radius:10px;background:var(--panel2);color:var(--mut)}
+.badge.added{background:#1f3a25;color:var(--ok)}
+.badge.fail{background:#3a1f1f;color:var(--err)}
+.stat{display:flex;justify-content:space-between;font-size:12px;color:var(--mut);margin:3px 0}
+.stat b{color:var(--fg);font-weight:500}
+
+/* ── Log ── */
+.log-wrap{margin-top:16px}
+.log{background:#0a0e13;border:1px solid var(--bd);border-radius:6px;padding:12px;
+     font-family:ui-monospace,Consolas,monospace;font-size:12px;line-height:1.5;
+     max-height:220px;overflow-y:auto;color:var(--mut)}
+.log p{white-space:pre-wrap;word-break:break-word;margin:1px 0}
+.log p.ok{color:var(--ok)}
+.log p.err{color:var(--err)}
+.log p.head{color:var(--acc);font-weight:600;margin-top:4px}
+
+/* ── Topic Analysis ── */
+.toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:20px}
+.days-input{background:var(--panel2);border:1px solid var(--bd);color:var(--fg);
+            padding:8px 12px;border-radius:6px;font-size:13px;width:80px}
+.days-input:focus{outline:none;border-color:var(--acc)}
+label{font-size:13px;color:var(--mut)}
+.source-group{margin-bottom:24px}
+.source-header{display:flex;align-items:center;gap:10px;margin-bottom:10px;
+               padding-bottom:8px;border-bottom:1px solid var(--bd)}
+.source-name{font-size:14px;font-weight:600}
+.source-cnt{font-size:12px;color:var(--mut)}
+.article{background:var(--panel);border:1px solid var(--bd);border-radius:6px;
+         padding:12px;margin-bottom:8px;transition:border-color 0.15s}
+.article:hover{border-color:#444c56}
+.article-title{font-weight:500;font-size:13px;margin-bottom:4px}
+.article-title a{color:var(--fg);text-decoration:none}
+.article-title a:hover{color:var(--acc);text-decoration:underline}
+.article-meta{font-size:11px;color:var(--mut);margin-bottom:6px}
+.article-desc{font-size:12px;color:var(--mut);line-height:1.5}
+.empty{padding:40px;text-align:center;color:var(--mut);font-size:13px}
+
+/* ── Spinner ── */
+.spinner{display:inline-block;width:10px;height:10px;border:2px solid var(--acc);
+         border-radius:50%;border-top-color:transparent;
+         animation:spin 0.8s linear infinite;margin-right:6px;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Summary bar ── */
+.summary-bar{background:var(--panel2);border-radius:6px;padding:10px 14px;
+             font-size:13px;margin-bottom:16px;display:none}
+.summary-bar.visible{display:block}
+</style>
+</head>
+<body>
+
+<!-- ── Sidebar ── -->
+<div class="sidebar">
+  <div class="sidebar-logo">
+    <h1>Research Helper</h1>
+    <p>스마트폰 시장 분석 플랫폼</p>
+  </div>
+  <nav>
+    <div class="nav-item active" data-section="db">
+      <span class="nav-icon">🗄</span>DB 수집
+    </div>
+    <div class="nav-item" data-section="topics">
+      <span class="nav-icon">🔍</span>Topic Analysis
+    </div>
+  </nav>
+  <div class="sidebar-footer" id="sidebarFooter">—</div>
+</div>
+
+<!-- ── Main ── -->
+<div class="main">
+  <div class="topbar">
+    <h2 id="topbarTitle">DB 수집</h2>
+    <span class="topbar-meta" id="topbarMeta">로딩 중…</span>
+  </div>
+  <div class="content">
+
+    <!-- ── DB 섹션 ── -->
+    <section class="section active" id="section-db">
+      <div class="toolbar">
+        <button id="btnRefresh">DB 새로고침 (증분)</button>
+        <span id="dbStatus" style="font-size:13px;color:var(--mut)"></span>
+      </div>
+      <div class="summary-bar" id="dbSummary"></div>
+      <div class="grid" id="dbGrid"></div>
+      <div class="log-wrap">
+        <div style="font-size:12px;color:var(--mut);margin-bottom:6px">실행 로그</div>
+        <div class="log" id="dbLog"><p>대기 중…</p></div>
+      </div>
+    </section>
+
+    <!-- ── Topic Analysis 섹션 ── -->
+    <section class="section" id="section-topics">
+      <div class="toolbar">
+        <label>최근</label>
+        <input class="days-input" id="daysInput" type="number" value="30" min="1" max="365">
+        <label>일 기준</label>
+        <button id="btnMine">주제 분석 실행</button>
+        <span id="topicStatus" style="font-size:13px;color:var(--mut)"></span>
+      </div>
+      <div id="topicResults"><div class="empty">위 버튼을 눌러 DB 기반 주제를 분석합니다.</div></div>
+    </section>
+
+  </div>
+</div>
+
+<script>
+// ── 네비게이션 ──────────────────────────────────────────────
+const navItems = document.querySelectorAll('.nav-item');
+const sections = document.querySelectorAll('.section');
+const topbarTitle = document.getElementById('topbarTitle');
+const TITLES = {db: 'DB 수집', topics: 'Topic Analysis'};
+
+navItems.forEach(item => {
+  item.addEventListener('click', () => {
+    navItems.forEach(n => n.classList.remove('active'));
+    sections.forEach(s => s.classList.remove('active'));
+    item.classList.add('active');
+    document.getElementById('section-' + item.dataset.section).classList.add('active');
+    topbarTitle.textContent = TITLES[item.dataset.section];
+  });
+});
+
+// ── 유틸 ────────────────────────────────────────────────────
+function fmtBytes(n) {
+  if (n > 1e6) return (n/1e6).toFixed(1) + ' MB';
+  if (n > 1e3) return (n/1e3).toFixed(1) + ' KB';
+  return n + ' B';
+}
+function fmtDate(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d)) return iso.slice(0, 10);
+  return d.toLocaleDateString('ko-KR', {year:'numeric',month:'2-digit',day:'2-digit'});
+}
+function fmtDatetime(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d)) return iso.slice(0, 16);
+  return d.toLocaleString('ko-KR', {year:'numeric',month:'2-digit',day:'2-digit',
+                                    hour:'2-digit',minute:'2-digit'});
+}
+function log(elId, text, cls='') {
+  const el = document.getElementById(elId);
+  const p = document.createElement('p');
+  p.className = cls;
+  p.textContent = text;
+  el.appendChild(p);
+  el.scrollTop = el.scrollHeight;
+}
+
+// ── DB 섹션 ─────────────────────────────────────────────────
+const dbGrid   = document.getElementById('dbGrid');
+const dbLog    = document.getElementById('dbLog');
+const dbStatus = document.getElementById('dbStatus');
+const dbSummary= document.getElementById('dbSummary');
+const btnRefresh = document.getElementById('btnRefresh');
+const topbarMeta = document.getElementById('topbarMeta');
+const sidebarFooter = document.getElementById('sidebarFooter');
+
+const NAME_TO_JSON = {
+  'Counterpoint Research':'counterpoint.json','TrendForce':'trendforce.json',
+  'Omdia':'omdia.json','IDC':'idc.json','Reuters':'reuters.json',
+  'Yole':'yole.json','Gartner':'gartner.json',
+  'Morgan Stanley':'morgan_stanley.json','Naver Research':'naver_research.json',
+};
+const cardMap = {};
+
+async function loadDbStatus() {
+  try {
+    const r = await fetch('/api/archives/status');
+    const data = await r.json();
+    dbGrid.innerHTML = '';
+    Object.assign(cardMap, {});
+
+    for (const a of data.archives) {
+      const c = document.createElement('div');
+      c.className = 'card';
+      c.id = 'card-' + a.json_name;
+      c.innerHTML = `
+        <div class="card-title">
+          <span>${a.name}</span>
+          <span class="badge" id="badge-${a.json_name}">${a.entry_count.toLocaleString()}건</span>
+        </div>
+        <div class="stat"><span>용량</span><b>${a.exists ? fmtBytes(a.size_bytes) : '없음'}</b></div>
+        <div class="stat"><span>최근 빌드</span><b>${fmtDatetime(a.built_at)}</b></div>
+        <div class="stat"><span>최근 글</span><b>${fmtDate(a.latest_entry)}</b></div>
+      `;
+      dbGrid.appendChild(c);
+      cardMap[a.json_name] = c;
+    }
+
+    const total = data.total_entries.toLocaleString();
+    topbarMeta.textContent = `총 ${total}건 · ${fmtDatetime(data.ts)}`;
+    sidebarFooter.textContent = `총 ${total}건`;
+  } catch(e) {
+    topbarMeta.textContent = '서버 연결 실패';
+  }
+}
+
+btnRefresh.addEventListener('click', async () => {
+  btnRefresh.disabled = true;
+  dbStatus.innerHTML = '<span class="spinner"></span>실행 중…';
+  dbSummary.classList.remove('visible');
+  dbLog.innerHTML = '';
+  Object.values(cardMap).forEach(c => c.classList.remove('result-ok','result-err','running'));
+
+  const r = await fetch('/api/archives/refresh', {method:'POST'});
+  const {job_id} = await r.json();
+  log('dbLog', `[Job ${job_id}] 시작`, 'head');
+
+  const es = new EventSource(`/api/archives/stream/${job_id}`);
+  es.onmessage = ev => {
+    let m; try { m = JSON.parse(ev.data); } catch { return; }
+
+    if (m.type === 'start') {
+      log('dbLog', `총 ${m.total}개 빌더 실행`, 'head');
+    } else if (m.type === 'builder_start') {
+      const c = cardMap[NAME_TO_JSON[m.name]];
+      if (c) c.classList.add('running');
+      log('dbLog', `[${m.idx}/9] ${m.name} 시작 (현재 ${m.before.toLocaleString()}건)`);
+    } else if (m.type === 'builder_done') {
+      const jn = NAME_TO_JSON[m.name];
+      const c = cardMap[jn];
+      if (c) { c.classList.remove('running'); c.classList.add(m.ok ? 'result-ok' : 'result-err'); }
+      const b = document.getElementById('badge-' + jn);
+      if (b) {
+        if (m.added > 0) { b.classList.add('added'); b.textContent = `+${m.added} 신규`; }
+        else if (!m.ok) { b.classList.add('fail');  b.textContent = '실패'; }
+        else            { b.textContent = `${m.after.toLocaleString()}건`; }
+      }
+      log('dbLog', `${m.ok ? '✓' : '✗'} ${m.name}: +${m.added}건 (${m.elapsed_sec}s)`, m.ok ? 'ok' : 'err');
+      if (!m.ok && m.error) log('dbLog', '  ' + m.error, 'err');
+    } else if (m.type === 'complete') {
+      log('dbLog', `완료 — 신규 ${m.total_added}건, 성공 ${m.succeeded}/${m.succeeded+m.failed}`, 'head');
+      dbSummary.innerHTML = `신규 수집 <b>${m.total_added.toLocaleString()}건</b> · 성공 ${m.succeeded} · 실패 ${m.failed}`;
+      dbSummary.classList.add('visible');
+      es.close();
+      btnRefresh.disabled = false;
+      dbStatus.textContent = '완료';
+      loadDbStatus();
+    } else if (m.type === 'fatal') {
+      log('dbLog', 'FATAL: ' + m.error, 'err');
+      es.close();
+      btnRefresh.disabled = false;
+      dbStatus.textContent = '실패';
+    }
+  };
+  es.onerror = () => { es.close(); btnRefresh.disabled = false; dbStatus.textContent = '연결 끊김'; };
+});
+
+// ── Topic Analysis 섹션 ─────────────────────────────────────
+const btnMine     = document.getElementById('btnMine');
+const daysInput   = document.getElementById('daysInput');
+const topicStatus = document.getElementById('topicStatus');
+const topicResults= document.getElementById('topicResults');
+
+const SOURCE_ORDER = ['Counterpoint Research','TrendForce','Omdia','IDC','Morgan Stanley'];
+const SOURCE_COLOR = {
+  'Counterpoint Research':'#58a6ff','TrendForce':'#3fb950',
+  'Omdia':'#d29922','IDC':'#bc8cff','Morgan Stanley':'#f85149',
+};
+
+btnMine.addEventListener('click', async () => {
+  btnMine.disabled = true;
+  topicStatus.innerHTML = '<span class="spinner"></span>분석 중…';
+  topicResults.innerHTML = '';
+
+  try {
+    const days = parseInt(daysInput.value) || 30;
+    const r = await fetch(`/api/topics/mine?days=${days}`);
+    const data = await r.json();
+
+    if (data.total === 0) {
+      topicResults.innerHTML = `<div class="empty">최근 ${days}일 내 해당 기사가 없습니다. DB를 먼저 새로고침하세요.</div>`;
+    } else {
+      let html = `<div style="font-size:13px;color:var(--mut);margin-bottom:20px">
+        최근 <b>${days}일</b> 기준 · Tier-1 소스 스마트폰 관련 기사 <b>${data.total}건</b>
+        <span style="font-size:11px;margin-left:8px">(기준일: ${data.cutoff.slice(0,10)})</span>
+      </div>`;
+
+      for (const src of SOURCE_ORDER) {
+        const items = data.groups[src];
+        if (!items || items.length === 0) continue;
+        const color = SOURCE_COLOR[src] || '#8b949e';
+        html += `<div class="source-group">
+          <div class="source-header">
+            <span style="width:10px;height:10px;border-radius:50%;background:${color};
+                         display:inline-block;flex-shrink:0"></span>
+            <span class="source-name">${src}</span>
+            <span class="source-cnt">${items.length}건</span>
+          </div>`;
+        for (const a of items) {
+          const title = a.url
+            ? `<a href="${a.url}" target="_blank">${escHtml(a.title)}</a>`
+            : escHtml(a.title);
+          html += `<div class="article">
+            <div class="article-title">${title}</div>
+            <div class="article-meta">${a.date}</div>
+            ${a.description ? `<div class="article-desc">${escHtml(a.description)}</div>` : ''}
+          </div>`;
+        }
+        html += '</div>';
+      }
+      topicResults.innerHTML = html;
+    }
+    topicStatus.textContent = `${data.total}건`;
+  } catch(e) {
+    topicResults.innerHTML = `<div class="empty">오류: ${e.message}</div>`;
+    topicStatus.textContent = '실패';
+  } finally {
+    btnMine.disabled = false;
+  }
+});
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// 초기 로드
+loadDbStatus();
+</script>
+</body>
+</html>
