@@ -32,7 +32,27 @@ if _env.exists():
             _k, _v = _line.split("=", 1)
             os.environ.setdefault(_k.strip(), _v.strip())
 
-from zhipuai import ZhipuAI
+from openai import OpenAI
+
+def _make_client():
+    """LLM_BACKEND 환경변수에 따라 (client, model, thinking_body) 반환."""
+    backend = os.environ.get("LLM_BACKEND", "glm")
+    if backend == "qwen":
+        client = OpenAI(
+            api_key=os.environ["QWEN_API_KEY"],
+            base_url=os.environ.get("QWEN_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
+        )
+        model = os.environ.get("QWEN_MODEL", "qwen3-32b")
+        thinking_body = {"enable_thinking": True}
+    else:  # glm (기본값)
+        client = OpenAI(
+            api_key=os.environ["ZHIPU_API_KEY"],
+            base_url="https://open.bigmodel.cn/api/paas/v4/",
+        )
+        model = "glm-4.7"
+        thinking_body = {"thinking": {"type": "enabled"}}
+    return client, model, thinking_body
+
 
 ARCHIVES_DIR = ROOT / "data" / "archives"
 REPORTS_DIR  = ROOT / "reports"
@@ -318,7 +338,7 @@ def format_article_list(articles: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def enrich_topic(topic: dict, extra: list[dict], client) -> dict:
+def enrich_topic(topic: dict, extra: list[dict], client, model: str = "glm-4.7") -> dict:
     """GLM re-writes the topic incorporating additional articles."""
     prompt = ENRICH_PROMPT.format(
         title             = topic.get("title", ""),
@@ -332,7 +352,7 @@ def enrich_topic(topic: dict, extra: list[dict], client) -> dict:
         additional_articles = format_article_list(extra),
     )
     response = client.chat.completions.create(
-        model="glm-4.7",
+        model=model,
         messages=[
             {"role": "system", "content": "You are a smartphone market intelligence analyst. Output only valid JSON."},
             {"role": "user",   "content": prompt},
@@ -413,17 +433,17 @@ def main():
         articles=articles_text,
     )
 
-    print("[3/5] Pass 1 — GLM-4.7 thinking mode (initial topic selection)...")
-    client = ZhipuAI(api_key=os.environ["ZHIPU_API_KEY"])
+    client, model, thinking_body = _make_client()
+    print(f"[3/5] Pass 1 — {model} thinking mode (initial topic selection)...")
     response = client.chat.completions.create(
-        model="glm-4.7",
+        model=model,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user",   "content": user_prompt},
         ],
         max_tokens=30000,
         temperature=0.3,
-        extra_body={"thinking": {"type": "enabled"}},
+        extra_body=thinking_body,
     )
 
     msg       = response.choices[0].message
@@ -451,7 +471,7 @@ def main():
         label = topic.get("title", "")[:50]
         if extra:
             print(f"      [{i}] +{len(extra)} articles — re-writing: {label}...")
-            updated = enrich_topic(topic, extra, client)
+            updated = enrich_topic(topic, extra, client, model)
             enriched_topics.append(updated)
             enriched_count += 1
         else:
