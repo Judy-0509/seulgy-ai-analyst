@@ -132,7 +132,34 @@ Do not reuse one generic fallback message for all states.
 - Avoid hardcoded “최근 30일” if the API provides `days`.
 - Do not put lengthy feature explanations directly inside the app UI.
 
-## 12. Integration Checklist
+## 12. Auth & Protected Routes
+
+- 인증은 PIN 기반 단일 키 (`VITE_PIN_KEY` — `.env` 루트에 설정).
+- `AuthContext`가 localStorage에 세션을 저장하고, `App.jsx`의 `ProtectedRoute`가 미인증 시 `/login`으로 리디렉트.
+- **공개**: `/`, `/news`, `/login`
+- **보호**: `/app`, `/db`, `/archive`, `/archive/:slug`
+- 로그인 화면은 `C` 토큰 기반 흰색/크림 톤 — 큰 로고 + PIN 입력창만. 아이디/비밀번호 없음.
+- 새 보호 라우트 추가 시: `App.jsx`에서 `<ProtectedRoute>` 로 감쌀 것.
+
+## 13. Source Color Map
+
+기관별 고정 색상은 `theme.js`의 `SRC_COLOR_MAP`으로 관리한다. `DbPage`의 `normalizeArchive`가 `SRC_COLOR_MAP[a.name]`을 우선 참조하고, 미등록 소스는 `SRC_COLORS` 배열로 폴백.
+
+- **스마트폰 기관** → 초록 계열 shade (Counterpoint #166534 → Morgan Stanley #dcfce7)
+- **휴머노이드 기관** → 빨강 계열 shade (The Robot Report #7f1d1d → Unitree #fb7185)
+
+새 소스 추가 시 `SRC_COLOR_MAP`에 항목을 추가한다. 전체 배열 순서에 의존하지 말 것.
+
+## 14. Report Domain Theming
+
+보고서 상세(`ReportPage`) 및 아카이브 목록(`ReportsArchivePage`)은 `domain` 필드로 색상을 자동 전환.
+
+- `domain === "humanoid"` → 빨강 팔레트 (`#ef4444`, `#b91c1c` 계열)
+- 그 외 → 초록 팔레트 (`#10b981`, `#047857` 계열)
+
+`server.py`의 `_detect_domain(process_data)`가 `archive_sources`에서 도메인을 추론. 보고서 삭제는 `DELETE /api/reports/{slug}`로 `.md` + `.html` + `_process.json` 일괄 제거.
+
+## 15. Integration Checklist
 
 When adding a new feature:
 
