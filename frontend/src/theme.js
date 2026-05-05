@@ -15,6 +15,32 @@ export const C = {
 
 export const SRC_COLORS = ["#4f46e5","#7c6af7","#a5b4fc","#f59e0b","#64748b"];
 
+// Smartphone sources → shades of green
+// Humanoid sources   → shades of red
+export const SRC_COLOR_MAP = {
+  // Smartphone (8 distinct greens)
+  "Counterpoint Research": "#166534",
+  "TrendForce":            "#15803d",
+  "Omdia":                 "#16a34a",
+  "IDC":                   "#22c55e",
+  "Reuters":               "#4ade80",
+  "Yole":                  "#86efac",
+  "Gartner":               "#bbf7d0",
+  "Morgan Stanley":        "#dcfce7",
+  // Humanoid (11 distinct reds)
+  "The Robot Report":        "#7f1d1d",
+  "IEEE Spectrum":           "#991b1b",
+  "TechCrunch Robotics":     "#b91c1c",
+  "MIT Technology Review":   "#dc2626",
+  "Robotics & Automation News": "#ef4444",
+  "The Verge":               "#f87171",
+  "arXiv (cs.RO)":           "#fca5a5",
+  "NVIDIA":                  "#fecaca",
+  "Boston Dynamics":         "#fee2e2",
+  "Figure AI":               "#fda4af",
+  "Unitree Robotics":        "#fb7185",
+};
+
 export const TAG_COLORS = {
   "위성통신": { bg:"#eef2ff", c:"#3730a3" },
   "M&A":     { bg:"#fefce8", c:"#b45309" },

@@ -1,27 +1,56 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useDomain } from "../contexts/DomainContext";
 
 /* ── Dark forest theme tokens ── */
-const E = {
-  bg:      "#07110b",
-  surf:    "rgba(6,20,11,.68)",
-  glass:   "rgba(255,255,255,.07)",
-  glassH:  "rgba(255,255,255,.12)",
-  border:  "rgba(255,255,255,.14)",
-  borderL: "rgba(255,255,255,.22)",
-  t1: "#ffffff",
-  t2: "rgba(255,255,255,.85)",
-  t3: "rgba(255,255,255,.72)",
-  t4: "rgba(255,255,255,.55)",
-  t5: "rgba(255,255,255,.28)",
-  em:   "#10b981",
-  emL:  "#34d399",
-  emLL: "#6ee7b7",
-  emBg: "rgba(16,185,129,.12)",
-  emBr: "rgba(110,231,183,.28)",
+const THEMES = {
+  smartphone: {
+    bg: "#07110b",
+    surf: "rgba(6,20,11,.68)",
+    glassH: "rgba(255,255,255,.12)",
+    border: "rgba(255,255,255,.14)",
+    borderL: "rgba(255,255,255,.22)",
+    t1: "#ffffff",
+    t3: "rgba(255,255,255,.72)",
+    t4: "rgba(255,255,255,.55)",
+    t5: "rgba(255,255,255,.28)",
+    em: "#10b981",
+    emL: "#34d399",
+    emLL: "#6ee7b7",
+    emBg: "rgba(16,185,129,.12)",
+    emBr: "rgba(110,231,183,.28)",
+    navBg: "rgba(6,20,11,.52)",
+    hoverBg: "rgba(16,185,129,.16)",
+    rowBg: "rgba(52,211,153,.06)",
+    rowBgStrong: "rgba(16,185,129,.22)",
+    vignette: "radial-gradient(circle at center, rgba(12,58,36,.1) 0%, rgba(4,17,9,.42) 42%, rgba(2,8,4,.88) 100%)",
+    image: "url('/smartphone-bg.png')",
+    bgPos: "30% 70%",
+  },
+  humanoid: {
+    bg: "#110607",
+    surf: "rgba(22,8,10,.70)",
+    glassH: "rgba(255,255,255,.12)",
+    border: "rgba(255,255,255,.14)",
+    borderL: "rgba(255,255,255,.22)",
+    t1: "#ffffff",
+    t3: "rgba(255,255,255,.72)",
+    t4: "rgba(255,255,255,.55)",
+    t5: "rgba(255,255,255,.28)",
+    em: "#b73745",
+    emL: "#e75d6e",
+    emLL: "#ffa0a9",
+    emBg: "rgba(183,55,69,.15)",
+    emBr: "rgba(255,160,169,.32)",
+    navBg: "rgba(22,8,10,.52)",
+    hoverBg: "rgba(183,55,69,.16)",
+    rowBg: "rgba(183,55,69,.08)",
+    rowBgStrong: "rgba(183,55,69,.22)",
+    vignette: "radial-gradient(circle at 48% 42%, rgba(150,34,45,.13) 0%, rgba(28,8,10,.46) 44%, rgba(7,3,4,.91) 100%)",
+    image: "url('/humanoid-bg.png')",
+    bgPos: "center",
+  },
 };
-
-const FOREST_BG = "url('/forest.png')";
 
 function critKey(criteria = "") {
   if (criteria.includes("2") && criteria.includes("3")) return "both";
@@ -54,6 +83,17 @@ const FALLBACK_EXAMPLES = [
 ];
 
 /* ── Line icons ── */
+const DOMAIN_EXAMPLES = {
+  smartphone: [
+    "메모리 가격 급등과 스마트폰 OEM 가격 전략 2026",
+    "AI 글래스 시장 확대와 스마트폰 OEM 진출 전략",
+  ],
+  humanoid: [
+    "휴머노이드 AI 에이전트 로드맵과 소비자 수용도 격차",
+    "휴머노이드 양산 전환과 액추에이터 공급망 재편",
+  ],
+};
+
 function SearchIcon() {
   return (
     <svg width={20} height={20} viewBox="0 0 24 24" fill="none"
@@ -71,7 +111,8 @@ function ArrowRightIcon() {
   );
 }
 
-function TopicMessage({ status, fallback }) {
+function TopicMessage({ status, fallback, theme }) {
+  const E = theme;
   const text = {
     loading: "주제를 불러오는 중입니다",
     error: "주제 데이터를 불러오지 못했습니다",
@@ -83,7 +124,8 @@ function TopicMessage({ status, fallback }) {
 }
 
 /* ── Topic row ── */
-function TopicRow({ item, right, onStart, index }) {
+function TopicRow({ item, right, onStart, index, theme }) {
+  const E = theme;
   const [hov, setHov] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
@@ -92,7 +134,7 @@ function TopicRow({ item, right, onStart, index }) {
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
       style={{ borderRadius: 14, marginBottom: 2, overflow: "hidden",
-        background: hov || expanded ? "rgba(52,211,153,.06)" : "transparent",
+        background: hov || expanded ? E.rowBg : "transparent",
         transition: "background .15s", minWidth: 0 }}
     >
       {/* 클릭 → 펼침 토글 */}
@@ -167,7 +209,7 @@ function TopicRow({ item, right, onStart, index }) {
                 fontSize: 12, fontWeight: 700, cursor: "pointer",
                 transition: "background .15s",
               }}
-              onMouseEnter={e => e.currentTarget.style.background = "rgba(16,185,129,.22)"}
+              onMouseEnter={e => e.currentTarget.style.background = E.rowBgStrong}
               onMouseLeave={e => e.currentTarget.style.background = E.emBg}
             >
               상세 분석으로 들어가기 →
@@ -182,16 +224,18 @@ function TopicRow({ item, right, onStart, index }) {
 /* ── Main ── */
 export default function LandingPage() {
   const nav = useNavigate();
+  const { domain } = useDomain();
+  const E = THEMES[domain.id] || THEMES.smartphone;
   const [val, setVal] = useState("");
   const [weeklyHot, setWeeklyHot] = useState([]);
   const [weeklyNew, setWeeklyNew] = useState([]);
   const [generatedAt, setGeneratedAt] = useState("");
   const [topicStatus, setTopicStatus] = useState("loading");
   const [topicDays, setTopicDays] = useState(30);
-  const [examples, setExamples] = useState(FALLBACK_EXAMPLES);
+  const [examples, setExamples] = useState(DOMAIN_EXAMPLES[domain.id] || FALLBACK_EXAMPLES);
 
   useEffect(() => {
-    fetch("/api/topics/suggested")
+    fetch(`/api/topics/suggested?domain=${domain.id}`)
       .then(r => {
         if (!r.ok) throw new Error(`topics ${r.status}`);
         return r.json();
@@ -205,9 +249,9 @@ export default function LandingPage() {
         setTopicDays(data.days || 30);
         setTopicStatus(topics.length ? "ready" : "empty");
         const all = [...hot, ...newT];
-        if (all.length >= 2) {
-          setExamples(all.slice(0, 2).map(t => t.title));
-        }
+        setExamples(all.length >= 2
+          ? all.slice(0, 2).map(t => t.title)
+          : (DOMAIN_EXAMPLES[domain.id] || DOMAIN_EXAMPLES.smartphone));
         if (data.generated_at) {
           const d = new Date(data.generated_at);
           setGeneratedAt(`${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 기준`);
@@ -216,13 +260,15 @@ export default function LandingPage() {
       .catch(() => {
         setWeeklyHot([]);
         setWeeklyNew([]);
+        setExamples(DOMAIN_EXAMPLES[domain.id] || DOMAIN_EXAMPLES.smartphone);
         setTopicStatus("error");
       });
-  }, []);
+  }, [domain.id]);
 
   const handleStart = (topic, topicInfo = null) => {
+    const fallback = (DOMAIN_EXAMPLES[domain.id] || DOMAIN_EXAMPLES.smartphone)[0];
     const t = (typeof topic === "string" ? topic : "").trim() || "아마존 글로벌스타 인수와 D2D 위성 통신";
-    nav("/app", { state: { startTopic: t, topicInfo } });
+    nav("/app", { state: { startTopic: t.startsWith("?") ? fallback : t, topicInfo } });
   };
 
   return (
@@ -230,10 +276,10 @@ export default function LandingPage() {
     <div style={{ height: "100%", overflow: "hidden", background: E.bg, position: "relative" }}>
 
       {/* ── Background layers ── */}
-      <div className="forest-pan" style={{ backgroundImage: FOREST_BG }} />
+      <div className="forest-pan" style={{ backgroundImage: E.image, backgroundPosition: E.bgPos }} />
       {/* radial vignette */}
       <div style={{ position: "absolute", inset: 0, zIndex: 1, pointerEvents: "none",
-        background: "radial-gradient(circle at center, rgba(12,58,36,.1) 0%, rgba(4,17,9,.42) 42%, rgba(2,8,4,.88) 100%)" }} />
+        background: E.vignette }} />
       {/* top-bottom gradient */}
       <div style={{ position: "absolute", inset: 0, zIndex: 2, pointerEvents: "none",
         background: "linear-gradient(to bottom, rgba(0,0,0,.2) 0%, transparent 35%, rgba(0,0,0,.55) 100%)" }} />
@@ -244,24 +290,25 @@ export default function LandingPage() {
           gap: 8, padding: "18px clamp(16px, 4vw, 48px) 0", pointerEvents: "none" }}>
           {[
             ["Archive", "/archive"],
+            ["News", "/news"],
             ["DB", "/db"],
           ].map(([label, path]) => (
             <button
               key={path}
               onClick={() => nav(path)}
               style={{ pointerEvents: "auto", height: 34, borderRadius: 99,
-                border: `1px solid ${E.border}`, background: "rgba(6,20,11,.52)",
-                color: label === "Archive" ? E.emLL : E.t3,
+                border: `1px solid ${E.border}`, background: E.navBg,
+                color: label === "DB" ? E.t3 : E.emLL,
                 padding: "0 14px", fontSize: 12, fontWeight: 700, cursor: "pointer",
                 backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
                 boxShadow: "0 4px 18px rgba(0,0,0,.18)", transition: "background .15s, color .15s" }}
               onMouseEnter={e => {
-                e.currentTarget.style.background = "rgba(16,185,129,.16)";
+                e.currentTarget.style.background = E.hoverBg;
                 e.currentTarget.style.color = E.emLL;
               }}
               onMouseLeave={e => {
-                e.currentTarget.style.background = "rgba(6,20,11,.52)";
-                e.currentTarget.style.color = label === "Archive" ? E.emLL : E.t3;
+                e.currentTarget.style.background = E.navBg;
+                e.currentTarget.style.color = label === "DB" ? E.t3 : E.emLL;
               }}
             >
               {label}
@@ -292,7 +339,7 @@ export default function LandingPage() {
                 value={val}
                 onChange={e => setVal(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && handleStart(val)}
-                placeholder="분석할 주제를 입력하세요 — 예: 아마존 글로벌스타 인수와 D2D 위성 통신"
+                placeholder="분석할 주제를 입력하세요"
                 style={{ flex: 1, height: 56, background: "transparent", border: "none",
                   outline: "none", fontSize: 15, fontWeight: 500, color: E.t1,
                   caretColor: E.emL }}
@@ -301,7 +348,7 @@ export default function LandingPage() {
                 style={{ display: "flex", alignItems: "center", gap: 8,
                   height: 50, background: E.em, border: "none", borderRadius: 20,
                   padding: "0 30px", fontSize: 14, fontWeight: 700, color: "#fff",
-                  cursor: "pointer", boxShadow: "0 4px 20px rgba(16,185,129,.4)",
+                  cursor: "pointer", boxShadow: `0 4px 20px ${E.emBg}`,
                   whiteSpace: "nowrap", flexShrink: 0, transition: "background .15s" }}
                 onMouseEnter={e => e.currentTarget.style.background = E.emL}
                 onMouseLeave={e => e.currentTarget.style.background = E.em}>
@@ -348,9 +395,9 @@ export default function LandingPage() {
               </div>
               <div>
                 {weeklyHot.length === 0
-                  ? <TopicMessage status={topicStatus} fallback="이번 주 핵심 기준에 해당하는 주제가 없습니다" />
+                  ? <TopicMessage status={topicStatus} fallback="이번 주 핵심 기준에 해당하는 주제가 없습니다" theme={E} />
                   : weeklyHot.map((item, i) => (
-                      <TopicRow key={item.title || `${item.org}-${i}`} item={item} onStart={handleStart} index={i} />
+                      <TopicRow key={item.title || `${item.org}-${i}`} item={item} onStart={handleStart} index={i} theme={E} />
                     ))
                 }
               </div>
@@ -366,9 +413,9 @@ export default function LandingPage() {
               </div>
               <div>
                 {weeklyNew.length === 0
-                  ? <TopicMessage status={topicStatus} fallback="이번 주 신규 기준에 해당하는 주제가 없습니다" />
+                  ? <TopicMessage status={topicStatus} fallback="이번 주 신규 기준에 해당하는 주제가 없습니다" theme={E} />
                   : weeklyNew.map((item, i) => (
-                      <TopicRow key={item.title || `${item.org}-${i}`} item={item} right onStart={handleStart} index={i} />
+                      <TopicRow key={item.title || `${item.org}-${i}`} item={item} right onStart={handleStart} index={i} theme={E} />
                     ))
                 }
               </div>

@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+﻿import { useState, useEffect, useRef } from "react";
 import { PIPELINE_STEPS } from "../data/mock";
+import { useDomain } from "../contexts/DomainContext";
 
 const API = "";
 
@@ -12,7 +13,7 @@ function reportAppUrl(reportUrl) {
 }
 
 /* ── Design tokens ── */
-const E = {
+const BASE_THEME = {
   bg:      "#f1f0ee",
   bgGrad:  "linear-gradient(160deg,#f4f3f1 0%,#ece9e6 55%,#e3e0db 100%)",
   glass:   "rgba(248,247,245,.76)",
@@ -22,9 +23,35 @@ const E = {
   t1:"#2a2826", t2:"#4a4744", t3:"#716f6c", t4:"#9a9896",
   em:"#10b981", emD:"#059669",
   emBg:"rgba(16,185,129,.09)", emBr:"rgba(16,185,129,.28)",
+  emSoft:"rgba(16,185,129,.04)",
+  emSoft2:"rgba(16,185,129,.07)",
+  sidebarBg:"rgba(244,243,241,.72)",
+  aura1:"radial-gradient(circle,rgba(110,231,183,.28) 0%,transparent 70%)",
+  aura2:"radial-gradient(circle,rgba(167,243,208,.20) 0%,transparent 70%)",
+  emShadow:"rgba(16,185,129,.28)",
   shadow:   "0 4px 24px rgba(0,0,0,.06),0 1px 3px rgba(0,0,0,.04),inset 0 1.5px 0 rgba(255,255,255,.82)",
   shadowSm: "0 2px 10px rgba(0,0,0,.05),inset 0 1px 0 rgba(255,255,255,.78)",
 };
+
+const HUMANOID_THEME = {
+  ...BASE_THEME,
+  bg:      "#f2efef",
+  bgGrad:  "linear-gradient(160deg,#f7f3f2 0%,#eee7e5 55%,#e5dcda 100%)",
+  glass:   "rgba(250,247,246,.78)",
+  glassH:  "rgba(250,247,246,.92)",
+  div:     "rgba(49,32,31,.08)",
+  t1:"#2b2322", t2:"#4c403e", t3:"#746966", t4:"#9d9491",
+  em:"#b73745", emD:"#9f2f3b",
+  emBg:"rgba(183,55,69,.10)", emBr:"rgba(183,55,69,.28)",
+  emSoft:"rgba(183,55,69,.045)",
+  emSoft2:"rgba(183,55,69,.075)",
+  sidebarBg:"rgba(247,239,239,.76)",
+  aura1:"radial-gradient(circle,rgba(255,160,169,.26) 0%,transparent 70%)",
+  aura2:"radial-gradient(circle,rgba(231,93,110,.18) 0%,transparent 70%)",
+  emShadow:"rgba(183,55,69,.26)",
+};
+
+let E = BASE_THEME;
 
 /* ── Source config ── */
 const SOURCE_CONFIG = {
@@ -195,7 +222,7 @@ function GatePrompt({ message, onConfirm, confirmed, confirmLabel="확정", canc
   return (
     <div style={{ margin:"20px 0 0", padding:"16px 20px",
       border:`1px solid ${E.emBr}`,
-      background: confirmed ? "rgba(16,185,129,.06)" : "rgba(16,185,129,.07)",
+      background: confirmed ? E.emSoft : E.emSoft2,
       borderRadius:14, animation:"fadeSlideIn .4s ease both", transition:"background .3s" }}>
       {confirmed ? (
         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
@@ -209,7 +236,7 @@ function GatePrompt({ message, onConfirm, confirmed, confirmLabel="확정", canc
             <button onClick={onConfirm} style={{
               background:E.em, color:"#fff", border:"none", borderRadius:9,
               padding:"8px 22px", fontSize:13, fontWeight:700, cursor:"pointer",
-              boxShadow:"0 4px 14px rgba(16,185,129,.28)", transition:"background .15s" }}
+              boxShadow:`0 4px 14px ${E.emShadow}`, transition:"background .15s" }}
               onMouseEnter={e=>e.currentTarget.style.background=E.emD}
               onMouseLeave={e=>e.currentTarget.style.background=E.em}>
               {confirmLabel}
@@ -239,7 +266,7 @@ function DSectionList({ sections, label="섹션별 검색 진행" }) {
           <div key={i} style={{
             display:"flex", alignItems:"center", gap:12,
             padding:"10px 14px", borderRadius:10,
-            background: sec.status==="done" ? "rgba(16,185,129,.05)" : "rgba(42,40,38,.04)",
+            background: sec.status==="done" ? E.emSoft : "rgba(42,40,38,.04)",
             border:`1px solid ${sec.status==="done" ? E.emBr : E.div}`,
             animation:`fadeSlideIn .35s ease ${i*60}ms both`,
             transition:"background .3s, border-color .3s",
@@ -293,7 +320,7 @@ function TocSections({ sections, onToggle, disabled }) {
                         onClick={() => !disabled && onToggle(i, qi)}
                         style={{ display:"flex", alignItems:"center", gap:8,
                           padding:"6px 10px", borderRadius:7,
-                          background: on ? "rgba(16,185,129,.06)" : "rgba(42,40,38,.04)",
+                          background: on ? E.emSoft2 : "rgba(42,40,38,.04)",
                           border:`1px solid ${on ? E.emBr : E.div}`,
                           cursor: disabled ? "default" : "pointer",
                           opacity: on ? 1 : 0.5,
@@ -337,14 +364,14 @@ function ArchiveLog({ visibleSources, doneSources, selectedSource, onSelect, byS
               style={{
                 display:"flex", alignItems:"center", gap:12,
                 padding:"10px 14px", borderRadius:10,
-                background: isSel ? `${cfg.color}14` : isDone ? "rgba(16,185,129,.05)" : "rgba(42,40,38,.04)",
+                background: isSel ? `${cfg.color}14` : isDone ? E.emSoft : "rgba(42,40,38,.04)",
                 border:`1px solid ${isSel ? cfg.color+"66" : isDone ? E.emBr : E.div}`,
                 cursor: isDone ? "pointer" : "default",
                 transition:"background .25s, border-color .25s",
                 animation:"fadeSlideIn .35s ease both",
               }}
               onMouseEnter={e=>{ if(isDone&&!isSel) e.currentTarget.style.background=`${cfg.color}0e`; }}
-              onMouseLeave={e=>{ if(isDone&&!isSel) e.currentTarget.style.background="rgba(16,185,129,.05)"; }}>
+              onMouseLeave={e=>{ if(isDone&&!isSel) e.currentTarget.style.background=E.emSoft; }}>
               <div style={{ width:34, height:34, borderRadius:10, flexShrink:0,
                 display:"flex", alignItems:"center", justifyContent:"center",
                 fontSize:10, fontWeight:800, color:"#fff", background:cfg.color,
@@ -607,7 +634,7 @@ function ReportDone({ reportUrl }) {
   const appUrl = reportAppUrl(reportUrl);
   return (
     <div style={{ margin:"20px 0 0", padding:"20px 24px",
-      border:`1px solid ${E.emBr}`, background:"rgba(16,185,129,.07)",
+      border:`1px solid ${E.emBr}`, background:E.emSoft2,
       borderRadius:14, animation:"fadeSlideIn .4s ease both" }}>
       <p style={{ fontSize:13, fontWeight:700, color:E.em, margin:"0 0 6px" }}>✓ 보고서 생성 완료</p>
       <p style={{ fontSize:13, color:E.t2, margin:"0 0 14px", lineHeight:1.6 }}>
@@ -617,7 +644,7 @@ function ReportDone({ reportUrl }) {
         style={{ display:"inline-flex", alignItems:"center", gap:6,
           background:E.em, color:"#fff", borderRadius:9,
           padding:"9px 22px", fontSize:13, fontWeight:700,
-          boxShadow:"0 4px 14px rgba(16,185,129,.28)", textDecoration:"none" }}>
+          boxShadow:`0 4px 14px ${E.emShadow}`, textDecoration:"none" }}>
         보고서 열기 →
       </a>
     </div>
@@ -682,11 +709,11 @@ function Header({ topic, onBack, completedSteps, totalSteps, isRunning }) {
 function Sidebar({ steps, currentStepIdx, completedSteps, totalSteps }) {
   return (
     <aside style={{ width:288, flexShrink:0, overflowY:"auto",
-      borderRight:`1px solid ${E.div}`, background:"rgba(244,243,241,.72)",
+      borderRight:`1px solid ${E.div}`, background:E.sidebarBg,
       backdropFilter:"blur(40px) saturate(180%)", WebkitBackdropFilter:"blur(40px) saturate(180%)",
       padding:"18px 14px", position:"relative", zIndex:10 }}>
       <div style={{ ...gl({ padding:"16px 18px", marginBottom:14,
-        border:`1px solid ${E.emBr}`, background:"rgba(16,185,129,.07)", boxShadow:E.shadowSm }) }}>
+        border:`1px solid ${E.emBr}`, background:E.emSoft2, boxShadow:E.shadowSm }) }}>
         <Gloss/>
         <div style={{ position:"relative", zIndex:1 }}>
           <p style={{ fontSize:9, fontWeight:800, letterSpacing:".16em", color:E.em,
@@ -716,8 +743,8 @@ function Sidebar({ steps, currentStepIdx, completedSteps, totalSteps }) {
           return (
             <div key={step.id} style={{ ...gl({ padding:"9px 11px", borderRadius:14,
               border:`1px solid ${isActive?E.emBr:E.border}`,
-              background:isActive?"rgba(16,185,129,.08)":isDone?"rgba(16,185,129,.04)":E.glass,
-              boxShadow:isActive?`0 2px 12px rgba(16,185,129,.14),inset 0 1px 0 rgba(255,255,255,.8)`:E.shadowSm,
+              background:isActive?E.emBg:isDone?E.emSoft:E.glass,
+              boxShadow:isActive?`0 2px 12px ${E.emShadow},inset 0 1px 0 rgba(255,255,255,.8)`:E.shadowSm,
               transition:"background .3s, border-color .3s" }) }}>
               <Gloss/>
               <div style={{ position:"relative", zIndex:1, display:"flex", alignItems:"center", gap:9 }}>
@@ -726,7 +753,7 @@ function Sidebar({ steps, currentStepIdx, completedSteps, totalSteps }) {
                   fontSize:isDone?13:10, fontWeight:800,
                   background:isDone||isActive?E.em:"rgba(42,40,38,.07)",
                   color:isDone||isActive?"#fff":E.t3,
-                  boxShadow:isActive||isDone?"0 2px 8px rgba(16,185,129,.3)":"none",
+                  boxShadow:isActive||isDone?`0 2px 8px ${E.emShadow}`:"none",
                   transition:"background .3s" }}>
                   {isDone?"✓":String(i+1).padStart(2,"0")}
                 </div>
@@ -824,7 +851,7 @@ function ExtSearchToggle({ totalArchive, queries, useExternal, onToggle, onConfi
               border:`1px solid ${useExternal ? "transparent" : E.div}`,
               borderRadius:9, padding:"8px 22px", fontSize:13, fontWeight:700,
               cursor:"pointer", transition:"background .15s, color .15s",
-              boxShadow: useExternal ? "0 4px 14px rgba(16,185,129,.28)" : "none" }}>
+              boxShadow: useExternal ? `0 4px 14px ${E.emShadow}` : "none" }}>
               {useExternal ? "외부 검색 포함하여 진행 →" : "아카이브만으로 진행 →"}
             </button>
           </div>
@@ -865,14 +892,14 @@ function ExtSourceLog({ queries, bySource, total, onOpenAll, onOpenSource }) {
               style={{
                 display:"flex", alignItems:"center", gap:12,
                 padding:"10px 14px", borderRadius:10,
-                background:"rgba(16,185,129,.05)",
+                background:E.emSoft,
                 border:`1px solid ${E.emBr}`,
                 cursor:"pointer",
                 transition:"background .25s, border-color .25s",
                 animation:"fadeSlideIn .35s ease both",
               }}
               onMouseEnter={e=>{ e.currentTarget.style.background=`${cfg.color}0e`; e.currentTarget.style.borderColor=`${cfg.color}66`; }}
-              onMouseLeave={e=>{ e.currentTarget.style.background="rgba(16,185,129,.05)"; e.currentTarget.style.borderColor=E.emBr; }}>
+              onMouseLeave={e=>{ e.currentTarget.style.background=E.emSoft; e.currentTarget.style.borderColor=E.emBr; }}>
               <div style={{ width:34, height:34, borderRadius:10, flexShrink:0,
                 display:"flex", alignItems:"center", justifyContent:"center",
                 fontSize:10, fontWeight:800, color:"#fff", background:cfg.color,
@@ -951,6 +978,10 @@ function initStepMap(value) {
    Main
 ══════════════════════════════════════════════════════════ */
 export default function PipelineScreen({ topic, onBack, topicInfo = null }) {
+  const { domain } = useDomain();
+  // Theme is read by the existing module-level helper components.
+  // eslint-disable-next-line react-hooks/globals
+  E = domain.id === "humanoid" ? HUMANOID_THEME : BASE_THEME;
   const [started, setStarted] = useState(!topicInfo?.rationale);
   const [steps, setSteps] = useState(() =>
     PIPELINE_STEPS.map((s,i) => ({...s, status: (!topicInfo?.rationale && i===0) ? "running" : "pending"}))
@@ -1384,10 +1415,10 @@ export default function PipelineScreen({ topic, onBack, topicInfo = null }) {
 
       {/* Background blobs */}
       <div style={{ position:"absolute", width:520, height:520, borderRadius:"50%", pointerEvents:"none",
-        background:"radial-gradient(circle,rgba(110,231,183,.28) 0%,transparent 70%)",
+        background:E.aura1,
         right:-100, top:-100, filter:"blur(20px)" }}/>
       <div style={{ position:"absolute", width:380, height:380, borderRadius:"50%", pointerEvents:"none",
-        background:"radial-gradient(circle,rgba(167,243,208,.20) 0%,transparent 70%)",
+        background:E.aura2,
         left:"30%", bottom:-60, filter:"blur(20px)" }}/>
       <div style={{ position:"absolute", width:260, height:260, borderRadius:"50%", pointerEvents:"none",
         background:"radial-gradient(circle,rgba(209,213,219,.55) 0%,transparent 70%)",
@@ -1486,7 +1517,7 @@ export default function PipelineScreen({ topic, onBack, topicInfo = null }) {
                         onClick={handleStartAnalysis}
                         style={{ background:E.em, color:"#fff", border:"none", borderRadius:10,
                           padding:"10px 28px", fontSize:14, fontWeight:700, cursor:"pointer",
-                          boxShadow:"0 4px 14px rgba(16,185,129,.28)", transition:"background .15s" }}
+                          boxShadow:`0 4px 14px ${E.emShadow}`, transition:"background .15s" }}
                         onMouseEnter={e => e.currentTarget.style.background = E.emD}
                         onMouseLeave={e => e.currentTarget.style.background = E.em}
                       >

@@ -395,7 +395,7 @@ function switchTab(name, btn) {{
 
 def main():
     if not GLM_PATH.exists():
-        print(f"[!] {GLM_PATH} not found. Run suggest_topics.py first.")
+        print(f"[!] {GLM_PATH} not found. Run suggest_smartphone_topics.py first.")
         return
     if not MANUAL_PATH.exists():
         print(f"[!] {MANUAL_PATH} not found.")

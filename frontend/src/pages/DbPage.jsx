@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { C, SRC_COLORS } from "../theme";
+import { C, SRC_COLORS, SRC_COLOR_MAP } from "../theme";
 import { useAuth } from "../contexts/AuthContext";
+import { useDomain } from "../contexts/DomainContext";
 
 const TOPIC_DAYS = 30;
 
@@ -10,7 +11,7 @@ function normalizeArchive(a, i) {
     name: a.name,
     count: a.entry_count ?? a.count ?? 0,
     lastUpdated: (a.latest_entry || a.built_at || "").slice(0, 10) || "-",
-    color: SRC_COLORS[i % SRC_COLORS.length],
+    color: SRC_COLOR_MAP[a.name] ?? SRC_COLORS[i % SRC_COLORS.length],
     exists: !!a.exists,
   };
 }
@@ -29,6 +30,7 @@ function flattenTopicGroups(groups = {}) {
 export default function DbPage() {
   const nav = useNavigate();
   const { user, logout } = useAuth();
+  const { domain } = useDomain();
   const [query, setQuery] = useState("");
   const [selectedOrg, setSelectedOrg] = useState("전체");
   const [archives, setArchives] = useState([]);
@@ -50,7 +52,7 @@ export default function DbPage() {
     let alive = true;
     Promise.all([
       fetch("/api/archives/status").then(r => { if (!r.ok) throw new Error(); return r.json(); }),
-      fetch(`/api/topics/mine?days=${TOPIC_DAYS}`).then(r => { if (!r.ok) throw new Error(); return r.json(); }),
+      fetch(`/api/topics/mine?days=${TOPIC_DAYS}&domain=${domain.id}`).then(r => { if (!r.ok) throw new Error(); return r.json(); }),
     ])
       .then(([archiveData, topicData]) => {
         if (!alive) return;
@@ -63,7 +65,7 @@ export default function DbPage() {
       })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, []);
+  }, [domain.id]);
 
   // 소스 선택 시 전체 기사 fetch — setState는 콜백 안에서만 호출
   useEffect(() => {
@@ -107,12 +109,9 @@ export default function DbPage() {
         <div style={{ width: 1, height: 20, background: C.border }} />
         <span style={{ fontSize: 13, fontWeight: 600, color: C.t1, letterSpacing: "-.01em" }}>아카이브 DB</span>
         <div style={{ flex: 1 }} />
-        <button onClick={() => nav("/app")} style={{ fontSize: 12, color: C.ind, background: C.indBg, border: `1px solid ${C.indBr}`, borderRadius: 7, padding: "5px 12px", cursor: "pointer", fontWeight: 600 }}>
-          보고서 생성 →
-        </button>
         {user && (
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 11, color: C.t4, fontFamily: C.mono }}>{user.username}</span>
+            <span style={{ fontSize: 11, color: C.t4 }}>{user.username}</span>
             <button onClick={logout} style={{ fontSize: 11, color: C.t3, background: "none", border: `1px solid ${C.border}`, borderRadius: 6, padding: "4px 9px", cursor: "pointer" }}>로그아웃</button>
           </div>
         )}
@@ -151,7 +150,7 @@ export default function DbPage() {
                   {a.count.toLocaleString()}
                   <span style={{ fontSize: 11, fontWeight: 400, color: C.t4, marginLeft: 2 }}>건</span>
                 </div>
-                <div style={{ fontSize: 10, color: C.t4, marginTop: 3, fontFamily: C.mono }}>업데이트 {a.lastUpdated}</div>
+                <div style={{ fontSize: 10, color: C.t4, marginTop: 3 }}>업데이트 {a.lastUpdated}</div>
               </div>
             ))}
             {!loading && archives.length === 0 && (
@@ -179,7 +178,7 @@ export default function DbPage() {
           <select
             value={selectedOrg}
             onChange={e => { setSelectedOrg(e.target.value); setQuery(""); }}
-            style={{ border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 12px", fontSize: 12, color: C.t2, background: C.card, cursor: "pointer", outline: "none" }}
+            style={{ border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 12px", fontSize: 12, color: C.t2, background: C.card, cursor: "pointer", outline: "none", fontFamily: "inherit" }}
           >
             {orgs.map(o => <option key={o}>{o}</option>)}
           </select>
@@ -198,31 +197,28 @@ export default function DbPage() {
             </>
           ) : (
             <>
-              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".10em", color: C.t3, textTransform: "uppercase" }}>최근 {TOPIC_DAYS}일 스마트폰 관련</span>
+              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".10em", color: C.t3, textTransform: "uppercase" }}>최근 {TOPIC_DAYS}일 {domain.label} 관련</span>
               <span style={{ fontSize: 11, color: C.t4 }}>{displayList.length}건</span>
             </>
           )}
         </div>
 
         {/* Results list */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, overflow: "hidden" }}>
           {orgLoading ? (
             <div style={{ padding: "40px", textAlign: "center", color: C.t4, fontSize: 13 }}>불러오는 중...</div>
           ) : displayList.length === 0 ? (
             <div style={{ padding: "40px", textAlign: "center", color: C.t4, fontSize: 13 }}>검색 결과가 없습니다</div>
           ) : (
-            displayList.map((a) => {
+            displayList.map((a, idx) => {
               const badgeColor = orgColorMap[a.org] || C.ind;
               return (
                 <div
                   key={a.url || `${a.org}-${a.title}`}
                   style={{
-                    display: "flex", gap: 10, padding: "11px 14px",
-                    background: C.card,
-                    border: `1px solid ${C.border}`,
-                    borderRadius: 9,
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-                    alignItems: "flex-start",
+                    display: "flex", alignItems: "center", gap: 10,
+                    padding: "9px 14px",
+                    borderBottom: idx < displayList.length - 1 ? `1px solid ${C.border}` : "none",
                   }}
                 >
                   {!isOrgView && (
@@ -230,19 +226,18 @@ export default function DbPage() {
                       fontSize: 9, fontWeight: 800, color: "#fff",
                       background: badgeColor,
                       borderRadius: 4, padding: "2px 7px",
-                      whiteSpace: "nowrap", marginTop: 2,
-                      flexShrink: 0, letterSpacing: ".02em",
+                      whiteSpace: "nowrap", flexShrink: 0, letterSpacing: ".02em",
                     }}>{a.org}</span>
                   )}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: C.t1, lineHeight: 1.45, marginBottom: 5 }}>{a.title}</div>
-                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                      <span style={{ fontSize: 10, color: C.t4, fontFamily: C.mono }}>{a.date}</span>
-                      {a.url && (
-                        <a href={a.url} target="_blank" rel="noreferrer" style={{ fontSize: 10, color: C.ind }}>원문</a>
-                      )}
-                    </div>
-                  </div>
+                  <a
+                    href={a.url || undefined}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 500, color: C.t1, lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: "none", cursor: a.url ? "pointer" : "default" }}
+                  >
+                    {a.title}
+                  </a>
+                  <span style={{ fontSize: 10, color: C.t4, flexShrink: 0 }}>{a.date}</span>
                 </div>
               );
             })

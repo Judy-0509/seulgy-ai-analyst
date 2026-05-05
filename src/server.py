@@ -19,7 +19,9 @@ from src.models import (
     Topic,
     DimensionProposal,
 )
+from src.news_api import router as news_router
 from src.state_machine import AnalysisPipeline
+from src.domains import load_domain
 
 ROOT = Path(__file__).parent.parent
 FRONTEND_DIST  = ROOT / "frontend" / "dist"
@@ -29,6 +31,7 @@ ALL_ARCHIVES_SCRIPT = ROOT / "scripts" / "build_all_archives.py"
 
 # UI 표시명 → archive JSON 파일명 (build_all_archives.py와 동일 순서)
 ARCHIVE_REGISTRY = [
+    # ── Smartphone sources ─────────────────────────────────
     ("Counterpoint Research", "counterpoint.json"),
     ("TrendForce",            "trendforce.json"),
     ("Omdia",                 "omdia.json"),
@@ -37,6 +40,18 @@ ARCHIVE_REGISTRY = [
     ("Yole",                  "yole.json"),
     ("Gartner",               "gartner.json"),
     ("Morgan Stanley",        "morgan_stanley.json"),
+    # ── Humanoid / Robotics sources ────────────────────────
+    ("The Robot Report",           "robot_report.json"),
+    ("IEEE Spectrum",              "ieee_spectrum_robotics.json"),
+    ("TechCrunch Robotics",        "techcrunch_robotics.json"),
+    ("MIT Technology Review",      "mit_tech_review.json"),
+    ("Robotics & Automation News", "robotics_automation_news.json"),
+    ("The Verge",                  "verge_robotics.json"),
+    ("arXiv (cs.RO)",              "arxiv_robotics.json"),
+    ("NVIDIA",                     "nvidia_news.json"),
+    ("Boston Dynamics",            "boston_dynamics.json"),
+    ("Figure AI",                  "figure_ai.json"),
+    ("Unitree Robotics",           "unitree.json"),
 ]
 
 app = FastAPI()
@@ -46,6 +61,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.include_router(news_router)
 
 # frontend/dist 빌드가 있으면 정적 파일 서빙 (npm run build 후 사용)
 if (FRONTEND_DIST / "assets").exists():
@@ -54,10 +70,10 @@ if (FRONTEND_DIST / "assets").exists():
 
 # ── Session management ─────────────────────────────────────────────────────
 class Session:
-    def __init__(self, topic: str):
+    def __init__(self, topic: str, domain_id: str = "smartphone"):
         self.id = str(uuid.uuid4())
         self.topic = topic
-        self.pipeline = AnalysisPipeline()
+        self.pipeline = AnalysisPipeline(domain_id=domain_id)
         self.queue: asyncio.Queue = asyncio.Queue()
         self.plan: Optional[ResearchPlan] = None
         self.task: Optional[asyncio.Task] = None
@@ -385,8 +401,8 @@ async def api_keywords_put(req: Request):
 
 
 @app.get("/api/topics/mine")
-async def api_topics_mine(days: int = 30):
-    """최근 N일 Tier-1 소스 스마트폰 관련 기사를 소스별로 묶어 반환."""
+async def api_topics_mine(days: int = 30, domain: str = "smartphone"):
+    """최근 N일 Tier-1 소스 도메인 관련 기사를 소스별로 묶어 반환."""
     import re as _re
     from datetime import timedelta
 
@@ -419,8 +435,9 @@ async def api_topics_mine(days: int = 30):
         except Exception:
             continue
 
-    # 스마트폰 관련 기사만
-    sm = [e for e in recent if _is_smartphone(e)]
+    # 도메인 관련 기사만
+    domain_kw = load_domain(domain)["keywords"]
+    sm = [e for e in recent if any(kw in (e.get("title","") + " " + e.get("description","")).lower() for kw in domain_kw)]
 
     # 소스별 그룹화
     groups: dict[str, list] = {}
@@ -486,9 +503,10 @@ async def api_archives_entries(source: str, limit: int = 300):
 # ══════════════════════════════════════════════════════════════════════════
 
 class ReportSession:
-    def __init__(self, topic: str):
+    def __init__(self, topic: str, domain_id: str = "smartphone"):
         self.id = str(uuid.uuid4())
         self.topic = topic
+        self.domain_id = domain_id
         self.queue: asyncio.Queue = asyncio.Queue()
         self.task: Optional[asyncio.Task] = None
         self.ext_event: asyncio.Event = asyncio.Event()
@@ -725,9 +743,9 @@ async def _run_report(sess: ReportSession):
 
 
 @app.get("/api/topics/suggested")
-async def api_topics_suggested():
-    """scripts/_topic_suggestions.json 의 GLM 선정 주제 반환."""
-    p = ROOT / "scripts" / "_topic_suggestions.json"
+async def api_topics_suggested(domain: str = "smartphone"):
+    """도메인별 GLM 선정 주제 반환."""
+    p = ROOT / load_domain(domain)["suggested_path"]
     if not p.exists():
         return {"topics": [], "generated_at": None, "days": 30}
     try:
@@ -757,6 +775,21 @@ def _extract_metrics(*texts: str) -> list[str]:
             if item and item not in found:
                 found.append(item)
     return found[:8]
+
+
+_HUMANOID_SOURCES = {
+    "Robotics & Automation News", "TechCrunch Robotics", "IEEE Spectrum Robotics",
+    "IEEE Spectrum", "The Robot Report", "Boston Dynamics", "Figure AI",
+    "arXiv (cs.RO)", "MIT Technology Review", "Unitree Robotics", "NVIDIA", "The Verge",
+}
+
+def _detect_domain(process_data: dict | None) -> str:
+    if not process_data:
+        return "smartphone"
+    for src in process_data.get("archive_sources", []):
+        if src.get("source_name") in _HUMANOID_SOURCES:
+            return "humanoid"
+    return "smartphone"
 
 
 def _parse_report_markdown(md_text: str, process_data: dict | None = None) -> dict:
@@ -897,6 +930,7 @@ async def api_reports_list():
             "section_count": len(report.get("sections", [])),
             "reference_count": len(report.get("references", [])),
             "metric_tags": metric_tags[:8],
+            "domain": _detect_domain(process_data),
         })
 
     return {"reports": items}
@@ -918,7 +952,22 @@ async def api_report_detail(slug: str):
             process_data = None
 
     report = _parse_report_markdown(md_path.read_text(encoding="utf-8"), process_data)
-    return {"slug": safe_slug, **report}
+    return {"slug": safe_slug, "domain": _detect_domain(process_data), **report}
+
+
+@app.delete("/api/reports/{slug}")
+async def api_report_delete(slug: str):
+    safe_slug = Path(slug).name
+    reports_dir = ROOT / "reports"
+    deleted = []
+    for suffix in ("_report.md", "_report.html", "_process.json"):
+        path = reports_dir / f"{safe_slug}{suffix}"
+        if path.exists() and path.is_file():
+            path.unlink()
+            deleted.append(path.name)
+    if not deleted:
+        raise HTTPException(404, "report not found")
+    return {"deleted": deleted}
 
 
 @app.get("/reports/{filename}")
@@ -935,7 +984,8 @@ async def api_report_start(req: Request):
     topic = (body.get("topic") or "").strip()
     if not topic:
         raise HTTPException(400, "topic required")
-    sess = ReportSession(topic)
+    domain_id = body.get("domain", "smartphone")
+    sess = ReportSession(topic, domain_id=domain_id)
     REPORT_SESSIONS[sess.id] = sess
     sess.task = asyncio.create_task(_run_report(sess))
     return {"session_id": sess.id}

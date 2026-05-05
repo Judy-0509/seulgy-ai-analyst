@@ -20,6 +20,9 @@ reports/*_process.json
 reports/archive_viewer.html
 reports/glm_topic_suggestions.html
 scripts/_topic_suggestions.json
+scripts/_humanoid_topic_suggestions.json
+test_image/
+data/mi_news/
 
 # ── 프론트엔드 ────────────────────────────────
 frontend/node_modules/

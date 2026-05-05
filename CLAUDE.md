@@ -109,7 +109,10 @@ python scripts/build_counterpoint_archive.py
 │   ├── build_yole_archive.py
 │   ├── build_archive_viewer.py     ← archive_viewer.html 생성
 │   ├── build_topic_html.py         ← 주제 HTML 빌드 유틸
-│   ├── suggest_topics.py           ← GLM 기반 주제 추천 로직
+│   ├── _suggest_core.py            ← 주제 추천 공통 엔진 (도메인 스크립트에서 공유)
+│   ├── suggest_smartphone_topics.py← 스마트폰 주제 자동 선정 → _topic_suggestions.json
+│   ├── suggest_humanoid_topics.py  ← 휴머노이드 주제 자동 선정 → _humanoid_topic_suggestions.json
+│   ├── suggest_topics.py           ← 하위 호환 shim → suggest_smartphone_topics.py 위임
 │   └── clear_body_cache.py         ← 본문 캐시 초기화 유틸
 │
 ├── data/

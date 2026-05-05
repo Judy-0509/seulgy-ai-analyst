@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 
 const API = "";
 
-const R = {
+const BASE_R = {
   bg: "#f7f6f3",
   panel: "rgba(255,255,255,.72)",
   panelStrong: "rgba(255,255,255,.9)",
@@ -12,14 +12,21 @@ const R = {
   t2: "#4a4744",
   t3: "#716f6c",
   t4: "#9a9896",
-  em: "#10b981",
-  emD: "#047857",
-  emBg: "rgba(16,185,129,.09)",
-  emBr: "rgba(16,185,129,.24)",
   shadow: "0 12px 34px rgba(31,41,55,.08), inset 0 1px 0 rgba(255,255,255,.76)",
 };
 
-function SourceBadge({ children }) {
+function makeR(domain) {
+  const isHumanoid = domain === "humanoid";
+  return {
+    ...BASE_R,
+    em:   isHumanoid ? "#ef4444" : "#10b981",
+    emD:  isHumanoid ? "#b91c1c" : "#047857",
+    emBg: isHumanoid ? "rgba(239,68,68,.09)"  : "rgba(16,185,129,.09)",
+    emBr: isHumanoid ? "rgba(239,68,68,.24)"  : "rgba(16,185,129,.24)",
+  };
+}
+
+function SourceBadge({ children, R }) {
   return (
     <span style={{
       display: "inline-flex", alignItems: "center", height: 20,
@@ -32,12 +39,12 @@ function SourceBadge({ children }) {
   );
 }
 
-function MetricPill({ value }) {
+function MetricPill({ value, R }) {
   return (
     <span style={{
       display: "inline-flex", alignItems: "center", height: 22,
-      padding: "0 8px", borderRadius: 99, background: "#eefcf6",
-      color: R.emD, border: "1px solid rgba(16,185,129,.18)",
+      padding: "0 8px", borderRadius: 99, background: R.emBg,
+      color: R.emD, border: `1px solid ${R.emBr}`,
       fontSize: 11, fontWeight: 700,
     }}>
       {value}
@@ -45,7 +52,7 @@ function MetricPill({ value }) {
   );
 }
 
-function ViewToggle({ value, onChange }) {
+function ViewToggle({ value, onChange, R }) {
   const items = [
     { id: "report", label: "Report" },
     { id: "custom", label: "Custom" },
@@ -79,7 +86,7 @@ function ViewToggle({ value, onChange }) {
   );
 }
 
-function ReferenceCard({ refItem }) {
+function ReferenceCard({ refItem, R }) {
   return (
     <a
       href={refItem.url}
@@ -92,8 +99,12 @@ function ReferenceCard({ refItem }) {
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8 }}>
-        <SourceBadge>{refItem.source_name || "Source"}</SourceBadge>
-        {refItem.section_index && <span style={{ fontSize: 10.5, color: R.emD, fontWeight: 700 }}>섹션 {refItem.section_index}</span>}
+        <SourceBadge R={R}>{refItem.source_name || "Source"}</SourceBadge>
+        {refItem.section_index && (
+          <span style={{ fontSize: 10.5, color: R.emD, fontWeight: 700 }}>
+            섹션 {refItem.section_index}
+          </span>
+        )}
         {refItem.date && <span style={{ fontSize: 10.5, color: R.t4 }}>{refItem.date}</span>}
       </div>
       <p style={{ margin: "0 0 7px", fontSize: 12.5, fontWeight: 700, color: R.t1, lineHeight: 1.45 }}>
@@ -104,7 +115,7 @@ function ReferenceCard({ refItem }) {
       </p>
       {refItem.metrics?.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 10 }}>
-          {refItem.metrics.map((metric) => <MetricPill key={metric} value={metric} />)}
+          {refItem.metrics.map((metric) => <MetricPill key={metric} value={metric} R={R} />)}
         </div>
       )}
     </a>
@@ -122,7 +133,7 @@ function buildResearchBackground(report) {
   if (report.research_background) return report.research_background;
   const summary = firstSentences(report.executive_summary, 2);
   if (summary) return summary;
-  const sectionTitles = (report.sections || []).map((section) => section.title).filter(Boolean).slice(0, 3);
+  const sectionTitles = (report.sections || []).map((s) => s.title).filter(Boolean).slice(0, 3);
   if (sectionTitles.length > 0) {
     return `${sectionTitles.join(", ")}를 중심으로 시장 구조와 경쟁 구도 변화가 나타나고 있습니다.`;
   }
@@ -136,7 +147,7 @@ function buildInsightSummary(insights = []) {
   }));
 }
 
-function SectionBlock({ section }) {
+function SectionBlock({ section, R }) {
   return (
     <section style={{ padding: "28px 0", borderTop: `1px solid ${R.border}` }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
@@ -166,7 +177,7 @@ function SectionBlock({ section }) {
           {section.bullets.map((bullet, index) => (
             <p key={index} style={{
               margin: 0, padding: "10px 12px", borderRadius: 8,
-              background: "rgba(16,185,129,.045)", border: `1px solid ${R.emBr}`,
+              background: R.emBg, border: `1px solid ${R.emBr}`,
               fontSize: 13, color: R.t2, lineHeight: 1.55,
             }}>
               {bullet}
@@ -178,7 +189,7 @@ function SectionBlock({ section }) {
   );
 }
 
-function CustomSlideView({ report }) {
+function CustomSlideView({ report, R }) {
   const background = buildResearchBackground(report);
   const insightLines = buildInsightSummary(report.insights || []);
   const sections = report.sections || [];
@@ -195,14 +206,14 @@ function CustomSlideView({ report }) {
           padding: "18px 22px", borderRadius: 12, background: R.panelStrong,
           border: `1px solid ${R.border}`,
         }}>
-          <SourceBadge>Custom Brief</SourceBadge>
+          <SourceBadge R={R}>Custom Brief</SourceBadge>
           <h1 style={{ margin: "12px 0 0", fontSize: 26, lineHeight: 1.28, letterSpacing: 0, color: R.t1 }}>
             {report.topic}
           </h1>
         </section>
 
         <section style={{
-          padding: "18px 22px", borderRadius: 12, background: "rgba(16,185,129,.055)",
+          padding: "18px 22px", borderRadius: 12, background: R.emBg,
           border: `1px solid ${R.emBr}`,
         }}>
           <h2 style={{ margin: "0 0 8px", fontSize: 15, color: R.emD }}>조사 배경</h2>
@@ -215,10 +226,13 @@ function CustomSlideView({ report }) {
         }}>
           <h2 style={{ margin: "0 0 10px", fontSize: 15, color: R.emD }}>시사점</h2>
           <div style={{ display: "grid", gap: 10 }}>
-            {(insightLines.length ? insightLines : [{ title: "시장 분석", summary: "분석 결과를 바탕으로 시장 변화와 기업 대응 방향을 요약합니다." }]).map((item, index) => (
+            {(insightLines.length
+              ? insightLines
+              : [{ title: "시장 분석", summary: "분석 결과를 바탕으로 시장 변화와 기업 대응 방향을 요약합니다." }]
+            ).map((item, index) => (
               <div key={index} style={{
                 padding: "11px 14px", borderRadius: 9,
-                background: "rgba(16,185,129,.04)", border: `1px solid ${R.emBr}`,
+                background: R.emBg, border: `1px solid ${R.emBr}`,
               }}>
                 <p style={{ margin: "0 0 5px", fontSize: 12.5, fontWeight: 800, color: R.emD, letterSpacing: "-.01em" }}>
                   {index + 1}. {item.title}
@@ -239,7 +253,7 @@ function CustomSlideView({ report }) {
           <div style={{ display: "grid", gap: 10 }}>
             {sections.map((section) => (
               <div key={section.index} style={{
-                padding: "15px 16px", borderRadius: 10, background: "rgba(16,185,129,.04)",
+                padding: "15px 16px", borderRadius: 10, background: R.emBg,
                 border: `1px solid ${R.emBr}`, minWidth: 0,
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
@@ -294,16 +308,15 @@ export default function ReportPage() {
       .catch(() => {
         if (!cancelled) setError("리포트를 불러오지 못했습니다.");
       });
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [slug]);
 
+  const R = useMemo(() => makeR(report?.domain), [report?.domain]);
   const references = useMemo(() => report?.references || [], [report]);
 
   if (error) {
     return (
-      <main style={{ minHeight: "100vh", background: R.bg, display: "grid", placeItems: "center", color: R.t2 }}>
+      <main style={{ minHeight: "100vh", background: BASE_R.bg, display: "grid", placeItems: "center", color: BASE_R.t2 }}>
         {error}
       </main>
     );
@@ -311,7 +324,7 @@ export default function ReportPage() {
 
   if (!report) {
     return (
-      <main style={{ minHeight: "100vh", background: R.bg, display: "grid", placeItems: "center", color: R.t3 }}>
+      <main style={{ minHeight: "100vh", background: BASE_R.bg, display: "grid", placeItems: "center", color: BASE_R.t3 }}>
         리포트 로딩 중...
       </main>
     );
@@ -320,7 +333,7 @@ export default function ReportPage() {
   return (
     <main style={{
       height: "100vh", overflow: "auto", background: R.bg, color: R.t1,
-      fontFamily: "\"Apple SD Gothic Neo\", -apple-system, BlinkMacSystemFont, \"SF Pro Display\", \"SF Pro Text\", \"Helvetica Neue\", sans-serif",
+      fontFamily: '"Apple SD Gothic Neo", -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif',
     }}>
       <div style={{
         position: "sticky", top: 0, zIndex: 5, height: 58, display: "flex",
@@ -343,7 +356,7 @@ export default function ReportPage() {
           </button>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <ViewToggle value={viewMode} onChange={setViewMode} />
+          <ViewToggle value={viewMode} onChange={setViewMode} R={R} />
           <img src="/logo-mark.png" alt="Canopy" style={{ width: 50, height: 36, objectFit: "contain" }} />
         </div>
       </div>
@@ -353,48 +366,57 @@ export default function ReportPage() {
         display: "grid", gridTemplateColumns: "minmax(0, 1fr) 380px", gap: 22,
       }}>
         {viewMode === "custom" ? (
-          <CustomSlideView report={report} />
+          <CustomSlideView report={report} R={R} />
         ) : (
-        <article style={{
-          minWidth: 0, padding: "36px 44px", borderRadius: 16, background: R.panel,
-          border: `1px solid ${R.border}`, boxShadow: R.shadow,
-        }}>
-          <div style={{ marginBottom: 28 }}>
-            <SourceBadge>Executive Report</SourceBadge>
-            <h1 style={{ margin: "14px 0 10px", fontSize: 30, lineHeight: 1.28, letterSpacing: 0, color: R.t1 }}>
-              {report.topic}
-            </h1>
-            {report.run_ts && <p style={{ margin: 0, fontSize: 12, color: R.t4 }}>{report.run_ts}</p>}
-          </div>
+          <article style={{
+            minWidth: 0, padding: "36px 44px", borderRadius: 16, background: R.panel,
+            border: `1px solid ${R.border}`, boxShadow: R.shadow,
+          }}>
+            <div style={{ marginBottom: 28 }}>
+              <SourceBadge R={R}>Executive Report</SourceBadge>
+              <h1 style={{ margin: "14px 0 10px", fontSize: 30, lineHeight: 1.28, letterSpacing: 0, color: R.t1 }}>
+                {report.topic}
+              </h1>
+              {report.run_ts && <p style={{ margin: 0, fontSize: 12, color: R.t4 }}>{report.run_ts}</p>}
+            </div>
 
-          {report.executive_summary && (
-            <section style={{
-              padding: "20px 22px", borderRadius: 12, background: R.emBg,
-              border: `1px solid ${R.emBr}`, marginBottom: 10,
-            }}>
-              <h2 style={{ margin: "0 0 10px", fontSize: 16, color: R.emD }}>Executive Summary</h2>
-              <p style={{ margin: 0, fontSize: 14.5, color: R.t2, lineHeight: 1.85 }}>
-                {report.executive_summary}
-              </p>
-            </section>
-          )}
+            {report.executive_summary && (
+              <section style={{
+                padding: "20px 22px", borderRadius: 12, background: R.emBg,
+                border: `1px solid ${R.emBr}`, marginBottom: 10,
+              }}>
+                <h2 style={{ margin: "0 0 10px", fontSize: 16, color: R.emD }}>Executive Summary</h2>
+                <p style={{ margin: 0, fontSize: 14.5, color: R.t2, lineHeight: 1.85 }}>
+                  {report.executive_summary}
+                </p>
+              </section>
+            )}
 
-          {report.sections.map((section) => <SectionBlock key={section.index} section={section} />)}
+            {report.sections.map((section) => (
+              <SectionBlock key={section.index} section={section} R={R} />
+            ))}
 
-          {report.insights?.length > 0 && (
-            <section style={{ paddingTop: 30, borderTop: `1px solid ${R.border}` }}>
-              <h2 style={{ margin: "0 0 16px", fontSize: 20, color: R.t1 }}>Market Insights</h2>
-              <div style={{ display: "grid", gap: 14 }}>
-                {report.insights.map((insight, index) => (
-                  <div key={index} style={{ padding: "17px 18px", borderRadius: 10, background: R.panelStrong, border: `1px solid ${R.border}` }}>
-                    <h3 style={{ margin: "0 0 8px", fontSize: 15, color: R.emD }}>{index + 1}. {insight.title}</h3>
-                    <p style={{ margin: 0, fontSize: 13.5, color: R.t2, lineHeight: 1.75 }}>{insight.body}</p>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-        </article>
+            {report.insights?.length > 0 && (
+              <section style={{ paddingTop: 30, borderTop: `1px solid ${R.border}` }}>
+                <h2 style={{ margin: "0 0 16px", fontSize: 20, color: R.t1 }}>Market Insights</h2>
+                <div style={{ display: "grid", gap: 14 }}>
+                  {report.insights.map((insight, index) => (
+                    <div key={index} style={{
+                      padding: "17px 18px", borderRadius: 10,
+                      background: R.panelStrong, border: `1px solid ${R.border}`,
+                    }}>
+                      <h3 style={{ margin: "0 0 8px", fontSize: 15, color: R.emD }}>
+                        {index + 1}. {insight.title}
+                      </h3>
+                      <p style={{ margin: 0, fontSize: 13.5, color: R.t2, lineHeight: 1.75 }}>
+                        {insight.body}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+          </article>
         )}
 
         <aside style={{ position: "sticky", top: 78, alignSelf: "start", maxHeight: "calc(100vh - 98px)", overflow: "auto" }}>
@@ -407,7 +429,9 @@ export default function ReportPage() {
               본문에 사용된 링크와 해당 근거
             </p>
             <div style={{ display: "grid", gap: 10 }}>
-              {references.map((refItem, index) => <ReferenceCard key={`${refItem.url}-${index}`} refItem={refItem} />)}
+              {references.map((refItem, index) => (
+                <ReferenceCard key={`${refItem.url}-${index}`} refItem={refItem} R={R} />
+              ))}
             </div>
           </div>
         </aside>

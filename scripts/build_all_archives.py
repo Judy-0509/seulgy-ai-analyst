@@ -28,14 +28,27 @@ ARCHIVES = ROOT / "data" / "archives"
 
 # (UI 표시명, 빌더 스크립트, 산출 JSON 파일명)
 BUILDERS = [
-    ("Counterpoint Research", "build_counterpoint_archive.py",   "counterpoint.json"),
-    ("TrendForce",            "build_trendforce_archive.py",     "trendforce.json"),
-    ("Omdia",                 "build_omdia_archive.py",          "omdia.json"),
-    ("IDC",                   "build_idc_archive.py",            "idc.json"),
-    ("Reuters",               "build_reuters_archive.py",        "reuters.json"),
-    ("Yole",                  "build_yole_archive.py",           "yole.json"),
-    ("Gartner",               "build_gartner_archive.py",        "gartner.json"),
-    ("Morgan Stanley",        "build_morgan_stanley_archive.py", "morgan_stanley.json"),
+    # ── Smartphone sources ─────────────────────────────────────────
+    ("Counterpoint Research", "build_counterpoint_archive.py",          "counterpoint.json"),
+    ("TrendForce",            "build_trendforce_archive.py",            "trendforce.json"),
+    ("Omdia",                 "build_omdia_archive.py",                 "omdia.json"),
+    ("IDC",                   "build_idc_archive.py",                   "idc.json"),
+    ("Reuters",               "build_reuters_archive.py",               "reuters.json"),
+    ("Yole",                  "build_yole_archive.py",                  "yole.json"),
+    ("Gartner",               "build_gartner_archive.py",               "gartner.json"),
+    ("Morgan Stanley",        "build_morgan_stanley_archive.py",        "morgan_stanley.json"),
+    # ── Humanoid / Robotics sources ────────────────────────────────
+    ("The Robot Report",           "build_robot_report_archive.py",          "robot_report.json"),
+    ("IEEE Spectrum",              "build_ieee_spectrum_robotics_archive.py", "ieee_spectrum_robotics.json"),
+    ("TechCrunch Robotics",        "build_techcrunch_robotics_archive.py",   "techcrunch_robotics.json"),
+    ("MIT Technology Review",      "build_mit_tech_review_archive.py",       "mit_tech_review.json"),
+    ("Robotics & Automation News", "build_robotics_automation_news_archive.py", "robotics_automation_news.json"),
+    ("The Verge",                  "build_verge_robotics_archive.py",        "verge_robotics.json"),
+    ("arXiv (cs.RO)",              "build_arxiv_robotics_archive.py",        "arxiv_robotics.json"),
+    ("NVIDIA",                     "build_nvidia_news_archive.py",           "nvidia_news.json"),
+    ("Boston Dynamics",            "build_boston_dynamics_archive.py",       "boston_dynamics.json"),
+    ("Figure AI",                  "build_figure_ai_archive.py",             "figure_ai.json"),
+    ("Unitree Robotics",           "build_unitree_archive.py",               "unitree.json"),
 ]
 
 PER_BUILDER_TIMEOUT_SEC = 900  # 빌더당 최대 15분

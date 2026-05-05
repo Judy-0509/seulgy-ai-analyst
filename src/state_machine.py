@@ -15,6 +15,7 @@ from src.services.body_fetcher import fetch_or_cached, FETCHABLE_SOURCES, BLOCKE
 from src.services.llm import LLMService
 from src.services.citation import CitationRegistry
 from src.prompts.system import ANALYST_SYSTEM_PROMPT
+from src.domains import load_domain
 from src.prompts.step_prompts import (
     PLANNING_DIMENSIONS_PROMPT,
     DIMENSION_FINALIZE_PROMPT,
@@ -41,12 +42,14 @@ def _log_plan_raw(label: str, text: str, reasoning: str = "") -> None:
 
 
 class AnalysisPipeline:
-    def __init__(self, on_data_gap: Callable = None):
+    def __init__(self, domain_id: str = "smartphone", on_data_gap: Callable = None):
         self.search = SearchService()
         self.llm = LLMService()
         self.registry = CitationRegistry()
         self.on_data_gap = on_data_gap
         self.state: Optional[PipelineState] = None
+        self._domain = load_domain(domain_id)
+        self._sys = self._domain["system_prompt"]
 
     def _make_step(self, cls, progress_cb=None, **kwargs):
         return cls(self.search, self.llm, self.registry, progress_cb=progress_cb, **kwargs)
@@ -97,7 +100,7 @@ class AnalysisPipeline:
         if not pre_queries:
             pre_queries = [
                 f"{eng_topic} {_year()}",
-                f"{eng_topic} smartphone market",
+                f"{eng_topic} {self._domain['fallback_query_suffix']}",
                 f"{eng_topic} latest news",
             ]
 
@@ -205,7 +208,7 @@ class AnalysisPipeline:
         proposed_dimensions = dim_data.get("key_dimensions") or []
         dimension_rationale = dim_data.get("dimension_rationale") or {}
         dimension_queries_grouped = dim_data.get("dimension_queries_grouped") or []
-        analysis_rationale = dim_data.get("analysis_rationale") or f"{eng_topic} smartphone market analysis"
+        analysis_rationale = dim_data.get("analysis_rationale") or f"{eng_topic} {self._domain['fallback_query_suffix']} analysis"
 
         # 길이 정합 보정
         while len(dimension_queries_grouped) < len(proposed_dimensions):
@@ -222,7 +225,7 @@ class AnalysisPipeline:
                                    "소비자 수요 및 Sell-through 변화", "공급망 현황", "경쟁 구도 변화"]
             dimension_rationale = {d: "" for d in proposed_dimensions}
             dimension_queries_grouped = [
-                [f"{eng_topic} smartphone market {_year()}", f"{eng_topic} supply chain {_year()}", f"{eng_topic} market share forecast"],
+                [f"{eng_topic} {self._domain['fallback_query_suffix']} {_year()}", f"{eng_topic} supply chain {_year()}", f"{eng_topic} market share forecast"],
                 [f"{eng_topic} Samsung response", f"{eng_topic} Apple strategy", f"{eng_topic} Chinese OEM"],
                 [f"{eng_topic} consumer demand {_year()}", f"{eng_topic} price sensitivity", f"{eng_topic} sell-through retail"],
                 [f"{eng_topic} supply chain {_year()}", f"{eng_topic} component shortage", f"{eng_topic} production forecast"],
