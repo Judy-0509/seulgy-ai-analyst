@@ -184,15 +184,29 @@ def enrich_topic(topic: dict, extra: list[dict], client, model: str,
         rationale           = topic.get("rationale", ""),
         additional_articles = format_article_list(extra),
     )
-    response = client.chat.completions.create(
-        model=model,
-        messages=[
-            {"role": "system", "content": enrich_system},
-            {"role": "user",   "content": prompt},
-        ],
-        max_tokens=4000,
-        temperature=0.1,
-    )
+    import time as _time
+    response = None
+    for _attempt in range(5):
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": enrich_system},
+                    {"role": "user",   "content": prompt},
+                ],
+                max_tokens=4000,
+                temperature=0.1,
+            )
+            break
+        except Exception as _e:
+            if "429" in str(_e) or "1302" in str(_e) or "rate" in str(_e).lower():
+                wait = 60 * (2 ** _attempt)
+                print(f"      [enrich] Rate limit, waiting {wait}s (attempt {_attempt+1}/5)...")
+                _time.sleep(wait)
+            else:
+                raise
+    if response is None:
+        return topic
     raw = response.choices[0].message.content or ""
     raw = re.sub(r"```(?:json)?\s*", "", raw).strip().rstrip("`").strip()
     m = re.search(r"\{.*\}", raw, re.DOTALL)
@@ -246,16 +260,30 @@ def run_pipeline(
     # Step 3 — Pass 1 LLM
     client, model, thinking_body = make_client()
     print(f"[3/5] Pass 1 — {model} thinking ({domain_label})...")
-    response = client.chat.completions.create(
-        model=model,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user",   "content": user_prompt},
-        ],
-        max_tokens=30000,
-        temperature=0.1,
-        extra_body=thinking_body,
-    )
+    import time as _time
+    for _attempt in range(5):
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user",   "content": user_prompt},
+                ],
+                max_tokens=30000,
+                temperature=0.1,
+                extra_body=thinking_body,
+            )
+            break
+        except Exception as _e:
+            if "429" in str(_e) or "1302" in str(_e) or "rate" in str(_e).lower():
+                wait = 60 * (2 ** _attempt)
+                print(f"      Rate limit, waiting {wait}s (attempt {_attempt+1}/5)...")
+                _time.sleep(wait)
+            else:
+                raise
+    else:
+        print("[!] Rate limit not resolved after 5 attempts")
+        sys.exit(1)
     msg       = response.choices[0].message
     reasoning = getattr(msg, "reasoning_content", "") or ""
     content   = msg.content or ""
