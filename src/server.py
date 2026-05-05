@@ -55,6 +55,16 @@ ARCHIVE_REGISTRY = [
 ]
 
 app = FastAPI()
+
+
+@app.on_event("startup")
+def _startup() -> None:
+    from src.news_db import init_db
+    from src.news_scheduler import start_scheduler
+    init_db()
+    start_scheduler()
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

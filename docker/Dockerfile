@@ -29,7 +29,7 @@ COPY data/     ./data/
 # Built frontend (from Stage 1)
 COPY --from=frontend-builder /build/dist ./frontend/dist
 
-RUN mkdir -p /app/data/archives /app/data/reports
+RUN mkdir -p /app/data/archives /app/data/reports /app/data/mi_news
 
 EXPOSE 8000
 

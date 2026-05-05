@@ -11,8 +11,7 @@ services:
       - "8000:8000"
     volumes:
       - ../data:/app/data
-      # market_news_dashboard DB를 read-only로 마운트 (뉴스 피드용)
-      - ../../market_news_dashboard/data:/app/data/mi_news:ro
+      - ../data/mi_news:/app/data/mi_news
     env_file:
       - ../.env
     restart: unless-stopped
