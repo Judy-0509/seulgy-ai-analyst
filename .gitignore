@@ -13,12 +13,13 @@ data/article_bodies.db
 data/article_bodies.db-wal
 data/article_bodies.db-shm
 
-# ── 생성된 보고서 (reports/) ─────────────────
+# ── 생성된 보고서 / 산출물 ────────────────────
 reports/*_report.html
 reports/*_report.md
 reports/*_process.json
 reports/archive_viewer.html
-# glm_topic_suggestions.html 은 포함 (메인 UI)
+reports/glm_topic_suggestions.html
+scripts/_topic_suggestions.json
 
 # ── 프론트엔드 ────────────────────────────────
 frontend/node_modules/

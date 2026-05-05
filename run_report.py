@@ -78,7 +78,7 @@ def _format_evidence_block(results, bodies: dict | None = None) -> str:
     """SECTION_REPORT_PROMPT용 evidence 포맷. bodies dict {url→body} 있으면 우선."""
     bodies = bodies or {}
     lines = []
-    for i, r in enumerate(results[:8], 1):
+    for i, r in enumerate(results[:12], 1):
         title = (r.article_title or r.source_name or "")[:100]
         body = bodies.get(r.source_url, "")
         snippet = (r.content or "")[:1500].replace("\n", " ")
@@ -99,31 +99,87 @@ def _format_evidence_block(results, bodies: dict | None = None) -> str:
 _KOREAN_RE = re.compile(r"[가-힣]")
 
 
-async def stage_a(llm: LLMService, topic: str) -> tuple[list[str], str]:
+def _preview_text(text: str, limit: int = 700) -> str:
+    compact = re.sub(r"\s+", " ", text or "").strip()
+    return compact[:limit]
+
+
+def _extract_search_queries(text: str) -> list[str]:
+    queries = _extract_json_array(text) or []
+    if queries:
+        return queries
+
+    obj = _extract_json_block(text)
+    if isinstance(obj, dict):
+        for key in ("queries", "search_queries", "english_queries", "pre_queries"):
+            value = obj.get(key)
+            if isinstance(value, list):
+                queries = [q for q in value if isinstance(q, str)]
+                if queries:
+                    return queries[:8]
+
+    lines = []
+    for line in (text or "").splitlines():
+        cleaned = re.sub(r"^\s*(?:[-*•]|\d+[\).])\s*", "", line).strip().strip('"')
+        if len(cleaned.split()) >= 3 and not _KOREAN_RE.search(cleaned):
+            lines.append(cleaned)
+    return lines[:8]
+
+
+async def stage_a(llm: LLMService, topic: str, progress_cb=None) -> tuple[list[str], str]:
+    async def progress(step: str, text: str, **extra):
+        if progress_cb:
+            await progress_cb(step=step, text=text, **extra)
+
     print("[A] 영문 쿼리 생성...")
     t0 = time.time()
+    await progress("topic_received", "한국어 분석 주제를 수신했습니다.", topic=topic)
     prompt = PRE_SEARCH_PROMPT.format(topic=topic, current_year=_year())
-    resp = await llm.complete(ANALYST_SYSTEM_PROMPT, prompt, max_tokens=1000, temperature=0.1)
-    raw = _strip_fence(resp.content.strip())
-    queries = _extract_json_array(raw)
+    await progress("llm_request", "GLM에 영어 검색 쿼리 생성을 요청했습니다.", model="glm-4.7")
+    resp = await llm.complete(ANALYST_SYSTEM_PROMPT, prompt, max_tokens=2000, temperature=0.1)
+    raw = _strip_fence((resp.content or resp.reasoning or "").strip())
+    await progress(
+        "llm_response",
+        "GLM 응답을 수신했습니다.",
+        elapsed=round(time.time() - t0, 1),
+        preview=_preview_text(raw),
+    )
+    queries = _extract_search_queries(raw)
+    raw_count = len(queries or [])
     # 한국어 포함 쿼리 제거 — 영어 archive에서 검색 품질 저하 방지
     queries = [q for q in (queries or []) if not _KOREAN_RE.search(q)]
+    await progress(
+        "filter_queries",
+        f"영어 아카이브 검색에 맞게 한국어 포함 쿼리를 제외했습니다. ({len(queries)}/{raw_count}개 유지)",
+        raw_count=raw_count,
+        kept_count=len(queries),
+    )
     if not queries:
         # 재시도: 단순 번역 프롬프트
+        await progress("retry_simple", "유효한 영어 쿼리가 없어 단순 번역 프롬프트로 재시도합니다.")
         simple_prompt = (
             f'Translate this topic into 4 English search queries. '
             f'Return ONLY a JSON array, no explanation: ["query1","query2","query3","query4"]\n'
             f'Topic: "{topic}"\nYear: {_year()}'
         )
         try:
-            resp2 = await llm.complete(ANALYST_SYSTEM_PROMPT, simple_prompt, max_tokens=300, temperature=0.1)
-            raw2 = _strip_fence(resp2.content.strip())
-            queries = [q for q in (_extract_json_array(raw2) or []) if not _KOREAN_RE.search(q)]
+            resp2 = await llm.complete(ANALYST_SYSTEM_PROMPT, simple_prompt, max_tokens=2000, temperature=0.1)
+            raw2 = _strip_fence((resp2.content or resp2.reasoning or "").strip())
+            retry_raw_queries = _extract_search_queries(raw2)
+            queries = [q for q in retry_raw_queries if not _KOREAN_RE.search(q)]
+            await progress(
+                "retry_done",
+                f"재시도 결과 영어 쿼리 {len(queries)}개를 확보했습니다.",
+                kept_count=len(queries),
+                preview=_preview_text(raw2),
+            )
         except Exception:
+            await progress("retry_failed", "재시도 요청이 실패했습니다. 키워드 폴백을 준비합니다.")
             pass
 
     if not queries:
         # 최종 폴백: 주제 키워드 기반 동적 쿼리
+        await progress("fallback", "LLM 쿼리를 사용할 수 없어 주제 키워드 기반 폴백 쿼리를 생성합니다.")
         _KO_EN = {
             "폴더블": "foldable", "아이폰": "iPhone", "삼성": "Samsung",
             "스마트폰": "smartphone", "출시": "launch", "시장": "market",
@@ -132,6 +188,11 @@ async def stage_a(llm: LLMService, topic: str) -> tuple[list[str], str]:
             "점유율": "market share", "비용": "cost", "전략": "strategy",
             "갤럭시": "Galaxy", "화웨이": "Huawei", "중국": "China",
             "분석": "analysis", "성장": "growth", "위축": "decline",
+            "온디바이스": "on-device", "온디바이스 AI": "on-device AI",
+            "에이전트": "agent", "AI 에이전트": "AI agent",
+            "로드맵": "roadmap", "소비자": "consumer", "수용도": "adoption",
+            "실제": "actual", "괴리": "gap", "격차": "gap",
+            "사용자": "user", "경험": "experience", "기기": "device",
         }
         eng = topic
         for ko, en in _KO_EN.items():
@@ -145,6 +206,13 @@ async def stage_a(llm: LLMService, topic: str) -> tuple[list[str], str]:
         ]
         print(f"   [!] LLM이 영어 쿼리를 생성하지 못해 키워드 폴백 사용")
     eng_topic = " ".join(queries[0].split()[:6])
+    await progress(
+        "final_queries",
+        f"최종 영어 검색 쿼리 {len(queries)}개를 확정했습니다.",
+        queries=queries,
+        eng_topic=eng_topic,
+        elapsed=round(time.time() - t0, 1),
+    )
     print(f"   → 쿼리 {len(queries)}개 생성 ({round(time.time()-t0,1)}s): {queries[0][:60]}...")
     return queries, eng_topic
 
@@ -542,8 +610,13 @@ async def stage_g(llm: LLMService, topic: str, sections: list[dict]) -> dict:
     data = _extract_json_block(raw) or {}
     insights = data.get("insights", [])
     exec_summary = data.get("executive_summary", "")
+    research_background = data.get("research_background", "")
     print(f"   → 시사점 {len(insights)}개 ({round(time.time()-t0,1)}s)")
-    return {"executive_summary": exec_summary, "insights": insights}
+    return {
+        "research_background": research_background,
+        "executive_summary": exec_summary,
+        "insights": insights,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -637,17 +710,17 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{title}</title>
 <style>
-  body {{ font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; max-width: 960px; margin: 40px auto; padding: 0 24px; color: #1a1a1a; line-height: 1.75; }}
-  h1 {{ font-size: 1.6rem; border-bottom: 2px solid #2563eb; padding-bottom: 8px; margin-bottom: 4px; }}
-  h2 {{ font-size: 1.2rem; margin-top: 2.5rem; color: #1d4ed8; border-left: 4px solid #2563eb; padding-left: 10px; }}
+  body {{ font-family: 'Apple SD Gothic Neo', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif; max-width: 960px; margin: 40px auto; padding: 0 24px; background: #f7f6f3; color: #2a2826; line-height: 1.75; }}
+  h1 {{ font-size: 1.6rem; border-bottom: 2px solid #10b981; padding-bottom: 8px; margin-bottom: 4px; letter-spacing: -0.01em; }}
+  h2 {{ font-size: 1.2rem; margin-top: 2.5rem; color: #047857; border-left: 4px solid #10b981; padding-left: 10px; }}
   p {{ margin: 0.6em 0; }}
-  strong {{ color: #0f172a; }}
+  strong {{ color: #1f2933; }}
   ul, ol {{ padding-left: 1.4em; }}
   li {{ margin: 0.3em 0; }}
-  a {{ color: #2563eb; text-decoration: none; }}
+  a {{ color: #059669; text-decoration: none; }}
   a:hover {{ text-decoration: underline; }}
   .meta {{ color: #6b7280; font-size: 0.85rem; margin-bottom: 2rem; }}
-  h3 {{ font-size: 1rem; margin-top: 1.2rem; color: #1e40af; }}
+  h3 {{ font-size: 1rem; margin-top: 1.2rem; color: #047857; }}
   hr {{ border: none; border-top: 1px solid #e2e8f0; margin: 2rem 0; }}
 
   /* ── 수행 과정 섹션 ── */
@@ -777,8 +850,7 @@ def _build_html(
 ) -> str:
     md_text = _build_markdown(topic, sections, run_ts, meta)
     report_html = md_lib.markdown(md_text, extensions=["tables", "nl2br"])
-    process_html = _build_process_html(sections, archive_results, pre_queries)
-    return HTML_TEMPLATE.format(title=topic, body=process_html + report_html)
+    return HTML_TEMPLATE.format(title=topic, body=report_html)
 
 
 # ---------------------------------------------------------------------------
@@ -986,8 +1058,7 @@ def rebuild_html_from_process(process_json_path: str):
     meta = data.get("meta", {})
     # 저장된 markdown 재사용 (이미 executive summary + insights 포함)
     report_html = md_lib.markdown(md_text, extensions=["tables", "nl2br"])
-    process_html = _build_process_html(sections, archive_results, pre_queries)
-    html_text = HTML_TEMPLATE.format(title=topic, body=process_html + report_html)
+    html_text = HTML_TEMPLATE.format(title=topic, body=report_html)
 
     html_path = REPORTS_DIR / f"{slug}_report.html"
     html_path.write_text(html_text, encoding="utf-8")

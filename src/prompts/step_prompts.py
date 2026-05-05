@@ -1,4 +1,4 @@
-PRE_SEARCH_PROMPT = """You are a smartphone market analyst. Convert this topic to 6-8 English search queries that cover FOUR DIFFERENT RESEARCH ANGLES.
+﻿PRE_SEARCH_PROMPT = """You are a smartphone market analyst. Convert this topic to 6-8 English search queries that cover FOUR DIFFERENT RESEARCH ANGLES.
 
 CRITICAL: The topic may be written in Korean. You MUST translate it into English and generate ALL queries in English only. Zero Korean characters allowed in any query.
 
@@ -306,7 +306,7 @@ Respond ONLY with a valid JSON object (no markdown, no code blocks):
 
 {{
   "headline": "<one Korean sentence ≤80 chars — the section's single most important CAUSAL conclusion>",
-  "narrative": "<1-2 Korean paragraphs: explicitly state 원인→메커니즘→결과. Prose only, no bullets>",
+  "narrative": "<Korean prose of 4-5 sentences: explicitly state 원인→메커니즘→결과. Use concrete companies, dates, percentages, shipment figures, revenue figures, prices, market shares, or forecast years whenever they appear in the evidence. Every sentence should include at least one specific company, market, period, number, or measurable market effect when supported by the evidence. Prose only, no bullets, no line breaks.>",
   "bullets": [
     "• \"<VERBATIM quote — copy the exact title or key sentence from the source article, do NOT paraphrase>\" — <article document title> [Source name, YYYY-MM-DD]",
     "• \"<VERBATIM quote>\" — <article document title> [Source name, YYYY-MM-DD]",
@@ -320,7 +320,7 @@ Respond ONLY with a valid JSON object (no markdown, no code blocks):
 
 Component rules:
 - headline: ≤80 Korean chars; must be a causal conclusion — NOT a topic label
-- narrative: 한국어 산문; 원인-메커니즘-결과 명시; 투자 관점(주가/밸류에이션) 제외
+- narrative: 한국어 산문 4-5문장; 원인-메커니즘-결과 명시; 가능한 모든 문장에 근거 기반 수치·기업명·기간·시장명을 포함; 투자 관점(주가/밸류에이션) 제외
 - bullets: 3-5 items; each bullet is ONE complete line — do NOT split a single quote across multiple bullets
 - each bullet MUST quote ONE verbatim title or ONE complete verbatim sentence from the evidence; do NOT paraphrase
 - if the source title is the key claim, use the article title verbatim; if a specific complete sentence is more precise, use that full sentence verbatim
@@ -333,7 +333,7 @@ Component rules:
 """
 
 
-INSIGHTS_PROMPT = """You are a smartphone market analyst. Based on the three-section causal chain report below, generate market insights (시사점) and an executive summary.
+INSIGHTS_PROMPT = """You are a smartphone market analyst. Based on the three-section causal chain report below, generate research background, market insights (시사점), and an executive summary.
 
 Topic: "{topic}"
 Current date: {current_date}
@@ -357,6 +357,7 @@ Read the 3 report sections carefully. Section 1 establishes the structural backd
 Respond ONLY with a valid JSON object (no markdown, no code blocks):
 
 {{
+  "research_background": "<Korean prose of 2-4 sentences. Explain the concrete market or industry change that made this topic important. Start directly with the market change, NOT with the act of researching. Do NOT use generic phrases like '이 주제를 조사했습니다', '확인할 필요가 있습니다', '최근 시장 변화와 기업 전략의 연결 관계'. Describe the concrete structural change, competitive shift, technology shift, demand shift, regulation shift, supply chain shift, or business model shift reflected in the report. Include the most important available numbers, dates, companies, or events only when supported by the report. No bullets, no markdown, no citations, no URLs.>",
   "executive_summary": "<Korean prose of MINIMUM 600 Korean characters covering ONLY the 3-section causal chain: 구조적 원인 → 직접 영향 → 시장 결과. Write 6-8 sentences as ONE flowing paragraph — NOT a list of disconnected facts. Connect sentences naturally using transitional phrases such as 이로 인해, 이러한 흐름 속에서, 그 결과, 나아가, 한편 등. DO NOT use English terms or abbreviations — Korean only. Structure: [원인 파트] 첫 문장부터 '구조적 변화', '시장 확장' 같은 추상 표현 금지 — 반드시 구체적 수치와 현상을 직접 서술할 것 (예: '애플의 폴더블 출시 예정으로 2026년 시장이 20% 성장할 것으로 전망됩니다'). [메커니즘 파트] 그 원인이 어떤 경로로 시장에 전달됐는가 — 이전 문장과 이로 인해/이에 따라 등으로 자연스럽게 이어질 것. [결과 파트] 구체적 기업명과 수치로 승자·패자 서술 — 앞 흐름의 귀결로 연결할 것. 원인 재도입 금지 — 원인은 한 번만 언급하고 이후 문장은 그 흐름의 연속으로만 전개할 것. 인사이트·미래 전망 문장은 포함하지 말 것. TENSE: 애플 폴더블의 출시 자체와 그 시장 영향(점유율 확보, 판매량 잠식 등)은 {current_date} 기준 아직 발생하지 않은 미래 사건 — 반드시 ~전망됩니다/예상됩니다/예정입니다 사용. 출시 발표·부품 발주 증대처럼 이미 보도된 사실은 ~했습니다 가능. 합쇼체만: 했습니다/합니다/입니다/됩니다/있습니다. ~다 절대 금지.>",
   "insights": [
     {{
@@ -378,6 +379,7 @@ Rules:
 - Every claim must be traceable to the report's specific numbers or named companies
 - No investment angle (주가/밸류에이션 제외)
 - All text in Korean
+- research_background must be specific to this report and must not contain boilerplate research-purpose wording
 """
 
 
@@ -686,148 +688,4 @@ Question generation rules:
 - It should be a question that elicits a concrete and quantitative answer
 - No investment-angle (stock price / valuation / buy-sell)
 - Output ONLY the question sentence — no explanations, numbering, or bullets
-"""
-
-
-PHASE1_QUESTION_FINALIZE_PROMPT = """You are a smartphone market analyst.
-
-Topic: "{topic}"
-
-Current key questions ({n_questions}):
-{key_questions_text}
-
-Phase 0 dimensions available for grounding (use these names when assigning related_dimensions to newly added questions):
-{available_dimensions}
-
-Cumulative user-excluded topics (carried over from previous rounds — keep unless the user explicitly cancels):
-- Korean cumulative: {prev_excluded_topics_ko}
-- English mirror: {prev_excluded_topics_en}
-
-User feedback for THIS round (free-form — number-based / natural language / mixed all accepted):
-{feedback}
-
-Apply the feedback to finalize the structure of the {n_questions} questions, and extract any additional topics the user wants to "exclude".
-
-Processing rules:
-- Question numbers refer to the input order (1, 2, 3 …). User feedback uses the same numbering.
-- Each existing question must end up in EXACTLY ONE of: kept / merged / excluded
-- **Integrity constraint**: kept_question_ids ∪ (union of all merge_groups[*].source_ids) ∪ excluded_question_ids == the full input number set ({n_questions} items). No duplicates.
-- Interpret feedback whether it is number-based ("merge 1+2, exclude 3"), natural language ("drop the supply chain stuff"), or mixed
-- merge_groups: list source_ids in ascending order; merged_id is e.g. "2+5"
-- For merges, write a natural Korean question sentence (concrete & quantitative) into merged_question_text that integrates the cores of both source questions
-- Solo-kept questions go into kept_question_ids by their order number
-- Add new questions ONLY if the user explicitly requests new ones; otherwise added_questions is []
-  - question: one concrete & quantitative Korean sentence (no excluded topics, no investment angle)
-  - perspective: one of build / sell_in / sell_through / composite
-  - related_dimensions: pick relevant names from the "available dimensions" list above (empty list if none)
-- Requests to deepen an answer ("also include specs", "find numbers too") are NOT structural changes — keep the question as-is.
-
-excluded_topics extraction rules:
-- excluded_topics_ko: ONLY the Korean keywords the user **newly added in THIS round** (delta — do NOT include prior cumulative)
-- excluded_topics_en: full English mirror of the **active full Korean set** (prior cumulative + this round's delta — minus any item the user said "include again"). Re-translate the entire active Korean set into English noun phrases. Prior English cumulative is informational only.
-- Keyword-level (noun phrases, not dimension names). e.g. "공급망", "BOM", "생산수율", "원가절감"
-- English mirror should consider synonyms / variation (e.g. "공급망" → ["supply chain"], "원가절감" → ["cost reduction", "cost cutting"] also acceptable)
-- No guessing or over-interpretation. Do not add items unless explicitly stated.
-- No investment-angle additions (stock price / buy-sell / valuation)
-
-Response format (PURE JSON only, NO markdown code blocks):
-
-{{
-  "kept_question_ids": ["1", "3"],
-  "merge_groups": [
-    {{
-      "merged_id": "2+5",
-      "source_ids": ["2", "5"],
-      "merged_question_text": "natural Korean question integrating two questions"
-    }}
-  ],
-  "excluded_question_ids": ["4"],
-  "added_questions": [
-    {{
-      "question": "concrete & quantitative Korean question",
-      "perspective": "sell_through",
-      "related_dimensions": ["dim name 1", "dim name 2"]
-    }}
-  ],
-  "excluded_topics_ko": ["원가절감"],
-  "excluded_topics_en": ["supply chain", "BOM", "yield", "cost reduction"]
-}}
-
-Additional constraints:
-- All Korean text in Korean; English queries/keywords in English
-- Current year: {current_year}
-- Output ONE pure JSON object, no markdown
-"""
-
-
-PHASE1_ANSWER_PROMPT = """You are a smartphone market analyst. Answer the key question below using ONLY the verified evidence provided.
-
-Topic: "{topic}"
-
-Question: {question}
-Question perspective: {question_perspective}
-Source perspective breakdown (only when this is a merged question — null if standalone): {source_perspective_breakdown}
-
-Answer time horizon: {time_horizon}
-
-Active excluded topics (Korean — these MUST NOT appear in the body in any form): {active_excluded_topics_ko}
-
-Related-dimension analyses (headline + subtopic.label + evidence + source_url):
----
-{related_dimensions_text}
----
-
-Previous answer attempts (last K=3 — empty means this is round 1):
-{previous_attempts_block}
-
-Answer rules:
-- **Answer is exactly 3-5 sentences**
-- Prefix each sentence with a marker: `[s1]`, `[s2]`, `[s3]`, `[s4]`, `[s5]` (use exactly as many as you write)
-- `sentence_count` must equal the number of markers actually written in paragraph (3-5)
-- Citation source_urls MUST come from the URLs that appear in the `related_dimensions_text` above (or the new evidence block, when present) — never cite an unverified URL
-- `source_urls` array contains only URLs you actually used in the body, deduplicated
-- None of the keywords in `active_excluded_topics_ko` may appear in the paragraph body (not even incidentally)
-- When `source_perspective_breakdown` is non-null (merged question): the paragraph MUST cover **all source perspectives in a balanced way**. e.g. if it is `{{"Q2":"build","Q5":"sell_through"}}`, include both build-side and sell_through-side evidence in the paragraph. Do not lean to one side.
-- Maintain the smartphone-market-analyst persona: analysis useful for decisions on Build (production) / Sell-in (channel shipment) / Sell-through (final sale)
-- Strictly NO investment-angle (stock price / valuation / buy-sell recommendation)
-- Exclude speculation / generalities — only statements grounded in evidence
-- Body IN KOREAN. Inside the paragraph, use single quotes (') for inner quotation (avoid escape errors with double quotes)
-- If previous attempts exist, address the gaps the prior attempts left
-
-Response format (PURE JSON only, NO markdown code blocks):
-
-{{
-  "paragraph": "[s1] First sentence. [s2] Second sentence. [s3] Third sentence.",
-  "sentence_count": 3,
-  "source_urls": ["https://...", "https://..."]
-}}
-"""
-
-
-PHASE1_REFINE_QUERY_PROMPT = """You are a smartphone market analyst's search-query specialist. Generate English search queries to fill the gap the user pointed out.
-
-Topic (Korean): "{topic}"
-Topic anchor (English): "{eng_topic}"
-Related question: {question}
-
-User-stated gap (single line, Korean or English):
-{gap}
-
-Active excluded topics (English — must NOT appear as a substring in any query, case-insensitive): {active_excluded_topics_en}
-
-Query generation rules:
-- **Generate 1-3 English queries** (minimum 1, maximum 3)
-- Translate the gap into English keywords / noun phrases that drive the queries
-- Each query MUST include the `eng_topic` anchor (e.g. "iPhone foldable" or its core keywords) — no generic searches unrelated to the topic
-- Each query MUST include either the current year ({current_year}) or "latest" to enforce recency
-- No item in `active_excluded_topics_en` may appear as a substring in any query (case-insensitive — e.g. if "supply chain" is excluded, "Supply Chain" / "supply-chain" etc. are also forbidden)
-- English only — no Korean characters
-- Prefer concrete product names / company names / figures (e.g. "iPhone Fold ASP 2026 forecast", "Apple foldable launch price specs")
-- Same-meaning duplicate queries are forbidden — each query must approach the gap from a different angle
-
-Response format (PURE JSON only, NO markdown code blocks):
-
-{{
-  "queries": ["iPhone Fold ASP 2026 forecast", "Apple foldable launch price specs"]
-}}
 """

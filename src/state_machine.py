@@ -11,7 +11,7 @@ def _year() -> int:
 
 from src.models import PipelineState, Topic, ResearchPlan, DimensionProposal
 from src.services.search import SearchService
-from src.services.body_fetcher import fetch_or_cached, FETCHABLE_SOURCES
+from src.services.body_fetcher import fetch_or_cached, FETCHABLE_SOURCES, BLOCKED_SOURCES
 from src.services.llm import LLMService
 from src.services.citation import CitationRegistry
 from src.prompts.system import ANALYST_SYSTEM_PROMPT
@@ -427,8 +427,8 @@ class AnalysisPipeline:
                         if not r.source_url or r.source_url in seen_urls:
                             continue
                         seen_urls.add(r.source_url)
-                        # F-stage body fetch (FETCHABLE_SOURCES만 캐시 통합 fetch)
-                        if r.source_name in FETCHABLE_SOURCES:
+                        # F-stage body fetch: FETCHABLE는 직접, BLOCKED는 Wayback 시도
+                        if r.source_name in FETCHABLE_SOURCES or r.source_name in BLOCKED_SOURCES:
                             body = await asyncio.to_thread(
                                 fetch_or_cached, r.source_url, r.source_name
                             )

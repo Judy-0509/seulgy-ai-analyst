@@ -1,42 +1,157 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { C } from "../theme";
 import SparkLogo from "./SparkLogo";
-import Tag from "./micro/Tag";
 
-const RECOMMENDED_TOPICS = [
-  {
-    id: 1, active: true,
-    title: "메모리 위기에 따른 OEM 가격 전략 및 시장 세분화 구조적 변화",
-    tag: "HOT", org: "Counterpoint · TrendForce · Omdia",
-    keyData: "DRAM/NAND 공급 과잉 → ASP 하락 → OEM 티어별 대응",
-    reason: "2025 Q2 핵심 이슈",
-  },
-  {
-    id: 2, active: false,
-    title: "주요 OEM의 AI 글래스 시장 진출 및 전략적 축 전환",
-    tag: "NEW", org: "Omdia · TrendForce",
-    keyData: "스마트 글래스 출하 YoY +340% 전망",
-    reason: "신규 폼팩터 분석",
-  },
-  {
-    id: 3, active: false,
-    title: "인도·동남아 중저가 스마트폰 시장 경쟁 구도 변화",
-    tag: "NEW", org: "Counterpoint · IDC",
-    keyData: "인도 <$200 세그먼트 Xiaomi vs Samsung 점유율",
-    reason: "신흥시장 성장 모멘텀",
-  },
-  {
-    id: 4, active: false,
-    title: "온디바이스 AI 탑재 확산에 따른 AP 시장 세력 재편",
-    tag: "분석", org: "Omdia · IDC",
-    keyData: "NPU 성능 경쟁 및 파운드리 수혜 구조",
-    reason: "AI 하드웨어 전환점",
-  },
-];
+const CRIT_STYLE = {
+  "2":    { label: "HOT",     bg: "#fefce8", color: "#b45309", dot: "#f59e0b" },
+  "3":    { label: "NEW",     bg: "#f0fdf4", color: "#15803d", dot: "#22c55e" },
+  "2+3":  { label: "HOT·NEW", bg: "#faf5ff", color: "#7e22ce", dot: "#a855f7" },
+};
 
-export default function HomeScreen({ onStart }) {
-  const [inputVal, setInputVal] = useState("");
+function critKey(criteria = "") {
+  if (criteria.includes("2") && criteria.includes("3")) return "2+3";
+  if (criteria.includes("2")) return "2";
+  return "3";
+}
+
+function CritBadge({ criteria }) {
+  const key = critKey(criteria);
+  const s = CRIT_STYLE[key];
+  return (
+    <span style={{
+      fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 5,
+      background: s.bg, color: s.color, whiteSpace: "nowrap",
+    }}>
+      {s.label}
+    </span>
+  );
+}
+
+function SectionHeader({ label, color, count }) {
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 8,
+      marginBottom: 12, marginTop: 28,
+      paddingBottom: 8, borderBottom: `1.5px solid ${C.border}`,
+    }}>
+      <span style={{ width: 8, height: 8, borderRadius: "50%", background: color, display: "inline-block", flexShrink: 0 }} />
+      <span style={{ fontSize: 13, fontWeight: 600, color: C.t2 }}>{label}</span>
+      <span style={{
+        fontSize: 10, color: C.t4, background: C.subtle,
+        borderRadius: 99, padding: "1px 8px", border: `1px solid ${C.border}`,
+      }}>{count}개 주제</span>
+    </div>
+  );
+}
+
+function TopicCard({ topic, onStart, isHovered, onEnter, onLeave }) {
+  const sources = [...new Set((topic.articles || []).map(a => a.source))];
+  const orgStr  = sources.join(" · ");
+  const keyDatum = (topic.key_data || [])[0] || "";
+  const rationale = topic.rationale || "";
+  const key = critKey(topic.criteria);
+  const dot = CRIT_STYLE[key].dot;
+
+  return (
+    <div
+      onMouseEnter={onEnter}
+      onMouseLeave={onLeave}
+      onClick={() => onStart(topic.title)}
+      style={{
+        background: C.card,
+        border: `1.5px solid ${isHovered ? dot : C.border}`,
+        borderRadius: 11, padding: "14px 16px", cursor: "pointer",
+        boxShadow: isHovered ? `0 4px 16px ${dot}22` : "0 1px 3px rgba(0,0,0,0.04)",
+        transition: "all 0.16s ease",
+        transform: isHovered ? "translateY(-2px)" : "none",
+        display: "flex", flexDirection: "column", gap: 9,
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 6 }}>
+        <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: C.t1, lineHeight: 1.45, flex: 1 }}>
+          {topic.title}
+        </p>
+        <CritBadge criteria={topic.criteria} />
+      </div>
+
+      {keyDatum && (
+        <div style={{
+          background: C.subtle, borderRadius: 6, padding: "7px 9px",
+          fontSize: 11, color: C.t3, fontFamily: C.mono, lineHeight: 1.4,
+        }}>
+          {keyDatum}
+        </div>
+      )}
+
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6 }}>
+        <span style={{
+          fontSize: 10, color: C.t4, background: C.subtle,
+          borderRadius: 5, padding: "2px 6px", border: `1px solid ${C.border}`,
+          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 220,
+        }}>
+          {orgStr}
+        </span>
+        <span style={{ fontSize: 10, color: C.t4, flexShrink: 0 }}>
+          {topic.institution_count}개 기관
+        </span>
+      </div>
+
+      {rationale && (
+        <p style={{ margin: 0, fontSize: 11, color: C.t3, lineHeight: 1.55,
+                    display: "-webkit-box", WebkitLineClamp: 2,
+                    WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+          {rationale}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function TopicSection({ label, color, topics, onStart, hoveredId, setHoveredId }) {
+  if (!topics.length) return null;
+  return (
+    <div>
+      <SectionHeader label={label} color={color} count={topics.length} />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(270px, 1fr))", gap: 10 }}>
+        {topics.map((t, i) => (
+          <TopicCard
+            key={i}
+            topic={t}
+            onStart={onStart}
+            isHovered={hoveredId === `${label}-${i}`}
+            onEnter={() => setHoveredId(`${label}-${i}`)}
+            onLeave={() => setHoveredId(null)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default function HomeScreen({ onStart, onArchive }) {
+  const [inputVal, setInputVal]   = useState("");
   const [hoveredId, setHoveredId] = useState(null);
+  const [topics, setTopics]       = useState(null); // null = loading
+  const [generatedAt, setGeneratedAt] = useState(null);
+
+  useEffect(() => {
+    fetch("/api/topics/suggested")
+      .then(r => r.json())
+      .then(data => {
+        setTopics(data.topics || []);
+        setGeneratedAt(data.generated_at || null);
+      })
+      .catch(() => setTopics([]));
+  }, []);
+
+  const t2  = (topics || []).filter(t => critKey(t.criteria) === "2");
+  const t3  = (topics || []).filter(t => critKey(t.criteria) === "3");
+  const tb  = (topics || []).filter(t => critKey(t.criteria) === "2+3");
+  const hasTopics = (topics || []).length > 0;
+
+  const genLabel = generatedAt
+    ? generatedAt.slice(0, 16).replace("T", " ")
+    : null;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: C.bg, overflow: "auto" }}>
@@ -46,7 +161,12 @@ export default function HomeScreen({ onStart }) {
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
           <span style={{ fontSize: 11, color: C.t4, fontFamily: C.mono }}>by Seulgy</span>
           <div style={{ width: 1, height: 14, background: C.border }} />
-          <button style={{ fontSize: 12, color: C.t3, background: "none", border: `1px solid ${C.border}`, borderRadius: 7, padding: "4px 12px", cursor: "pointer" }}>히스토리</button>
+          <button
+            onClick={onArchive}
+            style={{ fontSize: 12, color: C.t3, background: "none", border: `1px solid ${C.border}`, borderRadius: 7, padding: "4px 12px", cursor: "pointer" }}
+          >
+            아카이브
+          </button>
         </div>
       </div>
 
@@ -78,48 +198,64 @@ export default function HomeScreen({ onStart }) {
         </div>
       </div>
 
-      {/* Topics grid */}
-      <div style={{ padding: "0 32px 32px", flex: 1, overflow: "auto" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+      {/* Topics */}
+      <div style={{ padding: "0 32px 40px", flex: 1, overflow: "auto" }}>
+        {/* 섹션 헤더 */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
           <span style={{ fontSize: 12, fontWeight: 600, color: C.t2 }}>AI 추천 분석 주제</span>
-          <span style={{ fontSize: 10, color: C.t4, background: C.subtle, borderRadius: 99, padding: "2px 8px", border: `1px solid ${C.border}` }}>지금 분석 가능</span>
+          {genLabel && (
+            <span style={{ fontSize: 10, color: C.t4, background: C.subtle, borderRadius: 99, padding: "2px 8px", border: `1px solid ${C.border}` }}>
+              {genLabel} 기준
+            </span>
+          )}
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(270px, 1fr))", gap: 10 }}>
-          {RECOMMENDED_TOPICS.map(topic => {
-            const isH = hoveredId === topic.id;
-            const isActive = topic.active;
-            return (
-              <div
-                key={topic.id}
-                onMouseEnter={() => setHoveredId(topic.id)}
-                onMouseLeave={() => setHoveredId(null)}
-                onClick={() => onStart(topic.title)}
-                style={{
-                  background: isActive ? C.indBg : C.card,
-                  border: `1.5px solid ${isActive ? C.indBr : isH ? "#c7d2fe" : C.border}`,
-                  borderRadius: 11, padding: "14px 16px", cursor: "pointer",
-                  boxShadow: isH ? "0 4px 16px rgba(79,70,229,0.09)" : "0 1px 3px rgba(0,0,0,0.04)",
-                  transition: "all 0.16s ease",
-                  transform: isH ? "translateY(-2px)" : "none",
-                  display: "flex", flexDirection: "column", gap: 9,
-                  animation: "fadeUp 0.3s ease",
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 6 }}>
-                  <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: C.t1, lineHeight: 1.45, flex: 1 }}>{topic.title}</p>
-                  <Tag label={topic.tag} />
-                </div>
-                <div style={{ background: isActive ? "rgba(79,70,229,0.06)" : C.subtle, borderRadius: 6, padding: "7px 9px", fontSize: 11, color: isActive ? C.ind : C.t3, fontFamily: C.mono, lineHeight: 1.4 }}>
-                  {topic.keyData}
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 10, color: C.t4, background: C.subtle, borderRadius: 5, padding: "2px 6px", border: `1px solid ${C.border}` }}>{topic.org}</span>
-                  <span style={{ fontSize: 10, color: C.t3, maxWidth: 150, textAlign: "right", lineHeight: 1.4 }}>{topic.reason}</span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+
+        {/* 로딩 */}
+        {topics === null && (
+          <p style={{ fontSize: 13, color: C.t4, marginTop: 24 }}>주제 불러오는 중...</p>
+        )}
+
+        {/* 데이터 없음 */}
+        {topics !== null && !hasTopics && (
+          <div style={{ marginTop: 24, padding: "20px 24px", background: C.card, border: `1px solid ${C.border}`, borderRadius: 10 }}>
+            <p style={{ margin: 0, fontSize: 13, color: C.t3 }}>
+              아직 분석된 주제가 없습니다.
+            </p>
+            <p style={{ margin: "6px 0 0", fontSize: 12, color: C.t4, fontFamily: C.mono }}>
+              python scripts/suggest_topics.py 를 실행해 주제를 생성하세요.
+            </p>
+          </div>
+        )}
+
+        {/* 주제 섹션 */}
+        {hasTopics && (
+          <>
+            <TopicSection
+              label="이번주 핵심 & 신규 주제"
+              color="#a855f7"
+              topics={tb}
+              onStart={onStart}
+              hoveredId={hoveredId}
+              setHoveredId={setHoveredId}
+            />
+            <TopicSection
+              label="이번주 핵심 주제"
+              color="#f59e0b"
+              topics={t2}
+              onStart={onStart}
+              hoveredId={hoveredId}
+              setHoveredId={setHoveredId}
+            />
+            <TopicSection
+              label="이번주 새롭게 등장한 주제"
+              color="#22c55e"
+              topics={t3}
+              onStart={onStart}
+              hoveredId={hoveredId}
+              setHoveredId={setHoveredId}
+            />
+          </>
+        )}
       </div>
     </div>
   );

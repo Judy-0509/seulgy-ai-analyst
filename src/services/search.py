@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 from src.models import SearchResult, SearchResults
 from src.config import RSS_SOURCES, SOURCE_TIER_MAP, JS_REQUIRED_DOMAINS, SEARCH_CONFIG, PAID_SOURCE_DOMAINS
 
-ARCHIVES_DIR = Path("data/archives")
+ARCHIVES_DIR = Path(__file__).parent.parent.parent / "data" / "archives"
 
 
 # 핵심 토픽어 분류용 사전들
@@ -29,7 +29,17 @@ STOP_WORDS = {
     # archive 매칭 점수가 publisher 이름 포함 여부에 좌우되어 부작용 발생.
     "bloomberg", "counterpoint", "idc", "gsmarena",
     "reuters", "omdia", "gartner", "trendforce", "yole",
-    "nikkei", "scmp", "morgan", "stanley", "naver",
+    "nikkei", "scmp", "morgan", "stanley",
+}
+# 범용 명사 — required 대신 anchor로 강등하여 floor 점수에만 기여.
+# 이 단어들이 required에 포함되면 "Display Production Tracker" 같은 무관 기사가
+# production/market/supply 하나로 통과하는 오염 현상이 발생함.
+GENERIC_NOUNS = {
+    "production", "capacity", "supply", "chain", "market", "size", "growth",
+    "shipment", "shipments", "forecast", "analysis", "tracker", "database",
+    "report", "inventory", "price", "cost", "revenue", "share", "global",
+    "demand", "outlook", "update", "data", "strategy", "trends", "trend",
+    "overview", "insight", "latest", "new", "news",
 }
 
 
@@ -51,7 +61,7 @@ def classify_core_terms(eng_topic: str, current_year: str | None = None) -> dict
         seen.add(low)
         if low in ACTION_VERBS or low in STOP_WORDS:
             continue
-        if low == "latest":
+        if low == "latest" or low in GENERIC_NOUNS:
             anchor.append(low)
         else:
             required.append(low)
@@ -106,7 +116,7 @@ class SearchService:
     def _score_text(self, text: str) -> tuple[float, bool]:
         """(score, passes_floor) 반환. core_terms 미설정 시 (1.0, True).
 
-        C+ 완화 룰: required 중 **최소 1개** 매치하면 통과 (recall 우선).
+        required 중 최소 2개 매칭해야 통과 (범용명사는 GENERIC_NOUNS로 anchor 강등됨).
         모든 required 매치 시 1.5× 보너스 → 정밀 일치 기사가 상위로.
         """
         if not self.core_terms:
@@ -122,7 +132,7 @@ class SearchService:
         # 모든 required 매치 시 보너스 (정밀 일치 우선)
         if req_match == len(required):
             score *= 1.5
-        passes_floor = score >= 0.5  # ← C++ 완화 (REV4): anchor 1개 이상 매칭 통과 (year-only도 통과, 무관 entry 차단)
+        passes_floor = req_match >= 2  # required 핵심어 최소 2개 매칭 (범용명사 anchor 강등 후 적용)
         return score, passes_floor
 
     def _search_archive(self, query: str, keywords: list[str]) -> list[tuple[float, SearchResult]]:
@@ -371,13 +381,30 @@ class SearchService:
     def _fetch_with_selenium(self, url: str) -> SearchResult | None:
         try:
             from selenium import webdriver
-            from selenium.webdriver.edge.options import Options
             if SearchService._edge_driver is None:
-                options = Options()
-                options.add_argument("--headless")
-                options.add_argument("--no-sandbox")
-                options.add_argument("--disable-dev-shm-usage")
-                SearchService._edge_driver = webdriver.Edge(options=options)
+                _args = ["--headless", "--no-sandbox", "--disable-dev-shm-usage"]
+                # Edge → Chrome → Firefox 순으로 시도 (OS별 설치 환경 차이 대응)
+                driver_instance = None
+                try:
+                    from selenium.webdriver.edge.options import Options as EdgeOptions
+                    opts = EdgeOptions()
+                    for a in _args:
+                        opts.add_argument(a)
+                    driver_instance = webdriver.Edge(options=opts)
+                except Exception:
+                    pass
+                if driver_instance is None:
+                    try:
+                        from selenium.webdriver.chrome.options import Options as ChromeOptions
+                        opts = ChromeOptions()
+                        for a in _args:
+                            opts.add_argument(a)
+                        driver_instance = webdriver.Chrome(options=opts)
+                    except Exception:
+                        pass
+                if driver_instance is None:
+                    return None
+                SearchService._edge_driver = driver_instance
             driver = SearchService._edge_driver
             driver.get(url)
             time.sleep(random.uniform(1, 3))

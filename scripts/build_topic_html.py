@@ -189,7 +189,7 @@ def build_html(glm_data: dict, manual_data: dict) -> str:
 <div class="criteria-row">
   <div class="criteria-box criteria-box-multi">
     <div class="crit-lbl crit-lbl-multi">기준2 — 멀티소스 신호</div>
-    <div class="crit-desc">서로 독립적인 Tier-1 기관 2곳 이상이 같은 현상을 14일 이내에 다룰 때 구조적 전환 신호로 인식. OEM 경쟁 우위·전략 변화도 포함.</div>
+    <div class="crit-desc">서로 독립적인 Tier-1 기관 2곳 이상이 같은 현상을 30일 이내에 다룰 때 구조적 전환 신호로 인식. OEM 경쟁 우위·전략 변화도 포함.</div>
   </div>
   <div class="criteria-box criteria-box-new">
     <div class="crit-lbl crit-lbl-new">기준3 — 신규 등장 주제</div>

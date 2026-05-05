@@ -1,7 +1,7 @@
 """
 GLM-4.7 (thinking mode) 기반 스마트폰 시장 주제 자동 선정.
 
-기준2: 14일 이내 2개 이상 Tier-1 기관이 같은 현상을 다루는 경우
+기준2: 30일 이내 2개 이상 Tier-1 기관이 같은 현상을 다루는 경우
 기준3: 최근 N일 DB에 새롭게 등장한 주제 (기존 레포트에 없는 것)
 
 2-pass 파이프라인:
@@ -100,7 +100,7 @@ USER_PROMPT_TEMPLATE = """
 
 IMPORTANT: This exclusion applies ONLY to Criterion 3 (emerging topics).
 It does NOT apply to Criterion 2. Even if a topic area has an existing report,
-new multi-source evidence within the last 14 days still qualifies as a Criterion 2
+new multi-source evidence within the last {days} days still qualifies as a Criterion 2
 signal — the situation may have structurally evolved since the report was written.
 
 [ARTICLE CORPUS — Tier-1 smartphone market articles, last {days} days]
@@ -114,7 +114,7 @@ Total: {total} articles | Sources: Counterpoint Research, TrendForce, Omdia, IDC
 
 Criterion 2 — Multi-Source Signal:
 2 or more independent research institutions covered the SAME market phenomenon
-within a 14-day window. Institutions must be drawn from the Tier-1 list above.
+within a {days}-day window. Institutions must be drawn from the Tier-1 list above.
 "Same phenomenon" is judged semantically, not by keyword overlap.
 
 OEM-level signals qualify: if 2+ institutions independently confirm the same brand's
@@ -164,7 +164,7 @@ Identify 5 to 10 topics. For each topic output:
       "<concrete data point with %, $, year, or volume figures>",
       "..."
     ],
-    "rationale": "2-3 sentences explaining why this is a structural signal, not just a trend. Cite specific article evidence."
+    "rationale": "왜 이 주제가 일시적 트렌드가 아닌 구조적 신호인지 2~3문장으로 설명. 구체적 기사 근거 포함. 반드시 한국어로 작성."
   }}
 ]"""
 
@@ -202,7 +202,7 @@ Output a single JSON object only (no markdown, no other text):
     {{"date": "YYYY-MM-DD", "source": "<institution>", "title": "<article title>"}}
   ],
   "key_data": ["<updated data points — add new concrete figures if found>"],
-  "rationale": "2-3 sentences reflecting the fuller picture from all sources."
+  "rationale": "모든 기사를 반영한 2~3문장 선정 근거. 반드시 한국어로 작성."
 }}
 
 Rules:
@@ -243,9 +243,10 @@ def _clean_entry(e: dict, source: str) -> dict:
     return {
         "source": source,
         "date":   e.get("lastmod", "")[:10],
-        "title":  e.get("title", "").replace("‑", "-").replace("’", "'"),
+        "title":  e.get("title", "").replace("‑", "-").replace("’", "’"),
+        "url":    e.get("url", ""),
         "desc":   re.sub(r"<[^>]+>", "", e.get("description", ""))[:400]
-                    .replace("‑", "-").replace("’", "'").strip(),
+                    .replace("‑", "-").replace("’", "’").strip(),
     }
 
 
@@ -406,8 +407,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--days",        type=int, default=30)
     parser.add_argument("--out",         default="scripts/_topic_suggestions.json")
-    parser.add_argument("--no-existing", action="store_true",
-                        help="Treat existing reports list as empty (no Criterion 3 exclusions)")
+    parser.add_argument("--with-existing", action="store_true",
+                        help="Use existing reports for Criterion 3 exclusions (기본: 제외 안 함)")
     args = parser.parse_args()
 
     # ── Pass 1 ──────────────────────────────────────────────────────────────
@@ -415,7 +416,7 @@ def main():
     articles = load_articles(args.days)
     print(f"      → {len(articles)} Tier-1 smartphone articles (keyword-filtered)")
 
-    existing = [] if args.no_existing else get_existing_reports()
+    existing = get_existing_reports() if args.with_existing else []
     if existing:
         print(f"[2/5] Existing reports ({len(existing)}):")
         for r in existing:
@@ -442,7 +443,7 @@ def main():
             {"role": "user",   "content": user_prompt},
         ],
         max_tokens=30000,
-        temperature=0.3,
+        temperature=0.1,
         extra_body=thinking_body,
     )
 
@@ -477,6 +478,16 @@ def main():
         else:
             print(f"      [{i}] no additional articles: {label}")
             enriched_topics.append(topic)
+
+    # ── Inject article URLs from archive lookup ─────────────────────────────
+    url_by_title = {a["title"]: a.get("url", "") for a in all_articles}
+    for a in articles:
+        if a.get("url") and a["title"] not in url_by_title:
+            url_by_title[a["title"]] = a["url"]
+    for topic in enriched_topics:
+        for art in topic.get("articles", []):
+            if not art.get("url"):
+                art["url"] = url_by_title.get(art["title"], "")
 
     # ── Save ────────────────────────────────────────────────────────────────
     out_path = ROOT / args.out

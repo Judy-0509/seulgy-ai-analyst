@@ -36,7 +36,6 @@ BUILDERS = [
     ("Yole",                  "build_yole_archive.py",           "yole.json"),
     ("Gartner",               "build_gartner_archive.py",        "gartner.json"),
     ("Morgan Stanley",        "build_morgan_stanley_archive.py", "morgan_stanley.json"),
-    ("Naver Research",        "build_naver_research_archive.py", "naver_research.json"),
 ]
 
 PER_BUILDER_TIMEOUT_SEC = 900  # 빌더당 최대 15분

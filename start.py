@@ -8,6 +8,8 @@ import sys
 import os
 import threading
 import signal
+import socket
+import time
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 FRONTEND = os.path.join(ROOT, "frontend")
@@ -25,6 +27,18 @@ def stream(proc, prefix, color):
             print(f"[{prefix}] {safe}", flush=True)
 
 
+def wait_for_backend(host="127.0.0.1", port=8000, timeout=30):
+    """백엔드 포트가 열릴 때까지 대기. timeout 초 초과 시 False 반환."""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            with socket.create_connection((host, port), timeout=1):
+                return True
+        except OSError:
+            time.sleep(0.3)
+    return False
+
+
 def main():
     print("\033[1m Research Helper 시작 중...\033[0m")
     print(" Backend  → http://localhost:8000")
@@ -39,6 +53,16 @@ def main():
         stderr=subprocess.STDOUT,
     )
 
+    t1 = threading.Thread(target=stream, args=(backend, "BE", "\033[36m"), daemon=True)
+    t1.start()
+
+    print("\033[36m[BE]\033[0m 백엔드 준비 대기 중...", flush=True)
+    if not wait_for_backend():
+        print("\033[31m[오류] 백엔드가 30초 내에 기동되지 않았습니다.\033[0m")
+        backend.terminate()
+        sys.exit(1)
+    print("\033[36m[BE]\033[0m 백엔드 준비 완료 → 프론트엔드 시작\n", flush=True)
+
     npm = "npm.cmd" if sys.platform == "win32" else "npm"
     frontend = subprocess.Popen(
         [npm, "run", "dev"],
@@ -47,10 +71,7 @@ def main():
         stderr=subprocess.STDOUT,
     )
 
-    # 각 프로세스 출력을 별도 스레드에서 스트리밍
-    t1 = threading.Thread(target=stream, args=(backend,  "BE", "\033[36m"), daemon=True)
     t2 = threading.Thread(target=stream, args=(frontend, "FE", "\033[35m"), daemon=True)
-    t1.start()
     t2.start()
 
     def shutdown(sig=None, frame=None):

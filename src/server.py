@@ -37,7 +37,6 @@ ARCHIVE_REGISTRY = [
     ("Yole",                  "yole.json"),
     ("Gartner",               "gartner.json"),
     ("Morgan Stanley",        "morgan_stanley.json"),
-    ("Naver Research",        "naver_research.json"),
 ]
 
 app = FastAPI()
@@ -147,6 +146,8 @@ async def _run_phase0(sess: Session):
         return
     except Exception as e:
         await sess.emit(type="error", text=f"Phase 0 오류: {e}")
+    finally:
+        SESSIONS.pop(sess.id, None)
 
 
 # ── Endpoints ──────────────────────────────────────────────────────────────
@@ -449,6 +450,37 @@ async def api_topics_mine(days: int = 30):
     }
 
 
+@app.get("/api/archives/entries")
+async def api_archives_entries(source: str, limit: int = 300):
+    """특정 소스의 전체 아카이브 기사 반환 (키워드 필터 없음)."""
+    import re as _re
+
+    for _, json_name in ARCHIVE_REGISTRY:
+        p = ARCHIVES_DIR / json_name
+        if not p.exists():
+            continue
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+            if data.get("source") != source:
+                continue
+            entries = data.get("entries", [])
+            entries_sorted = sorted(entries, key=lambda x: x.get("lastmod", ""), reverse=True)
+            items = [
+                {
+                    "title": e.get("title", "").replace("‑", "-").replace("'", "'"),
+                    "date":  e.get("lastmod", "")[:10],
+                    "url":   e.get("url", ""),
+                    "description": _re.sub(r"<[^>]+>", "", e.get("description", ""))[:200],
+                }
+                for e in entries_sorted[:limit]
+            ]
+            return {"source": source, "total": len(entries), "items": items}
+        except Exception:
+            continue
+
+    return {"source": source, "total": 0, "items": []}
+
+
 # ══════════════════════════════════════════════════════════════════════════
 # Report Generation — run_report.py 파이프라인 웹 UI 브릿지
 # ══════════════════════════════════════════════════════════════════════════
@@ -459,6 +491,8 @@ class ReportSession:
         self.topic = topic
         self.queue: asyncio.Queue = asyncio.Queue()
         self.task: Optional[asyncio.Task] = None
+        self.ext_event: asyncio.Event = asyncio.Event()
+        self.ext_use_external: bool = False
         self.gate1_event: asyncio.Event = asyncio.Event()
         self.gate1_data: Optional[list] = None
         self.gate2_event: asyncio.Event = asyncio.Event()
@@ -534,14 +568,18 @@ async def _run_report(sess: ReportSession):
         await sess.emit(type="report_log", text="보고서 생성 시작")
 
         # A
-        await sess.emit(type="report_log", text="[A] 영문 쿼리 생성 중...")
-        pre_queries, eng_topic = await stage_a(llm, topic)
+        await sess.emit(type="report_log", text="영문 쿼리 생성 중...")
+
+        async def stage_a_progress(**event):
+            await sess.emit(type="report_step_a_trace", **event)
+
+        pre_queries, eng_topic = await stage_a(llm, topic, progress_cb=stage_a_progress)
         search.set_core_terms(eng_topic, current_year=str(_year()))
         await sess.emit(type="report_step_a", queries=pre_queries, eng_topic=eng_topic)
         await sess.emit(type="report_log", text=f"쿼리 {len(pre_queries)}개 생성")
 
         # B
-        await sess.emit(type="report_log", text="[B] Archive 검색 중...")
+        await sess.emit(type="report_log", text="Archive 검색 중...")
         archive_results = await stage_b(search, pre_queries, eng_kw=eng_topic)
         by_source: dict[str, list] = {}
         for r in archive_results:
@@ -552,11 +590,41 @@ async def _run_report(sess: ReportSession):
         await sess.emit(type="report_step_b", by_source=by_source, total=len(archive_results))
         await sess.emit(type="report_log", text=f"Archive {len(archive_results)}건 수집")
 
-        use_external = False
+        # EXT DECISION — 사용자 토글 대기 (최대 10분)
+        sess.ext_event.clear()
+        try:
+            await asyncio.wait_for(sess.ext_event.wait(), timeout=600)
+        except asyncio.TimeoutError:
+            await sess.emit(type="report_log", text="외부 검색 결정 대기 초과 — 아카이브만 사용")
+
+        use_external = sess.ext_use_external
+
+        if use_external:
+            await sess.emit(type="report_log", text="외부 검색 실행 중...")
+            ext_by_source: dict[str, list] = {}
+            seen = {r.source_url for r in archive_results}
+            for pq in pre_queries:
+                sr = await search.search(pq, pq.split())
+                for r in sr.results:
+                    if r.source_url not in seen:
+                        archive_results.append(r)
+                        seen.add(r.source_url)
+                        ext_by_source.setdefault(r.source_name, []).append({
+                            "title": r.article_title or "",
+                            "url": r.source_url,
+                        })
+            ext_total = sum(len(v) for v in ext_by_source.values())
+            await sess.emit(
+                type="report_step_b_ext",
+                queries=pre_queries,
+                by_source=ext_by_source,
+                total=ext_total,
+            )
+            await sess.emit(type="report_log", text=f"외부 검색 {ext_total}건 추가")
 
         # C
         await sess.emit(type="report_step_c")
-        await sess.emit(type="report_log", text="[C] 목차 생성 중...")
+        await sess.emit(type="report_log", text="목차 생성 중...")
         sections = await stage_c(llm, topic, archive_results)
         _warn_section_overlap(sections)
         await sess.emit(type="report_log", text=f"목차 {len(sections)}개 생성")
@@ -586,7 +654,7 @@ async def _run_report(sess: ReportSession):
         refine_round = 0
         max_rounds = 3
         while refine_round < max_rounds:
-            await sess.emit(type="report_log", text="[D] 검색 실행 중...")
+            await sess.emit(type="report_log", text="검색 실행 중...")
             await sess.emit(type="report_step_d", sections=[{"title": s["title"]} for s in sections])
 
             async def d_progress(si, total, title, _sess=sess):
@@ -625,22 +693,23 @@ async def _run_report(sess: ReportSession):
             await sess.emit(type="report_log", text=f"쿼리 보완 후 재검색 (라운드 {refine_round + 1})")
 
         # E+F
-        await sess.emit(type="report_log", text="[E/F] 목차별 분석 시작...")
+        await sess.emit(type="report_log", text="목차별 분석 시작...")
 
         async def ef_progress(si, total, title):
-            await sess.emit(type="report_log", text=f"  [{si}/{total}] {title} 분석 중...")
+            await sess.emit(type="report_step_ef_progress", si=si, total=total, title=title)
 
         sections = await stage_ef(llm, topic, sections, progress_cb=ef_progress)
 
         # G
-        await sess.emit(type="report_log", text="[G] 시사점 생성 중...")
+        await sess.emit(type="report_log", text="시사점 생성 중...")
         meta = await stage_g(llm, topic, sections)
 
         # 저장
         await sess.emit(type="report_log", text="저장 중...")
         md_path, html_path = _save_report(topic, sections, run_ts, archive_results, pre_queries, meta)
+        slug = html_path.name.removesuffix("_report.html")
 
-        await sess.emit(type="report_done", report_url=f"/reports/{html_path.name}")
+        await sess.emit(type="report_done", report_url=f"/archive/{slug}")
         await sess.emit(type="done")
 
     except asyncio.CancelledError:
@@ -652,6 +721,204 @@ async def _run_report(sess: ReportSession):
     finally:
         if search:
             await search.close()
+        REPORT_SESSIONS.pop(sess.id, None)
+
+
+@app.get("/api/topics/suggested")
+async def api_topics_suggested():
+    """scripts/_topic_suggestions.json 의 GLM 선정 주제 반환."""
+    p = ROOT / "scripts" / "_topic_suggestions.json"
+    if not p.exists():
+        return {"topics": [], "generated_at": None, "days": 30}
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+        return {
+            "topics": data.get("topics", []),
+            "generated_at": data.get("generated_at"),
+            "days": data.get("days", 30),
+        }
+    except Exception:
+        return {"topics": [], "generated_at": None, "days": 30}
+
+
+def _extract_metrics(*texts: str) -> list[str]:
+    joined = " ".join(t for t in texts if t)
+    patterns = [
+        r"\d+(?:\.\d+)?\s?~\s?\d+(?:\.\d+)?\s?%",
+        r"\d+(?:\.\d+)?\s?%",
+        r"\d+(?:\.\d+)?\s?(?:배|건|년|개월|분기|조|억|만|달러|원)",
+        r"Q[1-4]\s?\d{2,4}",
+        r"YoY|QoQ",
+    ]
+    found: list[str] = []
+    for pattern in patterns:
+        for match in re.findall(pattern, joined, flags=re.IGNORECASE):
+            item = match.strip()
+            if item and item not in found:
+                found.append(item)
+    return found[:8]
+
+
+def _parse_report_markdown(md_text: str, process_data: dict | None = None) -> dict:
+    lines = md_text.splitlines()
+    topic = lines[0].lstrip("# ").strip() if lines else ""
+    run_ts = ""
+    for line in lines[:8]:
+        if line.startswith("생성일시:"):
+            run_ts = line.replace("생성일시:", "", 1).strip()
+            break
+
+    exec_summary = ""
+    exec_match = re.search(r"## Executive Summary\s+(.*?)(?:\n---\n|\n##\s+\d+\.)", md_text, re.S)
+    if exec_match:
+        exec_summary = exec_match.group(1).strip()
+
+    insights = []
+    insights_match = re.search(r"## 시사점 \(Market Insights\)\s+(.*)$", md_text, re.S)
+    report_body = md_text[:insights_match.start()] if insights_match else md_text
+    if insights_match:
+        for match in re.finditer(r"###\s+\d+\.\s*(.*?)\n\n(.*?)(?=\n###\s+\d+\.|\Z)", insights_match.group(1), re.S):
+            insights.append({"title": match.group(1).strip(), "body": match.group(2).strip()})
+
+    sections = []
+    for match in re.finditer(r"\n##\s+(\d+)\.\s*(.*?)\n(.*?)(?=\n##\s+\d+\.|\n---\n|\Z)", report_body, re.S):
+        idx = int(match.group(1))
+        title = match.group(2).strip()
+        body = match.group(3).strip()
+        headline = ""
+        headline_match = re.search(r"\*\*(.*?)\*\*", body, re.S)
+        if headline_match:
+            headline = headline_match.group(1).strip()
+
+        before_sources = body.split("**출처**", 1)[0]
+        bullets = [line[1:].strip() for line in before_sources.splitlines() if line.strip().startswith("•")]
+        narrative = re.sub(r"\*\*.*?\*\*", "", before_sources, count=1, flags=re.S)
+        narrative = "\n".join(line.strip() for line in narrative.splitlines() if line.strip() and not line.strip().startswith("•"))
+
+        sources = []
+        source_block = body.split("**출처**", 1)[1] if "**출처**" in body else ""
+        for src_match in re.finditer(r"\[(\d+)\]\s+\[(.*?)(?:\s+—\s+\"(.*?)\")?\]\((.*?)\)(?:\s+\((.*?)\))?", source_block):
+            source_name = src_match.group(2).strip()
+            source_title = (src_match.group(3) or "").strip()
+            url = src_match.group(4).strip()
+            date_str = (src_match.group(5) or "").strip()
+            detail = ""
+            for bullet in bullets:
+                if source_title and (source_title[:36] in bullet or bullet[:36] in source_title):
+                    detail = bullet
+                    break
+            if not detail:
+                detail = source_title or source_name
+            sources.append({
+                "num": src_match.group(1),
+                "source_name": source_name,
+                "title": source_title,
+                "url": url,
+                "date": date_str,
+                "detail": detail,
+                "metrics": _extract_metrics(source_title, detail),
+            })
+
+        sections.append({
+            "index": idx,
+            "title": title,
+            "headline": headline,
+            "narrative": narrative,
+            "bullets": bullets,
+            "sources": sources,
+        })
+
+    if process_data:
+        for section, process_section in zip(sections, process_data.get("sections", [])):
+            section["angle"] = process_section.get("angle", "")
+            known_urls = {src["url"] for src in section.get("sources", [])}
+            for result in process_section.get("results", [])[:8]:
+                if result.get("url") in known_urls:
+                    continue
+                section.setdefault("supporting_results", []).append({
+                    "source_name": result.get("source_name", ""),
+                    "title": result.get("title", ""),
+                    "url": result.get("url", ""),
+                    "detail": result.get("title", ""),
+                    "metrics": _extract_metrics(result.get("title", "")),
+                })
+
+    references = []
+    for section in sections:
+        for source in section.get("sources", []):
+            references.append({**source, "section": section["title"], "section_index": section["index"]})
+
+    research_background = ""
+    if process_data:
+        research_background = (process_data.get("meta") or {}).get("research_background", "")
+
+    return {
+        "topic": topic,
+        "run_ts": run_ts,
+        "research_background": research_background,
+        "executive_summary": exec_summary,
+        "sections": sections,
+        "insights": insights,
+        "references": references,
+    }
+
+
+@app.get("/api/reports")
+async def api_reports_list():
+    reports_dir = ROOT / "reports"
+    items = []
+    for md_path in sorted(reports_dir.glob("*_report.md"), key=lambda p: p.stat().st_mtime, reverse=True):
+        slug = md_path.name.removesuffix("_report.md")
+        process_path = reports_dir / f"{slug}_process.json"
+        process_data = None
+        if process_path.exists():
+            try:
+                process_data = json.loads(process_path.read_text(encoding="utf-8"))
+            except Exception:
+                process_data = None
+
+        try:
+            report = _parse_report_markdown(md_path.read_text(encoding="utf-8"), process_data)
+        except Exception:
+            report = {"topic": slug, "run_ts": "", "executive_summary": "", "sections": [], "references": []}
+
+        stat = md_path.stat()
+        metric_tags = []
+        for ref in report.get("references", []):
+            for metric in ref.get("metrics", []):
+                if metric not in metric_tags:
+                    metric_tags.append(metric)
+        items.append({
+            "slug": slug,
+            "topic": report.get("topic") or slug,
+            "run_ts": report.get("run_ts", ""),
+            "modified_at": datetime.fromtimestamp(stat.st_mtime).isoformat(timespec="seconds"),
+            "summary": (report.get("executive_summary") or "").strip(),
+            "section_count": len(report.get("sections", [])),
+            "reference_count": len(report.get("references", [])),
+            "metric_tags": metric_tags[:8],
+        })
+
+    return {"reports": items}
+
+
+@app.get("/api/reports/{slug}")
+async def api_report_detail(slug: str):
+    safe_slug = Path(slug).name
+    md_path = ROOT / "reports" / f"{safe_slug}_report.md"
+    process_path = ROOT / "reports" / f"{safe_slug}_process.json"
+    if not md_path.exists() or not md_path.is_file():
+        raise HTTPException(404, "report not found")
+
+    process_data = None
+    if process_path.exists():
+        try:
+            process_data = json.loads(process_path.read_text(encoding="utf-8"))
+        except Exception:
+            process_data = None
+
+    report = _parse_report_markdown(md_path.read_text(encoding="utf-8"), process_data)
+    return {"slug": safe_slug, **report}
 
 
 @app.get("/reports/{filename}")
@@ -695,6 +962,26 @@ async def api_report_stream(sid: str):
             return
 
     return StreamingResponse(gen(), media_type="text/event-stream")
+
+
+@app.post("/api/report/cancel/{sid}")
+async def api_report_cancel(sid: str):
+    sess = REPORT_SESSIONS.pop(sid, None)
+    if sess and sess.task and not sess.task.done():
+        sess.task.cancel()
+    return {"ok": True}
+
+
+@app.post("/api/report/ext_decision")
+async def api_report_ext_decision(req: Request):
+    body = await req.json()
+    sid = body.get("session_id")
+    sess = REPORT_SESSIONS.get(sid)
+    if not sess:
+        raise HTTPException(404, "session not found")
+    sess.ext_use_external = bool(body.get("use_external", False))
+    sess.ext_event.set()
+    return {"ok": True}
 
 
 @app.post("/api/report/gate1")

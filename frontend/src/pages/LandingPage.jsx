@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 /* ── Dark forest theme tokens ── */
@@ -23,24 +23,34 @@ const E = {
 
 const FOREST_BG = "url('/forest.png')";
 
-const WEEKLY_HOT = [
-  { title: "메모리 위기에 따른 OEM 가격 전략 및 시장 세분화 구조적 변화", org: "Counterpoint · TrendForce · Omdia" },
-  { title: "주요 OEM의 AI 글래스 시장 진출 및 전략적 축 전환",           org: "Omdia · TrendForce"              },
-  { title: "스마트폰 위성 통신 표준화 및 시장 보급 가속화",               org: "Counterpoint · Omdia"            },
-  { title: "폴더블 형태 요소 혁신 및 자체 칩 개발 경쟁 심화",            org: "Omdia · TrendForce"              },
-  { title: "모바일 SoC의 데이터센터 · AI 인프라 시장 확장 전략",         org: "Counterpoint · TrendForce"       },
-];
+function critKey(criteria = "") {
+  if (criteria.includes("2") && criteria.includes("3")) return "both";
+  if (criteria.includes("2")) return "hot";
+  return "new";
+}
 
-const WEEKLY_NEW = [
-  { title: "애플 중국 Q1 출하 +20% · 분기 역대 최고 매출 기록",  org: "Counterpoint Research", days: "3일 전" },
-  { title: "구글 픽셀 9a, 일본 시장에서 삼성 제치고 2위 등극",   org: "Counterpoint Research", days: "4일 전" },
-  { title: "삼성 DS 영업이익률 65.7% — NVIDIA 추월·파업 리스크", org: "TrendForce",            days: "3일 전" },
-];
+function toRow(t) {
+  const sources = [...new Set((t.articles || []).map(a => a.source))];
+  const org = sources.join(" · ");
+  const dates = (t.articles || []).map(a => a.date).filter(Boolean).sort().reverse();
+  let daysAgo = "";
+  if (dates[0]) {
+    const diff = Math.floor((Date.now() - new Date(dates[0]).getTime()) / 86400000);
+    daysAgo = diff === 0 ? "오늘" : `${diff}일 전`;
+  }
+  return {
+    title: t.title, org, days: daysAgo,
+    rationale: t.rationale || "",
+    key_data: t.key_data || [],
+    articles: (t.articles || []).map(a => ({
+      date: a.date, source: a.source, title: a.title, url: a.url || "",
+    })),
+  };
+}
 
-const EXAMPLES = [
+const FALLBACK_EXAMPLES = [
   "메모리 위기와 스마트폰 OEM 가격 전략 2026",
   "AI 글래스 시장 OEM 진출 전략",
-  "스마트폰 위성 통신 표준화 2030",
 ];
 
 /* ── Line icons ── */
@@ -60,58 +70,111 @@ function ArrowRightIcon() {
     </svg>
   );
 }
-function SparklesIcon({ color = "#fff" }) {
-  return (
-    <svg width={17} height={17} viewBox="0 0 24 24" fill="none"
-      stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 3 9.8 8.8 4 11l5.8 2.2L12 19l2.2-5.8L20 11l-5.8-2.2L12 3Z"/>
-      <path d="M5 3v3M3 5h3M19 18v3M17 20h4"/>
-    </svg>
-  );
+
+function TopicMessage({ status, fallback }) {
+  const text = {
+    loading: "주제를 불러오는 중입니다",
+    error: "주제 데이터를 불러오지 못했습니다",
+    empty: "아직 생성된 추천 주제가 없습니다",
+    ready: fallback,
+  }[status] || fallback;
+
+  return <p style={{ fontSize: 13, color: E.t5, padding: "12px 0" }}>{text}</p>;
 }
 
 /* ── Topic row ── */
 function TopicRow({ item, right, onStart, index }) {
   const [hov, setHov] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
   return (
     <div
-      onClick={() => onStart(item.title)}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
-      style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
-        borderRadius: 14, padding: "12px 16px", cursor: "pointer",
-        background: hov ? "rgba(52,211,153,.08)" : "transparent", transition: "background .15s" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 14, overflow: "hidden", flex: 1, minWidth: 0 }}>
-        {index !== undefined ? (
+      style={{ borderRadius: 14, marginBottom: 2, overflow: "hidden",
+        background: hov || expanded ? "rgba(52,211,153,.06)" : "transparent",
+        transition: "background .15s", minWidth: 0 }}
+    >
+      {/* 클릭 → 펼침 토글 */}
+      <div
+        onClick={() => setExpanded(e => !e)}
+        style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "12px 16px", cursor: "pointer" }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 14, overflow: "hidden", flex: 1, minWidth: 0 }}>
+          {index !== undefined ? (
+            <span style={{
+              fontSize: 40, fontWeight: 900, lineHeight: 1, flexShrink: 0,
+              letterSpacing: "-0.05em", width: 28, textAlign: "right",
+              color: expanded ? E.emLL : hov ? E.emLL : "rgba(255,255,255,.18)",
+              transition: "color .15s",
+            }}>
+              {index + 1}
+            </span>
+          ) : (
+            <div style={{ width: 5, height: 34, borderRadius: 99, flexShrink: 0,
+              background: expanded ? E.emLL : hov ? E.emLL : "rgba(255,255,255,.22)",
+              transition: "background .15s" }} />
+          )}
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <p style={{ fontSize: 16, fontWeight: 600, margin: "0 0 4px",
+              color: expanded ? E.emLL : hov ? E.emLL : E.t1, transition: "color .15s",
+              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {item.title}
+            </p>
+            <p style={{ fontSize: 12, color: E.t4, margin: 0,
+              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.org}</p>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginLeft: 12, flexShrink: 0 }}>
+          {right && (
+            <>
+              <span style={{ fontSize: 9, fontWeight: 700, color: E.emLL, background: E.emBg,
+                borderRadius: 99, padding: "3px 10px", border: `1px solid ${E.emBr}` }}>NEW</span>
+              <span style={{ fontSize: 10, color: E.t5, whiteSpace: "nowrap" }}>{item.days}</span>
+            </>
+          )}
           <span style={{
-            fontSize: 40, fontWeight: 900, lineHeight: 1, flexShrink: 0,
-            letterSpacing: "-0.05em", width: 28, textAlign: "right",
-            color: hov ? E.emLL : "rgba(255,255,255,.18)",
-            transition: "color .15s",
-          }}>
-            {index + 1}
-          </span>
-        ) : (
-          <div style={{ width: 5, height: 34, borderRadius: 99, flexShrink: 0, transition: "background .15s",
-            background: hov ? E.emLL : "rgba(255,255,255,.22)" }} />
-        )}
-        <div style={{ minWidth: 0 }}>
-          <p style={{ fontSize: 16, fontWeight: 600, margin: "0 0 4px",
-            color: hov ? E.emLL : E.t1, transition: "color .15s",
-            whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            {item.title}
-          </p>
-          <p style={{ fontSize: 12, color: E.t4, margin: 0 }}>{item.org}</p>
+            fontSize: 12, color: expanded ? E.emLL : E.t5,
+            transition: "transform .25s, color .15s",
+            display: "inline-block",
+            transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
+          }}>▾</span>
         </div>
       </div>
 
-      {right && (
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginLeft: 12, flexShrink: 0 }}>
-          <span style={{ fontSize: 9, fontWeight: 700, color: E.emLL, background: E.emBg,
-            borderRadius: 99, padding: "3px 10px", border: `1px solid ${E.emBr}` }}>NEW</span>
-          <span style={{ fontSize: 10, color: E.t5, whiteSpace: "nowrap" }}>{item.days}</span>
+      {/* 펼침 영역 — max-height 슬라이딩 */}
+      <div style={{
+        maxHeight: expanded ? "220px" : "0px",
+        overflow: "hidden",
+        transition: "max-height 0.3s ease",
+      }}>
+        <div style={{
+          margin: "0 16px 0 58px",
+          paddingTop: 10, paddingBottom: 14,
+          borderTop: `1px solid rgba(255,255,255,.1)`,
+        }}>
+          <p style={{ fontSize: 12, color: E.t3, lineHeight: 1.75, margin: "0 0 14px" }}>
+            {item.rationale || "선정 근거 정보가 없습니다."}
+          </p>
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <button
+              onClick={e => { e.stopPropagation(); onStart(item.title, { rationale: item.rationale, key_data: item.key_data, articles: item.articles }); }}
+              style={{
+                background: E.emBg, border: `1px solid ${E.emBr}`,
+                color: E.emLL, borderRadius: 10, padding: "7px 16px",
+                fontSize: 12, fontWeight: 700, cursor: "pointer",
+                transition: "background .15s",
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = "rgba(16,185,129,.22)"}
+              onMouseLeave={e => e.currentTarget.style.background = E.emBg}
+            >
+              상세 분석으로 들어가기 →
+            </button>
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -120,10 +183,46 @@ function TopicRow({ item, right, onStart, index }) {
 export default function LandingPage() {
   const nav = useNavigate();
   const [val, setVal] = useState("");
+  const [weeklyHot, setWeeklyHot] = useState([]);
+  const [weeklyNew, setWeeklyNew] = useState([]);
+  const [generatedAt, setGeneratedAt] = useState("");
+  const [topicStatus, setTopicStatus] = useState("loading");
+  const [topicDays, setTopicDays] = useState(30);
+  const [examples, setExamples] = useState(FALLBACK_EXAMPLES);
 
-  const handleStart = (topic) => {
-    const t = topic.trim() || "아마존 글로벌스타 인수와 D2D 위성 통신";
-    nav("/app", { state: { startTopic: t } });
+  useEffect(() => {
+    fetch("/api/topics/suggested")
+      .then(r => {
+        if (!r.ok) throw new Error(`topics ${r.status}`);
+        return r.json();
+      })
+      .then(data => {
+        const topics = data.topics || [];
+        const hot = topics.filter(t => critKey(t.criteria) !== "new").map(toRow);
+        const newT = topics.filter(t => critKey(t.criteria) === "new").map(toRow);
+        setWeeklyHot(hot);
+        setWeeklyNew(newT);
+        setTopicDays(data.days || 30);
+        setTopicStatus(topics.length ? "ready" : "empty");
+        const all = [...hot, ...newT];
+        if (all.length >= 2) {
+          setExamples(all.slice(0, 2).map(t => t.title));
+        }
+        if (data.generated_at) {
+          const d = new Date(data.generated_at);
+          setGeneratedAt(`${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 기준`);
+        }
+      })
+      .catch(() => {
+        setWeeklyHot([]);
+        setWeeklyNew([]);
+        setTopicStatus("error");
+      });
+  }, []);
+
+  const handleStart = (topic, topicInfo = null) => {
+    const t = (typeof topic === "string" ? topic : "").trim() || "아마존 글로벌스타 인수와 D2D 위성 통신";
+    nav("/app", { state: { startTopic: t, topicInfo } });
   };
 
   return (
@@ -141,10 +240,38 @@ export default function LandingPage() {
 
       {/* ── Scrollable content ── */}
       <div style={{ position: "relative", zIndex: 3, height: "100%", overflowY: "auto", overflowX: "hidden" }}>
+        <nav style={{ position: "sticky", top: 0, zIndex: 10, display: "flex", justifyContent: "flex-end",
+          gap: 8, padding: "18px clamp(16px, 4vw, 48px) 0", pointerEvents: "none" }}>
+          {[
+            ["Archive", "/archive"],
+            ["DB", "/db"],
+          ].map(([label, path]) => (
+            <button
+              key={path}
+              onClick={() => nav(path)}
+              style={{ pointerEvents: "auto", height: 34, borderRadius: 99,
+                border: `1px solid ${E.border}`, background: "rgba(6,20,11,.52)",
+                color: label === "Archive" ? E.emLL : E.t3,
+                padding: "0 14px", fontSize: 12, fontWeight: 700, cursor: "pointer",
+                backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
+                boxShadow: "0 4px 18px rgba(0,0,0,.18)", transition: "background .15s, color .15s" }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = "rgba(16,185,129,.16)";
+                e.currentTarget.style.color = E.emLL;
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = "rgba(6,20,11,.52)";
+                e.currentTarget.style.color = label === "Archive" ? E.emLL : E.t3;
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </nav>
 
         {/* ── Hero section ── */}
         <section style={{ maxWidth: 1320, margin: "0 auto", display: "flex", flexDirection: "column",
-          alignItems: "center", padding: "52px 32px 0", textAlign: "center" }}>
+          alignItems: "center", padding: "18px 32px 0", textAlign: "center" }}>
 
           {/* Headline */}
           <h1 style={{ fontSize: 80, fontWeight: 900, color: E.t1, letterSpacing: "-0.06em",
@@ -187,7 +314,7 @@ export default function LandingPage() {
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center",
             marginBottom: 44, animation: "fadeUp .5s ease .18s both" }}>
             <span style={{ fontSize: 13, color: E.t4, fontWeight: 600, alignSelf: "center" }}>Try:</span>
-            {EXAMPLES.map(ex => (
+            {examples.map(ex => (
               <button key={ex} onClick={() => handleStart(ex)}
                 style={{ borderRadius: 99, border: `1px solid ${E.border}`,
                   background: "rgba(255,255,255,.06)", padding: "8px 20px",
@@ -202,41 +329,48 @@ export default function LandingPage() {
         </section>
 
         {/* ── Topic sections ── */}
-        <section style={{ maxWidth: 1320, margin: "0 auto", padding: "0 48px 64px" }}>
+        <section style={{ width: "100%", maxWidth: 1320, margin: "0 auto", padding: "0 clamp(16px, 4vw, 48px) 64px", boxSizing: "border-box" }}>
           <div style={{ borderRadius: 32, border: `1px solid ${E.border}`,
-            background: E.surf, padding: "28px 32px 20px",
+            background: E.surf, padding: "28px clamp(20px, 4vw, 48px) 20px",
             boxShadow: "0 8px 48px rgba(0,0,0,.45)", backdropFilter: "blur(24px)",
-            display: "grid", gridTemplateColumns: "1fr 1fr", gap: 40 }}>
+            display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(430px, 100%), 1fr))", gap: 40,
+            overflow: "hidden", width: "100%", boxSizing: "border-box" }}>
 
             {/* Hot */}
-            <div>
+            <div style={{ minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
                 <div>
                   <h2 style={{ fontSize: 20, fontWeight: 800, color: E.t1, margin: "0 0 4px", letterSpacing: "-0.02em" }}>이번 주 핵심 주제</h2>
-                  <p style={{ fontSize: 11, color: E.t4, margin: 0 }}>2026년 5월 3일 기준 · Omdia · Counterpoint · IDC</p>
+                  <p style={{ fontSize: 11, color: E.t4, margin: 0 }}>
+                    {generatedAt || "데이터 로딩 중…"}
+                  </p>
                 </div>
               </div>
               <div>
-                {WEEKLY_HOT.map((item, i) => (
-                  <TopicRow key={i} item={item} onStart={handleStart} index={i} />
-                ))}
+                {weeklyHot.length === 0
+                  ? <TopicMessage status={topicStatus} fallback="이번 주 핵심 기준에 해당하는 주제가 없습니다" />
+                  : weeklyHot.map((item, i) => (
+                      <TopicRow key={item.title || `${item.org}-${i}`} item={item} onStart={handleStart} index={i} />
+                    ))
+                }
               </div>
             </div>
 
-            {/* Divider */}
-            <div style={{ position: "relative" }}>
-              <div style={{ position: "absolute", left: -14, top: 0, bottom: 0,
-                width: 1, background: E.border }} />
+            {/* New topics */}
+            <div style={{ position: "relative", minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
                 <div>
                   <h2 style={{ fontSize: 20, fontWeight: 800, color: E.t1, margin: "0 0 4px", letterSpacing: "-0.02em" }}>이번 주 새롭게 등장한 주제</h2>
-                  <p style={{ fontSize: 11, color: E.t4, margin: 0 }}>최근 7일 내 신규 등장 · 자동 감지</p>
+                  <p style={{ fontSize: 11, color: E.t4, margin: 0 }}>최근 {topicDays}일 내 신규 등장 · 자동 감지</p>
                 </div>
               </div>
               <div>
-                {WEEKLY_NEW.map((item, i) => (
-                  <TopicRow key={i} item={item} right onStart={handleStart} index={i} />
-                ))}
+                {weeklyNew.length === 0
+                  ? <TopicMessage status={topicStatus} fallback="이번 주 신규 기준에 해당하는 주제가 없습니다" />
+                  : weeklyNew.map((item, i) => (
+                      <TopicRow key={item.title || `${item.org}-${i}`} item={item} right onStart={handleStart} index={i} />
+                    ))
+                }
               </div>
             </div>
 

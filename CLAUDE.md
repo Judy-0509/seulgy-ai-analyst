@@ -18,9 +18,10 @@ cd frontend && npm run dev                              # 프론트엔드
 
 | URL | 내용 |
 |-----|------|
-| `http://localhost:5173` | React 앱 — Vite dev server (개발 시 메인 진입점) |
-| `http://localhost:8000/` | React 앱 — Vite 빌드(`frontend/dist/`) 서빙 (빌드 후) |
-| `http://localhost:8000/reports/glm_topic_suggestions.html` | 주제 선정 + **레포트 생성 UI** |
+| `http://localhost:5173/` | React 랜딩/추천 주제 화면 |
+| `http://localhost:5173/app` | React 보고서 생성 파이프라인 UI |
+| `http://localhost:5173/db` | React 아카이브 DB 화면 |
+| `http://localhost:8000/` | React 앱 — Vite 빌드(`frontend/dist/`) 서빙 또는 API 안내 |
 | `http://localhost:8000/dashboard` | 아카이브 빌드 대시보드 |
 | `http://localhost:8000/reports/{파일명}` | 생성된 보고서 HTML 서빙 |
 
@@ -40,7 +41,7 @@ A(영문 쿼리) → B(Archive 검색) → C(TOC 생성) → [GATE 1: 목차 확
 python run_report.py "분석 토픽"
 python run_report.py --auto "분석 토픽"
 
-# 웹 UI: reports/glm_topic_suggestions.html에서 "레포트 생성" 버튼 클릭
+# 웹 UI: React 메인 추천 주제 또는 /app에서 보고서 생성
 ```
 
 출력: `reports/{slug}_report.md` + `reports/{slug}_report.html` + `reports/{slug}_process.json`
@@ -48,7 +49,7 @@ python run_report.py --auto "분석 토픽"
 ### 2. 주제 추천 — `run_suggest.py`
 
 아카이브 DB에서 최근 기사를 분석해 GLM-4.7 Thinking 모드로 보고서 주제를 자동 선정.  
-결과: `reports/glm_topic_suggestions.html`
+결과: `scripts/_topic_suggestions.json` — React 랜딩/홈 화면의 추천 주제 API가 사용
 
 ### 3. 아카이브 빌드
 
@@ -70,7 +71,7 @@ python scripts/build_counterpoint_archive.py
 22_Research Helper/
 │
 ├── CLAUDE.md                       ← 이 파일
-├── .env                            ← API 키 (GLM, Anthropic 등)
+├── .env                            ← API 키 (`ZHIPU_API_KEY`, Qwen 선택 설정 등)
 ├── .env.example
 ├── pyproject.toml
 │
@@ -80,16 +81,15 @@ python scripts/build_counterpoint_archive.py
 │
 ├── src/
 │   ├── server.py                   ← FastAPI 서버 (포트 8000)
-│   │                                  엔드포인트: /api/start, /api/report/*, /api/archives/*, /api/topics/mine
+│   │                                  엔드포인트: /api/report/*, /api/archives/*, /api/topics/*
 │   ├── state_machine.py            ← Phase0 분석 파이프라인 (AnalysisPipeline)
 │   ├── models.py                   ← Pydantic 모델 (SearchResult, ResearchPlan 등)
 │   ├── config.py                   ← 설정값
-│   ├── app.py                      ← Chainlit 앱 (미사용)
 │   ├── prompts/
 │   │   ├── system.py               ← ANALYST_SYSTEM_PROMPT
 │   │   └── step_prompts.py         ← PRE_SEARCH_PROMPT, TOC_PROMPT, SECTION_REPORT_PROMPT, INSIGHTS_PROMPT
 │   ├── services/
-│   │   ├── llm.py                  ← LLMService (GLM-4.7 + Claude 래퍼)
+│   │   ├── llm.py                  ← LLMService (GLM-4.7 기본, Qwen 선택)
 │   │   ├── search.py               ← SearchService (Archive→RSS→DDG 3-tier)
 │   │   ├── body_fetcher.py         ← 본문 fetch (FETCHABLE_SOURCES)
 │   │   ├── body_cache.py           ← SQLite 본문 캐시
@@ -104,7 +104,6 @@ python scripts/build_counterpoint_archive.py
 │   ├── build_idc_archive.py
 │   ├── build_trendforce_archive.py
 │   ├── build_morgan_stanley_archive.py
-│   ├── build_naver_research_archive.py
 │   ├── build_gartner_archive.py
 │   ├── build_reuters_archive.py
 │   ├── build_yole_archive.py
@@ -114,36 +113,36 @@ python scripts/build_counterpoint_archive.py
 │   └── clear_body_cache.py         ← 본문 캐시 초기화 유틸
 │
 ├── data/
-│   ├── archives/                   ← 소스별 아카이브 JSON (omdia.json, counterpoint.json 등)
-│   ├── article_bodies.db           ← 본문 fetch 캐시 (SQLite)
+│   ├── archives/                   ← 소스별 아카이브 JSON (8개 기관)
+│   ├── article_bodies.db           ← 본문 fetch 캐시 (SQLite, gitignore)
 │   └── smartphone_keywords.json    ← 스마트폰 관련 필터링 키워드
 │
-├── reports/                        ← 생성된 보고서 + UI
-│   ├── glm_topic_suggestions.html  ← [메인 UI] 주제 선정 + 레포트 생성 버튼
-│   ├── archive_viewer.html         ← 아카이브 뷰어
-│   ├── *_report.html               ← 생성된 보고서 (HTML)
-│   ├── *_report.md                 ← 생성된 보고서 (Markdown)
-│   └── *_process.json              ← 파이프라인 메타데이터 (HTML 재생성용)
+├── reports/                        ← 생성된 보고서 (gitignore)
+│   ├── *_report.html
+│   ├── *_report.md
+│   └── *_process.json
 │
 ├── frontend/                       ← React + Vite 프론트엔드
+│   ├── DESIGN_SYSTEM.md            ← 다른 기능 통합 시 참고할 디자인 규칙
+│   ├── public/
+│   │   └── logo-mark.png           ← Canopy 로고/favicon 소스
 │   ├── src/
+│   │   ├── pages/
+│   │   │   ├── LandingPage.jsx     ← 랜딩/추천 주제 화면
+│   │   │   ├── AppPage.jsx         ← 홈/파이프라인 라우팅
+│   │   │   └── DbPage.jsx          ← 아카이브 DB 화면
 │   │   └── components/
-│   │       └── PipelineScreen.jsx  ← 메인 UI (보고서 생성 파이프라인 뷰)
+│   │       └── PipelineScreen.jsx  ← 보고서 생성 파이프라인 뷰
 │   ├── dist/                       ← Vite 빌드 산출물 (server.py가 / 에서 서빙)
 │   └── package.json
 │
 ├── web/
 │   └── dashboard.html              ← 아카이브 빌드 대시보드
 │
-├── tests/                          ← pytest 테스트
-│   ├── test_state_machine.py
-│   ├── test_search_relaxed.py
-│   └── ...
-│
-└── ETC/                            ← 개발/디버그용 파일 (운영 불필요)
-    ├── scripts_dev/                ← 1회성 분석 스크립트
-    ├── reports_dev/                ← 디버그 보고서, 구 state 파일
-    └── docs_old/                   ← 구 설계 문서, .chainlit 등
+└── tests/                          ← pytest 테스트
+    ├── test_state_machine.py
+    ├── test_search_relaxed.py
+    └── ...
 ```
 
 ---
@@ -160,8 +159,12 @@ python scripts/build_counterpoint_archive.py
 | GET  | `/api/stream/{sid}` | Phase0 SSE 스트림 |
 | POST | `/api/confirm_dimensions` | Phase0 차원 확정 |
 | GET  | `/api/topics/mine` | 최근 Tier-1 스마트폰 기사 목록 |
+| GET  | `/api/topics/suggested` | `scripts/_topic_suggestions.json` 기반 추천 주제 |
 | GET  | `/api/archives/status` | 아카이브 현황 |
+| GET  | `/api/archives/entries` | 특정 소스 전체 기사 (키워드 필터 없음) |
 | POST | `/api/archives/refresh` | 아카이브 전체 빌드 시작 |
+| GET  | `/api/archives/stream/{job_id}` | 아카이브 빌드 로그 SSE |
+| GET/PUT | `/api/keywords` | 스마트폰 필터링 키워드 조회/교체 |
 
 ---
 
@@ -181,8 +184,14 @@ Tier 2: DuckDuckGo (SOURCE_TIER_MAP 도메인만)  ← 외부 검색 시
 ## 환경 변수 (.env)
 
 ```
-GLM_API_KEY=...          # GLM-4.7 (주 LLM)
-ANTHROPIC_API_KEY=...    # Claude (서브)
+LLM_BACKEND=glm          # 기본값: glm, 선택값: qwen
+ZHIPU_API_KEY=...        # GLM-4.7
+
+# Qwen 백엔드 사용 시
+QWEN_API_KEY=...
+QWEN_BASE_URL=...
+QWEN_MODEL=qwen3-32b
+QWEN_FAST_MODEL=qwen3-8b
 ```
 
 ---
@@ -193,3 +202,21 @@ ANTHROPIC_API_KEY=...    # Claude (서브)
 pytest
 pytest tests/test_search_relaxed.py -v
 ```
+
+프론트엔드 변경 시에는 관련 파일 중심으로 lint를 실행한다.
+
+```bash
+cd frontend
+npm.cmd exec eslint -- src/pages/LandingPage.jsx src/pages/DbPage.jsx src/components/PipelineScreen.jsx
+```
+
+---
+
+## 프론트엔드 디자인 규칙
+
+다른 웹사이트나 기능을 합칠 때는 `frontend/DESIGN_SYSTEM.md`를 먼저 읽는다.
+
+- 기본 앱/DB 화면은 `frontend/src/theme.js`의 `C` 토큰을 사용한다.
+- 파이프라인 화면은 `PipelineScreen.jsx` 내부 `E` 토큰과 `gl()` helper를 유지한다.
+- 브랜드 마크와 favicon은 `frontend/public/logo-mark.png`를 사용한다.
+- API 기반 화면은 loading/empty/error/ready 상태를 분리한다.
