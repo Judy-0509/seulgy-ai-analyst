@@ -16,13 +16,26 @@ const BASE_R = {
 };
 
 function makeR(domain) {
-  const isHumanoid = domain === "humanoid";
+  if (domain === "humanoid") return {
+    ...BASE_R,
+    em:   "#ef4444",
+    emD:  "#b91c1c",
+    emBg: "rgba(239,68,68,.09)",
+    emBr: "rgba(239,68,68,.24)",
+  };
+  if (domain === "automotive") return {
+    ...BASE_R,
+    em:   "#2563eb",
+    emD:  "#1d4ed8",
+    emBg: "rgba(37,99,235,.09)",
+    emBr: "rgba(37,99,235,.24)",
+  };
   return {
     ...BASE_R,
-    em:   isHumanoid ? "#ef4444" : "#10b981",
-    emD:  isHumanoid ? "#b91c1c" : "#047857",
-    emBg: isHumanoid ? "rgba(239,68,68,.09)"  : "rgba(16,185,129,.09)",
-    emBr: isHumanoid ? "rgba(239,68,68,.24)"  : "rgba(16,185,129,.24)",
+    em:   "#10b981",
+    emD:  "#047857",
+    emBg: "rgba(16,185,129,.09)",
+    emBr: "rgba(16,185,129,.24)",
   };
 }
 

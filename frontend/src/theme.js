@@ -39,6 +39,19 @@ export const SRC_COLOR_MAP = {
   "Boston Dynamics":         "#fee2e2",
   "Figure AI":               "#fda4af",
   "Unitree Robotics":        "#fb7185",
+  // Automotive (12 distinct blues, dark → light)
+  "JATO Dynamics":           "#172554",
+  "Cox Automotive":          "#1e3a8a",
+  "AlixPartners":            "#1e40af",
+  "WardsAuto":               "#1d4ed8",
+  "SAE International":       "#2563eb",
+  "Automotive Dive":         "#3b82f6",
+  "Automotive World":        "#60a5fa",
+  "InsideEVs":               "#93c5fd",
+  "Electrek":                "#bfdbfe",
+  "Toyota Newsroom":         "#dbeafe",
+  "VW Group":                "#e0f2fe",
+  "Mercedes-Benz Media":     "#f0f9ff",
 };
 
 export const TAG_COLORS = {

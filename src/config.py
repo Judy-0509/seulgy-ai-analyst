@@ -46,6 +46,21 @@ SOURCE_TIER_MAP = {
     "phonearena.com": 3,
     "notebookcheck.net": 3,
     "wccftech.com": 3,
+    # Automotive — Tier 1: 산업분석·리서치
+    "jato.com": 1,
+    "alixpartners.com": 1,
+    "wardsauto.com": 1,
+    "sae.org": 1,
+    # Automotive — Tier 2: OEM 공식·미디어
+    "vwgroup.com": 2,
+    "media.toyota.com": 2,
+    "pressroom.toyota.com": 2,
+    "coxautoinc.com": 2,
+    # Automotive — Tier 3: EV·산업 전문 미디어
+    "automotivedive.com": 3,
+    "automotive-world.com": 3,
+    "electrek.co": 3,
+    "insideevs.com": 3,
 }
 
 PAID_SOURCE_DOMAINS = {"idc.com", "omdia.com", "gfk.com", "techinsights.com"}
@@ -82,6 +97,15 @@ RSS_SOURCES = [
     {"name": "PhoneArena",        "url": "https://www.phonearena.com/feed/latest", "tier": 3},
     {"name": "Wccftech",          "url": "https://wccftech.com/feed/", "tier": 3},
     {"name": "Notebookcheck",     "url": "https://www.notebookcheck.net/News.40.0.html?feed=rss2", "tier": 3},
+    # ── Automotive sources ─────────────────────────────────────────
+    # Tier 2: OEM 공식·전통 미디어
+    {"name": "Cox Automotive",   "url": "https://www.coxautoinc.com/feed/",            "tier": 2},
+    {"name": "Toyota Newsroom",  "url": "https://pressroom.toyota.com/rss/",            "tier": 2},
+    # Tier 3: EV·산업 전문 미디어
+    {"name": "Automotive Dive",  "url": "https://www.automotivedive.com/feeds/news/",   "tier": 3},
+    {"name": "Automotive World", "url": "https://automotive-world.com/feed/",           "tier": 3},
+    {"name": "Electrek",         "url": "https://electrek.co/feed/",                    "tier": 3},
+    {"name": "InsideEVs",        "url": "https://insideevs.com/feed/atom/",             "tier": 3},
 ]
 
 MODEL_CONFIG = {

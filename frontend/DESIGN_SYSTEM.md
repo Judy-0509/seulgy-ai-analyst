@@ -54,6 +54,15 @@
 - Soft background: `rgba(183,55,69,.045)` to `rgba(183,55,69,.10)`
 - Use case: humanoid/robotics market research
 
+### Automotive
+
+- Background asset: `frontend/public/automotive-bg.png`
+- Accent: electric blue
+- Main accent: `#2563eb`
+- Accent dark: `#1d4ed8`
+- Soft background: `rgba(37,99,235,.06)` to `rgba(37,99,235,.12)`
+- Use case: automotive/EV market research (Build · Market · Shift 3축)
+
 ### Theme Rules
 
 - Do not hardcode smartphone green inside shared pipeline components.

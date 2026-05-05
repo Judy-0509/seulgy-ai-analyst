@@ -16,12 +16,23 @@ const A = {
 };
 
 function domainColors(domain) {
-  const isHumanoid = domain === "humanoid";
+  if (domain === "humanoid") return {
+    em:   "#ef4444",
+    emD:  "#b91c1c",
+    emBg: "rgba(239,68,68,.09)",
+    emBr: "rgba(239,68,68,.24)",
+  };
+  if (domain === "automotive") return {
+    em:   "#2563eb",
+    emD:  "#1d4ed8",
+    emBg: "rgba(37,99,235,.09)",
+    emBr: "rgba(37,99,235,.24)",
+  };
   return {
-    em:   isHumanoid ? "#ef4444" : "#10b981",
-    emD:  isHumanoid ? "#b91c1c" : "#047857",
-    emBg: isHumanoid ? "rgba(239,68,68,.09)"  : "rgba(16,185,129,.09)",
-    emBr: isHumanoid ? "rgba(239,68,68,.24)"  : "rgba(16,185,129,.24)",
+    em:   "#10b981",
+    emD:  "#047857",
+    emBg: "rgba(16,185,129,.09)",
+    emBr: "rgba(16,185,129,.24)",
   };
 }
 
@@ -55,7 +66,7 @@ function ReportCard({ report, onOpen, onDelete, deleting }) {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
-          <Badge dc={dc}>{report.domain === "humanoid" ? "Humanoid" : "Smartphone"}</Badge>
+          <Badge dc={dc}>{report.domain === "humanoid" ? "Humanoid" : report.domain === "automotive" ? "Automotive" : "Smartphone"}</Badge>
           <Badge dc={dc}>{report.section_count}개 섹션</Badge>
           <Badge dc={dc}>{report.reference_count}개 참고</Badge>
           <span style={{ fontSize: 11.5, color: A.t4 }}>{report.run_ts || report.modified_at}</span>

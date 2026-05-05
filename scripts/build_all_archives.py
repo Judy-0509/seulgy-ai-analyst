@@ -49,6 +49,18 @@ BUILDERS = [
     ("Boston Dynamics",            "build_boston_dynamics_archive.py",       "boston_dynamics.json"),
     ("Figure AI",                  "build_figure_ai_archive.py",             "figure_ai.json"),
     ("Unitree Robotics",           "build_unitree_archive.py",               "unitree.json"),
+    # ── Automotive sources ─────────────────────────────────────────
+    ("JATO Dynamics",       "build_jato_archive.py",             "jato.json"),
+    ("AlixPartners",        "build_alixpartners_archive.py",     "alixpartners.json"),
+    ("WardsAuto",           "build_wardsauto_archive.py",        "wardsauto.json"),
+    ("SAE International",   "build_sae_archive.py",              "sae.json"),
+    ("VW Group",            "build_vw_archive.py",               "vw_group.json"),
+    ("Cox Automotive",      "build_cox_automotive_archive.py",   "cox_automotive.json"),
+    ("Automotive Dive",     "build_automotive_dive_archive.py",  "automotive_dive.json"),
+    ("Automotive World",    "build_automotive_world_archive.py", "automotive_world.json"),
+    ("Electrek",            "build_electrek_archive.py",         "electrek.json"),
+    ("InsideEVs",           "build_insideevs_archive.py",        "insideevs.json"),
+    ("Toyota Newsroom",     "build_toyota_archive.py",           "toyota.json"),
 ]
 
 PER_BUILDER_TIMEOUT_SEC = 900  # 빌더당 최대 15분

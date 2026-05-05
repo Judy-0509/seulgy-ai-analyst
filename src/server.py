@@ -793,12 +793,21 @@ _HUMANOID_SOURCES = {
     "arXiv (cs.RO)", "MIT Technology Review", "Unitree Robotics", "NVIDIA", "The Verge",
 }
 
+_AUTOMOTIVE_SOURCES = {
+    "JATO Dynamics", "AlixPartners", "WardsAuto", "SAE International",
+    "VW Group", "Mercedes-Benz Media", "Cox Automotive", "Automotive Dive",
+    "Automotive World", "Electrek", "InsideEVs", "Toyota Newsroom",
+}
+
 def _detect_domain(process_data: dict | None) -> str:
     if not process_data:
         return "smartphone"
     for src in process_data.get("archive_sources", []):
-        if src.get("source_name") in _HUMANOID_SOURCES:
+        src_name = src.get("source_name")
+        if src_name in _HUMANOID_SOURCES:
             return "humanoid"
+        if src_name in _AUTOMOTIVE_SOURCES:
+            return "automotive"
     return "smartphone"
 
 

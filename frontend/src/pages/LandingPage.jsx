@@ -50,6 +50,29 @@ const THEMES = {
     image: "url('/humanoid-bg.png')",
     bgPos: "center",
   },
+  automotive: {
+    bg: "#050c1a",
+    surf: "rgba(5,14,31,.70)",
+    glassH: "rgba(255,255,255,.12)",
+    border: "rgba(255,255,255,.14)",
+    borderL: "rgba(255,255,255,.22)",
+    t1: "#ffffff",
+    t3: "rgba(255,255,255,.72)",
+    t4: "rgba(255,255,255,.55)",
+    t5: "rgba(255,255,255,.28)",
+    em: "#2563eb",
+    emL: "#3b82f6",
+    emLL: "#93c5fd",
+    emBg: "rgba(37,99,235,.12)",
+    emBr: "rgba(147,197,253,.28)",
+    navBg: "rgba(5,14,31,.52)",
+    hoverBg: "rgba(37,99,235,.16)",
+    rowBg: "rgba(59,130,246,.06)",
+    rowBgStrong: "rgba(37,99,235,.22)",
+    vignette: "radial-gradient(circle at 50% 46%, rgba(5,18,55,.08) 0%, rgba(3,10,36,.46) 42%, rgba(1,4,16,.93) 100%)",
+    image: "url('/automotive-bg.png')",
+    bgPos: "center",
+  },
 };
 
 function critKey(criteria = "") {
@@ -91,6 +114,10 @@ const DOMAIN_EXAMPLES = {
   humanoid: [
     "휴머노이드 AI 에이전트 로드맵과 소비자 수용도 격차",
     "휴머노이드 양산 전환과 액추에이터 공급망 재편",
+  ],
+  automotive: [
+    "글로벌 EV 배터리 공급망 재편과 OEM 원가 전략 2026",
+    "중국 OEM의 유럽 시장 진입 가속화와 관세 대응 전략",
   ],
 };
 
