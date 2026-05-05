@@ -4,6 +4,8 @@ WORKDIR /build
 COPY frontend/package*.json ./
 RUN npm ci
 COPY frontend/ .
+ARG VITE_PIN_KEY
+ENV VITE_PIN_KEY=$VITE_PIN_KEY
 RUN npm run build
 
 # ── Stage 2: Python Runtime ───────────────────────────────────────────────────
