@@ -1,0 +1,22 @@
+services:
+  spark:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: spark:latest
+    container_name: spark
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../data:/app/data
+      # market_news_dashboard DB를 read-only로 마운트 (뉴스 피드용)
+      - ../../market_news_dashboard/data:/app/data/mi_news:ro
+    env_file:
+      - ../.env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/archives/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s

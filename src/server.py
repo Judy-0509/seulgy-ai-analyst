@@ -1060,6 +1060,10 @@ async def api_report_gate2(req: Request):
     return {"ok": True}
 
 
+# SPA fallback — must be registered LAST so API routes take priority
+if FRONTEND_DIST.exists():
+    app.mount("/", StaticFiles(directory=str(FRONTEND_DIST), html=True), name="spa")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8000)
