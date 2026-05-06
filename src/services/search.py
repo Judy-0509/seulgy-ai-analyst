@@ -27,9 +27,9 @@ STOP_WORDS = {
     # Publisher / research-firm names — PRE_SEARCH_PROMPT가 쿼리에 강제 주입하는
     # institutional source 이름들. eng_topic 추출 시 required term이 되면
     # archive 매칭 점수가 publisher 이름 포함 여부에 좌우되어 부작용 발생.
-    "bloomberg", "counterpoint", "idc", "gsmarena",
-    "reuters", "omdia", "gartner", "trendforce", "yole",
-    "nikkei", "scmp", "morgan", "stanley",
+    "counterpoint", "idc", "gsmarena",
+    "omdia", "trendforce", "yole",
+    "scmp", "morgan", "stanley",
 }
 # 범용 명사 — required 대신 anchor로 강등하여 floor 점수에만 기여.
 # 이 단어들이 required에 포함되면 "Display Production Tracker" 같은 무관 기사가
@@ -116,8 +116,10 @@ class SearchService:
     def _score_text(self, text: str) -> tuple[float, bool]:
         """(score, passes_floor) 반환. core_terms 미설정 시 (1.0, True).
 
-        required 중 최소 2개 매칭해야 통과 (범용명사는 GENERIC_NOUNS로 anchor 강등됨).
-        모든 required 매치 시 1.5× 보너스 → 정밀 일치 기사가 상위로.
+        REV4 매칭 완화 룰:
+          - required·anchor 가중치는 3.0 / 0.5
+          - 모든 required 매치 시 1.5× 보너스 (정밀 일치 우선)
+          - passes_floor = score >= 0.5 — anchor만 매칭돼도 통과시켜 회수율 확보
         """
         if not self.core_terms:
             return 1.0, True
@@ -132,7 +134,7 @@ class SearchService:
         # 모든 required 매치 시 보너스 (정밀 일치 우선)
         if req_match == len(required):
             score *= 1.5
-        passes_floor = req_match >= 2  # required 핵심어 최소 2개 매칭 (범용명사 anchor 강등 후 적용)
+        passes_floor = score >= 0.5
         return score, passes_floor
 
     def _search_archive(self, query: str, keywords: list[str]) -> list[tuple[float, SearchResult]]:

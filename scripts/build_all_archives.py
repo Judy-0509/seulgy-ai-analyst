@@ -1,5 +1,5 @@
 """
-9개 archive 빌더를 순차 실행하는 오케스트레이터.
+36개 archive 빌더를 순차 실행하는 오케스트레이터.
 
 각 빌더는 자체 incremental 로직을 갖고 있어서, 기존 JSON에 없는 URL만 새로 fetch한다.
 즉 이 스크립트를 다시 돌릴수록 DB가 누적된다.
@@ -33,10 +33,9 @@ BUILDERS = [
     ("TrendForce",            "build_trendforce_archive.py",            "trendforce.json"),
     ("Omdia",                 "build_omdia_archive.py",                 "omdia.json"),
     ("IDC",                   "build_idc_archive.py",                   "idc.json"),
-    ("Reuters",               "build_reuters_archive.py",               "reuters.json"),
     ("Yole",                  "build_yole_archive.py",                  "yole.json"),
-    ("Gartner",               "build_gartner_archive.py",               "gartner.json"),
-    ("Morgan Stanley",        "build_morgan_stanley_archive.py",        "morgan_stanley.json"),
+    ("DigiTimes Asia",        "build_digitimes_archive.py",             "digitimes.json"),
+    ("CCS Insight",           "build_ccs_insight_archive.py",           "ccs_insight.json"),
     # ── Humanoid / Robotics sources ────────────────────────────────
     ("The Robot Report",           "build_robot_report_archive.py",          "robot_report.json"),
     ("IEEE Spectrum",              "build_ieee_spectrum_robotics_archive.py", "ieee_spectrum_robotics.json"),
@@ -49,6 +48,10 @@ BUILDERS = [
     ("Boston Dynamics",            "build_boston_dynamics_archive.py",       "boston_dynamics.json"),
     ("Figure AI",                  "build_figure_ai_archive.py",             "figure_ai.json"),
     ("Unitree Robotics",           "build_unitree_archive.py",               "unitree.json"),
+    ("Apptronik",                  "build_apptronik_archive.py",             "apptronik.json"),
+    ("Agility Robotics",           "build_agility_robotics_archive.py",      "agility_robotics.json"),
+    ("1X Technologies",            "build_onex_technologies_archive.py",     "onex_technologies.json"),
+    ("IFR",                        "build_ifr_archive.py",                   "ifr.json"),
     # ── Automotive sources ─────────────────────────────────────────
     ("JATO Dynamics",       "build_jato_archive.py",             "jato.json"),
     ("AlixPartners",        "build_alixpartners_archive.py",     "alixpartners.json"),

@@ -1,5 +1,5 @@
 """
-TOC 기반 보고서 생성기
+목차 기반 보고서 생성기
 A→B→C→[USER GATE 1]→D→D'→[USER GATE 2]→E→F 워크플로우
 출력: reports/{slug}_report.md + reports/{slug}_report.html
 """
@@ -272,7 +272,7 @@ async def stage_b(search: SearchService, queries: list[str], eng_kw: str = "") -
 
 
 # ---------------------------------------------------------------------------
-# Stage C — TOC 생성 (LLM)
+# Stage C — 목차 생성 (LLM)
 # ---------------------------------------------------------------------------
 
 async def stage_c(llm: LLMService, topic: str, archive_results: list) -> list[dict]:
@@ -784,7 +784,7 @@ def _build_process_html(
     else:
         sources_html = "<p style='color:#9ca3af;font-size:0.8rem'>정보 없음</p>"
 
-    # [C] TOC 인과 사슬
+    # [C] 목차 인과 사슬
     role_cfg = {
         "structural_cause": ("[1] 구조적 원인", "#ef4444"),
         "direct_impact":    ("[2] 직접 영향",   "#f97316"),
@@ -919,7 +919,7 @@ async def main(topic: str, auto: bool = False, gate1_cb=None, gate2_cb=None):
     run_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     print("\n" + "=" * 60)
-    print("  TOC 기반 보고서 생성")
+    print("  목차 기반 보고서 생성")
     print(f"  주제: {topic}")
     print(f"  시각: {run_ts}")
     print("=" * 60)

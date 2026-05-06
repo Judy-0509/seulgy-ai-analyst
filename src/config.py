@@ -23,13 +23,8 @@ SOURCE_TIER_MAP = {
     "digitimes.com": 1,
     "thelec.net": 1,
     # Tier 2: 통신사·아시아 매체
-    "reuters.com": 2,
-    "feeds.reuters.com": 2,
-    "bloomberg.com": 2,
     "wsj.com": 2,
     "ft.com": 2,
-    "nikkei.com": 2,
-    "asia.nikkei.com": 2,
     "scmp.com": 2,
     # Tier 3: 모바일/IT 전문
     "theverge.com": 3,
@@ -75,9 +70,7 @@ RSS_SOURCES = [
     {"name": "Digitimes",             "url": "https://www.digitimes.com/rss/daily.xml", "tier": 1},
     {"name": "The Elec",              "url": "https://www.thelec.net/rss/allArticle.xml", "tier": 1},
     # Tier 2: 통신사·아시아 매체
-    {"name": "Reuters Tech",      "url": "https://feeds.reuters.com/reuters/technologyNews", "tier": 2},
     {"name": "SCMP Tech",         "url": "https://www.scmp.com/rss/5/feed", "tier": 2},
-    {"name": "Nikkei Asia Tech",  "url": "https://asia.nikkei.com/rss/feed/section/technology", "tier": 2},
     # Tier 3: 일반 IT 뉴스
     {"name": "The Verge",         "url": "https://www.theverge.com/rss/index.xml", "tier": 3},
     {"name": "TechCrunch",        "url": "https://techcrunch.com/feed/", "tier": 3},

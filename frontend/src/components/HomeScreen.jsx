@@ -231,7 +231,7 @@ export default function HomeScreen({ onStart, onArchive }) {
         {hasTopics && (
           <>
             <TopicSection
-              label="이번주 핵심 & 신규 주제"
+              label="이번달 핵심 & 신규 주제"
               color="#a855f7"
               topics={tb}
               onStart={onStart}
@@ -239,7 +239,7 @@ export default function HomeScreen({ onStart, onArchive }) {
               setHoveredId={setHoveredId}
             />
             <TopicSection
-              label="이번주 핵심 주제"
+              label="이번달 핵심 주제"
               color="#f59e0b"
               topics={t2}
               onStart={onStart}
@@ -247,7 +247,7 @@ export default function HomeScreen({ onStart, onArchive }) {
               setHoveredId={setHoveredId}
             />
             <TopicSection
-              label="이번주 새롭게 등장한 주제"
+              label="이번달 새롭게 등장한 주제"
               color="#22c55e"
               topics={t3}
               onStart={onStart}

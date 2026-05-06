@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDomain } from "../contexts/DomainContext";
+import { useAuth } from "../contexts/AuthContext";
 
 /* ── Dark forest theme tokens ── */
 const THEMES = {
@@ -73,6 +74,98 @@ const THEMES = {
     image: "url('/automotive-bg.png')",
     bgPos: "center",
   },
+  smartglass: {
+    bg: "#020c10",
+    surf: "rgba(2,12,16,.68)",
+    glassH: "rgba(255,255,255,.12)",
+    border: "rgba(255,255,255,.14)",
+    borderL: "rgba(255,255,255,.22)",
+    t1: "#ffffff",
+    t3: "rgba(255,255,255,.72)",
+    t4: "rgba(255,255,255,.55)",
+    t5: "rgba(255,255,255,.28)",
+    em: "#0891b2",
+    emL: "#06b6d4",
+    emLL: "#67e8f9",
+    emBg: "rgba(8,145,178,.12)",
+    emBr: "rgba(103,232,249,.28)",
+    navBg: "rgba(2,12,16,.52)",
+    hoverBg: "rgba(8,145,178,.16)",
+    rowBg: "rgba(6,182,212,.06)",
+    rowBgStrong: "rgba(8,145,178,.22)",
+    vignette: "radial-gradient(circle at 50% 45%, rgba(4,60,80,.1) 0%, rgba(2,12,16,.46) 44%, rgba(1,5,8,.91) 100%)",
+    image: "url('/smartglass-bg.png')",
+    bgPos: "100% 40%",
+  },
+  tablet: {
+    bg: "#0d0818",
+    surf: "rgba(13,8,24,.68)",
+    glassH: "rgba(255,255,255,.12)",
+    border: "rgba(255,255,255,.14)",
+    borderL: "rgba(255,255,255,.22)",
+    t1: "#ffffff",
+    t3: "rgba(255,255,255,.72)",
+    t4: "rgba(255,255,255,.55)",
+    t5: "rgba(255,255,255,.28)",
+    em: "#7c3aed",
+    emL: "#8b5cf6",
+    emLL: "#c4b5fd",
+    emBg: "rgba(124,58,237,.12)",
+    emBr: "rgba(196,181,253,.28)",
+    navBg: "rgba(13,8,24,.52)",
+    hoverBg: "rgba(124,58,237,.16)",
+    rowBg: "rgba(139,92,246,.06)",
+    rowBgStrong: "rgba(124,58,237,.22)",
+    vignette: "radial-gradient(circle at 50% 45%, rgba(60,20,120,.1) 0%, rgba(13,8,24,.46) 44%, rgba(5,3,12,.91) 100%)",
+    image: "url('/tablet-bg.png')",
+    bgPos: "center",
+  },
+  space_datacenter: {
+    bg: "#050706",
+    surf: "rgba(10,18,15,.72)",
+    glassH: "rgba(255,255,255,.12)",
+    border: "rgba(216,243,220,.18)",
+    borderL: "rgba(216,243,220,.30)",
+    t1: "#ffffff",
+    t3: "rgba(255,255,255,.72)",
+    t4: "rgba(255,255,255,.55)",
+    t5: "rgba(255,255,255,.30)",
+    em: "#22d3a6",
+    emL: "#5eeac5",
+    emLL: "#d8f3dc",
+    emBg: "rgba(34,211,166,.12)",
+    emBr: "rgba(216,243,220,.28)",
+    navBg: "rgba(10,18,15,.52)",
+    hoverBg: "rgba(34,211,166,.16)",
+    rowBg: "rgba(34,211,166,.06)",
+    rowBgStrong: "rgba(34,211,166,.20)",
+    vignette: "linear-gradient(90deg, rgba(2,6,5,.92) 0%, rgba(2,6,5,.72) 38%, rgba(2,6,5,.20) 68%, rgba(2,6,5,.52) 100%), radial-gradient(circle at 28% 46%, rgba(34,211,166,.14) 0%, rgba(2,6,5,.32) 42%, rgba(2,6,5,.88) 100%)",
+    image: "url('/space-datacenter-bg.png')",
+    bgPos: "64% 48%",
+  },
+  macro: {
+    bg: "#1a0f02",
+    surf: "rgba(26,15,2,.68)",
+    glassH: "rgba(255,255,255,.12)",
+    border: "rgba(255,255,255,.14)",
+    borderL: "rgba(255,255,255,.22)",
+    t1: "#ffffff",
+    t3: "rgba(255,255,255,.72)",
+    t4: "rgba(255,255,255,.55)",
+    t5: "rgba(255,255,255,.28)",
+    em: "#d97706",
+    emL: "#f59e0b",
+    emLL: "#fcd34d",
+    emBg: "rgba(217,119,6,.12)",
+    emBr: "rgba(252,211,77,.28)",
+    navBg: "rgba(26,15,2,.52)",
+    hoverBg: "rgba(245,158,11,.16)",
+    rowBg: "rgba(245,158,11,.06)",
+    rowBgStrong: "rgba(217,119,6,.22)",
+    vignette: "radial-gradient(circle at 50% 45%, rgba(100,60,5,.1) 0%, rgba(26,15,2,.46) 44%, rgba(10,5,1,.91) 100%)",
+    image: "url('/macro-bg.png')",
+    bgPos: "60% 40%",
+  },
 };
 
 function critKey(criteria = "") {
@@ -92,6 +185,7 @@ function toRow(t) {
   }
   return {
     title: t.title, org, days: daysAgo,
+    report_slug: t.report_slug || "",
     rationale: t.rationale || "",
     key_data: t.key_data || [],
     articles: (t.articles || []).map(a => ({
@@ -118,6 +212,22 @@ const DOMAIN_EXAMPLES = {
   automotive: [
     "글로벌 EV 배터리 공급망 재편과 OEM 원가 전략 2026",
     "중국 OEM의 유럽 시장 진입 가속화와 관세 대응 전략",
+  ],
+  smartglass: [
+    "AI 글래스 시장 확대와 스마트폰 OEM 진출 전략",
+    "메타 레이밴 이후 스마트글래스 폼팩터 경쟁 구도",
+  ],
+  tablet: [
+    "iPad Pro M4 출시 이후 태블릿 시장 점유율 재편",
+    "안드로이드 태블릿 생태계 확장과 OEM 전략 변화",
+  ],
+  space_datacenter: [
+    "저궤도 데이터센터 전력 냉각 경제성",
+    "위성 간 광링크 기반 데이터 라우팅 전략",
+  ],
+  macro: [
+    "미-중 관세 전쟁 장기화와 글로벌 공급망 재편",
+    "연준 금리 동결과 인플레이션 구조화 리스크",
   ],
 };
 
@@ -151,7 +261,7 @@ function TopicMessage({ status, fallback, theme }) {
 }
 
 /* ── Topic row ── */
-function TopicRow({ item, right, onStart, index, theme }) {
+function TopicRow({ item, right, onStart, index, theme, isAuthenticated }) {
   const E = theme;
   const [hov, setHov] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -188,11 +298,17 @@ function TopicRow({ item, right, onStart, index, theme }) {
           <div style={{ minWidth: 0, flex: 1 }}>
             <p style={{ fontSize: 16, fontWeight: 600, margin: "0 0 4px",
               color: expanded ? E.emLL : hov ? E.emLL : E.t1, transition: "color .15s",
-              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              whiteSpace: expanded ? "normal" : "nowrap",
+              overflow: expanded ? "visible" : "hidden",
+              textOverflow: expanded ? "clip" : "ellipsis",
+              lineHeight: expanded ? 1.4 : 1.2,
+              wordBreak: "keep-all" }}>
               {item.title}
             </p>
             <p style={{ fontSize: 12, color: E.t4, margin: 0,
-              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.org}</p>
+              whiteSpace: expanded ? "normal" : "nowrap",
+              overflow: expanded ? "visible" : "hidden",
+              textOverflow: expanded ? "clip" : "ellipsis" }}>{item.org}</p>
           </div>
         </div>
 
@@ -229,7 +345,7 @@ function TopicRow({ item, right, onStart, index, theme }) {
           </p>
           <div style={{ display: "flex", justifyContent: "flex-end" }}>
             <button
-              onClick={e => { e.stopPropagation(); onStart(item.title, { rationale: item.rationale, key_data: item.key_data, articles: item.articles }); }}
+              onClick={e => { e.stopPropagation(); onStart(item.title, { rationale: item.rationale, key_data: item.key_data, articles: item.articles, report_slug: item.report_slug }); }}
               style={{
                 background: E.emBg, border: `1px solid ${E.emBr}`,
                 color: E.emLL, borderRadius: 10, padding: "7px 16px",
@@ -239,7 +355,7 @@ function TopicRow({ item, right, onStart, index, theme }) {
               onMouseEnter={e => e.currentTarget.style.background = E.rowBgStrong}
               onMouseLeave={e => e.currentTarget.style.background = E.emBg}
             >
-              상세 분석으로 들어가기 →
+              {isAuthenticated ? "상세 분석으로 들어가기" : "작성된 리포트 보기"}
             </button>
           </div>
         </div>
@@ -252,10 +368,11 @@ function TopicRow({ item, right, onStart, index, theme }) {
 export default function LandingPage() {
   const nav = useNavigate();
   const { domain } = useDomain();
+  const { isAuthenticated } = useAuth();
   const E = THEMES[domain.id] || THEMES.smartphone;
   const [val, setVal] = useState("");
-  const [weeklyHot, setWeeklyHot] = useState([]);
-  const [weeklyNew, setWeeklyNew] = useState([]);
+  const [monthlyHot, setMonthlyHot] = useState([]);
+  const [monthlyNew, setMonthlyNew] = useState([]);
   const [generatedAt, setGeneratedAt] = useState("");
   const [topicStatus, setTopicStatus] = useState("loading");
   const [topicDays, setTopicDays] = useState(30);
@@ -271,8 +388,8 @@ export default function LandingPage() {
         const topics = data.topics || [];
         const hot = topics.filter(t => critKey(t.criteria) !== "new").map(toRow);
         const newT = topics.filter(t => critKey(t.criteria) === "new").map(toRow);
-        setWeeklyHot(hot);
-        setWeeklyNew(newT);
+        setMonthlyHot(hot);
+        setMonthlyNew(newT);
         setTopicDays(data.days || 30);
         setTopicStatus(topics.length ? "ready" : "empty");
         const all = [...hot, ...newT];
@@ -285,8 +402,8 @@ export default function LandingPage() {
         }
       })
       .catch(() => {
-        setWeeklyHot([]);
-        setWeeklyNew([]);
+        setMonthlyHot([]);
+        setMonthlyNew([]);
         setExamples(DOMAIN_EXAMPLES[domain.id] || DOMAIN_EXAMPLES.smartphone);
         setTopicStatus("error");
       });
@@ -295,7 +412,17 @@ export default function LandingPage() {
   const handleStart = (topic, topicInfo = null) => {
     const fallback = (DOMAIN_EXAMPLES[domain.id] || DOMAIN_EXAMPLES.smartphone)[0];
     const t = (typeof topic === "string" ? topic : "").trim() || "아마존 글로벌스타 인수와 D2D 위성 통신";
-    nav("/app", { state: { startTopic: t.startsWith("?") ? fallback : t, topicInfo } });
+    const startTopic = t.startsWith("?") ? fallback : t;
+    // 이미 생성된 보고서가 있으면 인증 여부와 무관하게 archive로 점프
+    if (topicInfo?.report_slug) {
+      nav(`/archive/${encodeURIComponent(topicInfo.report_slug)}`);
+      return;
+    }
+    if (isAuthenticated) {
+      nav("/app", { state: { startTopic, topicInfo } });
+      return;
+    }
+    alert("이 주제로 생성된 리포트가 아직 없습니다.");
   };
 
   return (
@@ -315,11 +442,15 @@ export default function LandingPage() {
       <div style={{ position: "relative", zIndex: 3, height: "100%", overflowY: "auto", overflowX: "hidden" }}>
         <nav style={{ position: "sticky", top: 0, zIndex: 10, display: "flex", justifyContent: "flex-end",
           gap: 8, padding: "18px clamp(16px, 4vw, 48px) 0", pointerEvents: "none" }}>
-          {[
+          {(isAuthenticated ? [
             ["Archive", "/archive"],
             ["News", "/news"],
             ["DB", "/db"],
-          ].map(([label, path]) => (
+            ["Keywords", "/keywords"],
+            ["Usage", "/usage"],
+          ] : [
+            ["Login", "/login"],
+          ]).map(([label, path]) => (
             <button
               key={path}
               onClick={() => nav(path)}
@@ -351,7 +482,9 @@ export default function LandingPage() {
           <h1 style={{ fontSize: 80, fontWeight: 900, color: E.t1, letterSpacing: "-0.06em",
             lineHeight: 0.98, marginBottom: 28, textShadow: "0 4px 32px rgba(0,0,0,.5)",
             animation: "fadeUp .5s ease .06s both" }}>
-            Deep research.<br/>Clear insights.
+            Deep research.<br/>
+            <span style={{ color: E.em }}>{domain.label}</span>
+            <span style={{ color: E.t1 }}> insights.</span>
           </h1>
 
           {/* Search bar */}
@@ -421,10 +554,10 @@ export default function LandingPage() {
                 </div>
               </div>
               <div>
-                {weeklyHot.length === 0
+                {monthlyHot.length === 0
                   ? <TopicMessage status={topicStatus} fallback="이번 주 핵심 기준에 해당하는 주제가 없습니다" theme={E} />
-                  : weeklyHot.map((item, i) => (
-                      <TopicRow key={item.title || `${item.org}-${i}`} item={item} onStart={handleStart} index={i} theme={E} />
+                  : monthlyHot.map((item, i) => (
+                      <TopicRow key={item.title || `${item.org}-${i}`} item={item} onStart={handleStart} index={i} theme={E} isAuthenticated={isAuthenticated} />
                     ))
                 }
               </div>
@@ -439,10 +572,10 @@ export default function LandingPage() {
                 </div>
               </div>
               <div>
-                {weeklyNew.length === 0
+                {monthlyNew.length === 0
                   ? <TopicMessage status={topicStatus} fallback="이번 주 신규 기준에 해당하는 주제가 없습니다" theme={E} />
-                  : weeklyNew.map((item, i) => (
-                      <TopicRow key={item.title || `${item.org}-${i}`} item={item} right onStart={handleStart} index={i} theme={E} />
+                  : monthlyNew.map((item, i) => (
+                      <TopicRow key={item.title || `${item.org}-${i}`} item={item} right onStart={handleStart} index={i} theme={E} isAuthenticated={isAuthenticated} />
                     ))
                 }
               </div>

@@ -6,6 +6,7 @@
 import subprocess
 import sys
 import os
+import re
 import threading
 import signal
 import socket
@@ -13,6 +14,76 @@ import time
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 FRONTEND = os.path.join(ROOT, "frontend")
+
+
+def _pids_on_port(port: int) -> list[int]:
+    """지정 포트를 LISTENING 상태로 점유 중인 PID 목록 반환 (표준 라이브러리만)."""
+    pids: set[int] = set()
+    try:
+        if sys.platform == "win32":
+            # netstat -ano: Proto Local Foreign State PID
+            out = subprocess.run(
+                ["netstat", "-ano", "-p", "TCP"],
+                capture_output=True, text=True, timeout=5,
+            ).stdout or ""
+            pat = re.compile(rf":{port}\s+\S+\s+LISTENING\s+(\d+)")
+            for line in out.splitlines():
+                m = pat.search(line)
+                if m:
+                    pids.add(int(m.group(1)))
+        else:
+            # lsof -t -i :PORT -sTCP:LISTEN
+            out = subprocess.run(
+                ["lsof", "-t", "-i", f":{port}", "-sTCP:LISTEN"],
+                capture_output=True, text=True, timeout=5,
+            ).stdout or ""
+            for tok in out.split():
+                if tok.isdigit():
+                    pids.add(int(tok))
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass
+    pids.discard(0)
+    pids.discard(os.getpid())
+    return sorted(pids)
+
+
+def _kill_pid(pid: int, force: bool = False) -> bool:
+    """PID 종료. force=True면 강제 종료. 성공 시 True."""
+    try:
+        if sys.platform == "win32":
+            args = ["taskkill", "/PID", str(pid)]
+            if force:
+                args.append("/F")
+            r = subprocess.run(args, capture_output=True, text=True, timeout=5)
+            return r.returncode == 0
+        else:
+            os.kill(pid, signal.SIGKILL if force else signal.SIGTERM)
+            return True
+    except (FileNotFoundError, ProcessLookupError, PermissionError, subprocess.TimeoutExpired):
+        return False
+
+
+def free_port(port: int, label: str) -> None:
+    """포트가 점유돼 있으면 graceful 종료 → 1초 대기 → 강제 종료."""
+    pids = _pids_on_port(port)
+    if not pids:
+        return
+    print(f"\033[33m[{label}]\033[0m 포트 {port} 점유 PID {pids} → 정리 시도", flush=True)
+    for pid in pids:
+        _kill_pid(pid, force=False)
+    # 종료 대기
+    for _ in range(10):  # 최대 1초
+        if not _pids_on_port(port):
+            print(f"\033[33m[{label}]\033[0m 포트 {port} 정리 완료", flush=True)
+            return
+        time.sleep(0.1)
+    # 여전히 살아 있으면 강제 종료
+    remaining = _pids_on_port(port)
+    if remaining:
+        print(f"\033[33m[{label}]\033[0m 강제 종료 PID {remaining}", flush=True)
+        for pid in remaining:
+            _kill_pid(pid, force=True)
+        time.sleep(0.3)
 
 
 def stream(proc, prefix, color):
@@ -44,6 +115,10 @@ def main():
     print(" Backend  → http://localhost:8000")
     print(" Frontend → http://localhost:5173")
     print(" 종료: Ctrl+C\n")
+
+    # 이전 실행에서 남은 프로세스가 8000/5173을 점유 중이면 정리
+    free_port(8000, "BE")
+    free_port(5173, "FE")
 
     backend = subprocess.Popen(
         [sys.executable, "-m", "uvicorn", "src.server:app",

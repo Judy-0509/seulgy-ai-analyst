@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
+from src.services.token_logger import read_all as read_token_log
 from src.models import (
     PipelineState,
     ResearchPlan,
@@ -29,18 +30,17 @@ DASHBOARD_HTML = ROOT / "web" / "dashboard.html"
 ARCHIVES_DIR   = ROOT / "data" / "archives"
 ALL_ARCHIVES_SCRIPT = ROOT / "scripts" / "build_all_archives.py"
 
-# UI 표시명 → archive JSON 파일명 (build_all_archives.py와 동일 순서)
+# UI 표시명 -> archive JSON 파일명 (build_all_archives.py와 동일 순서)
 ARCHIVE_REGISTRY = [
-    # ── Smartphone sources ─────────────────────────────────
+    # Smartphone sources
     ("Counterpoint Research", "counterpoint.json"),
     ("TrendForce",            "trendforce.json"),
     ("Omdia",                 "omdia.json"),
     ("IDC",                   "idc.json"),
-    ("Reuters",               "reuters.json"),
     ("Yole",                  "yole.json"),
-    ("Gartner",               "gartner.json"),
-    ("Morgan Stanley",        "morgan_stanley.json"),
-    # ── Humanoid / Robotics sources ────────────────────────
+    ("DigiTimes Asia",        "digitimes.json"),
+    ("CCS Insight",           "ccs_insight.json"),
+    # Humanoid / Robotics sources
     ("The Robot Report",           "robot_report.json"),
     ("IEEE Spectrum",              "ieee_spectrum_robotics.json"),
     ("TechCrunch Robotics",        "techcrunch_robotics.json"),
@@ -52,9 +52,14 @@ ARCHIVE_REGISTRY = [
     ("Boston Dynamics",            "boston_dynamics.json"),
     ("Figure AI",                  "figure_ai.json"),
     ("Unitree Robotics",           "unitree.json"),
+    ("Apptronik",                  "apptronik.json"),
+    ("Agility Robotics",           "agility_robotics.json"),
+    ("1X Technologies",            "onex_technologies.json"),
+    ("IFR",                        "ifr.json"),
 ]
 
 app = FastAPI()
+USER_ACTION_TIMEOUT_SECONDS = 600
 
 
 @app.on_event("startup")
@@ -73,12 +78,23 @@ app.add_middleware(
 )
 app.include_router(news_router)
 
+
+@app.middleware("http")
+async def no_cache_for_html_and_api(request: Request, call_next):
+    response = await call_next(request)
+    accept = request.headers.get("accept", "")
+    if request.url.path.startswith("/api/") or "text/html" in accept:
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
+
 # frontend/dist 빌드가 있으면 정적 파일 서빙 (npm run build 후 사용)
 if (FRONTEND_DIST / "assets").exists():
     app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST / "assets")), name="assets")
 
 
-# ── Session management ─────────────────────────────────────────────────────
+# Session management
 class Session:
     def __init__(self, topic: str, domain_id: str = "smartphone"):
         self.id = str(uuid.uuid4())
@@ -97,7 +113,7 @@ class Session:
 SESSIONS: dict[str, Session] = {}
 
 
-# ── Log → event parser ─────────────────────────────────────────────────────
+# Log -> event parser
 def parse_log(text: str) -> Optional[dict]:
     """Convert pipeline log line to UI event."""
     stripped = text.strip()
@@ -125,7 +141,7 @@ def parse_log(text: str) -> Optional[dict]:
     return {"type": "step_log", "text": stripped}
 
 
-# ── Pipeline runners ───────────────────────────────────────────────────────
+# Pipeline runners
 async def _run_phase0(sess: Session):
     pipeline = sess.pipeline
 
@@ -139,7 +155,7 @@ async def _run_phase0(sess: Session):
 
     await sess.emit(type="phase0_start", topic=sess.topic)
     try:
-        # A→B→C: 5개 차원 제안
+        # A->B->C: 5개 차원 제안
         proposal = await pipeline.plan_propose(sess.topic, progress_cb=cb)
         pre_urls = getattr(pipeline, '_pre_search_urls', [])
         await sess.emit(
@@ -148,22 +164,22 @@ async def _run_phase0(sess: Session):
             pre_urls=pre_urls,
         )
 
-        # 사용자 피드백 대기 (최대 5분)
+        # User action timeout: terminate instead of auto-progress.
         try:
-            await asyncio.wait_for(sess.dim_feedback_event.wait(), timeout=300)
+            await asyncio.wait_for(sess.dim_feedback_event.wait(), timeout=USER_ACTION_TIMEOUT_SECONDS)
         except asyncio.TimeoutError:
-            await sess.emit(type="error", text="차원 선택 대기 시간 초과 (5분)")
+            await sess.emit(type="error", text="차원 선택 대기 시간이 10분을 초과해 프로세스를 종료했습니다.")
             return
         feedback = sess.dim_feedback
 
-        # 피드백 반영 → 최종 ResearchPlan
+        # 피드백 반영 -> 최종 ResearchPlan
         plan = await pipeline.plan_finalize(sess.topic, proposal, feedback, progress_cb=cb)
         sess.plan = plan
         eng = getattr(pipeline, '_eng_topic', sess.topic)
         pipeline.state = PipelineState(topic=Topic(title=sess.topic, eng_title=eng))
         plan_dict = plan.model_dump()
 
-        # E→F→G→H: 차원별 분석
+        # E->F->G->H: 차원별 분석
         mindmap = await pipeline.analyze_by_dimensions(sess.topic, plan, progress_cb=cb)
 
         await sess.emit(type="phase0_done", plan=plan_dict, pre_urls=pre_urls, mindmap=mindmap)
@@ -176,7 +192,7 @@ async def _run_phase0(sess: Session):
         SESSIONS.pop(sess.id, None)
 
 
-# ── Endpoints ──────────────────────────────────────────────────────────────
+# Endpoints
 @app.get("/")
 async def root():
     dist_index = FRONTEND_DIST / "index.html"
@@ -252,11 +268,9 @@ async def api_stream(sid: str):
     return StreamingResponse(gen(), media_type="text/event-stream")
 
 
-# ══════════════════════════════════════════════════════════════════════════
 # Archive Dashboard — DB 자동 수집 컨트롤
-# ══════════════════════════════════════════════════════════════════════════
 
-# job_id → asyncio.Queue (SSE 라인 버퍼)
+# job_id -> asyncio.Queue (SSE 라인 버퍼)
 ARCHIVE_JOBS: dict[str, asyncio.Queue] = {}
 
 
@@ -307,7 +321,7 @@ async def api_archives_status():
 
 
 async def _run_archive_orchestrator(job_id: str):
-    """build_all_archives.py 를 subprocess로 띄우고 stdout 줄을 큐에 넣음."""
+    """build_all_archives.py를 subprocess로 띄우고 stdout 줄을 큐에 넣음."""
     q = ARCHIVE_JOBS[job_id]
     try:
         proc = await asyncio.create_subprocess_exec(
@@ -370,9 +384,7 @@ async def api_archives_stream(job_id: str):
     return StreamingResponse(gen(), media_type="text/event-stream")
 
 
-# ══════════════════════════════════════════════════════════════════════════
 # Topic Analysis — DB 기반 주제 자동 선정
-# ══════════════════════════════════════════════════════════════════════════
 
 TIER1_SOURCES = {"Counterpoint Research", "TrendForce", "Omdia", "IDC", "Morgan Stanley"}
 
@@ -385,15 +397,17 @@ def _is_smartphone(entry: dict) -> bool:
 
 
 @app.get("/api/keywords")
-async def api_keywords_get():
-    """현재 스마트폰 필터링 키워드 목록 반환."""
-    data = json.loads(_KW_PATH.read_text(encoding="utf-8"))
-    return {"keywords": data["keywords"], "count": len(data["keywords"])}
+async def api_keywords_get(domain: str = "smartphone"):
+    """도메인별 필터링 키워드 목록 반환."""
+    cfg = load_domain(domain)
+    kw_path = ROOT / cfg["keywords_file"]
+    data = json.loads(kw_path.read_text(encoding="utf-8"))
+    return {"keywords": data["keywords"], "count": len(data["keywords"]), "domain": domain}
 
 
 @app.put("/api/keywords")
-async def api_keywords_put(req: Request):
-    """키워드 목록 전체 교체 (add/remove 후 전체 리스트 전달)."""
+async def api_keywords_put(req: Request, domain: str = "smartphone"):
+    """키워드 목록 전체 교체. add/remove 대신 전체 리스트를 전달."""
     body = await req.json()
     keywords = body.get("keywords")
     if not isinstance(keywords, list) or not all(isinstance(k, str) for k in keywords):
@@ -401,18 +415,21 @@ async def api_keywords_put(req: Request):
     keywords = [k.strip().lower() for k in keywords if k.strip()]
     if not keywords:
         raise HTTPException(400, "keywords list cannot be empty")
-    data = json.loads(_KW_PATH.read_text(encoding="utf-8"))
+    cfg = load_domain(domain)
+    kw_path = ROOT / cfg["keywords_file"]
+    data = json.loads(kw_path.read_text(encoding="utf-8"))
     data["keywords"] = keywords
-    _KW_PATH.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-    # 서버 메모리도 즉시 반영
-    global SMARTPHONE_KW
-    SMARTPHONE_KW = keywords
-    return {"ok": True, "count": len(keywords)}
+    kw_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    load_domain.cache_clear()
+    if domain == "smartphone":
+        global SMARTPHONE_KW
+        SMARTPHONE_KW = keywords
+    return {"ok": True, "count": len(keywords), "domain": domain}
 
 
 @app.get("/api/topics/mine")
 async def api_topics_mine(days: int = 30, domain: str = "smartphone"):
-    """최근 N일 Tier-1 소스 도메인 관련 기사를 소스별로 묶어 반환."""
+    """최근 N일 Tier-1 소스의 도메인 관련 기사를 소스별로 묶어 반환."""
     import re as _re
     from datetime import timedelta
 
@@ -449,7 +466,7 @@ async def api_topics_mine(days: int = 30, domain: str = "smartphone"):
     domain_kw = load_domain(domain)["keywords"]
     sm = [e for e in recent if any(kw in (e.get("title","") + " " + e.get("description","")).lower() for kw in domain_kw)]
 
-    # 소스별 그룹화
+    # 소스별 그룹핑
     groups: dict[str, list] = {}
     for src in TIER1_SOURCES:
         items = sorted(
@@ -460,7 +477,7 @@ async def api_topics_mine(days: int = 30, domain: str = "smartphone"):
         if items:
             groups[src] = [
                 {
-                    "title":       e.get("title", "").replace("‑", "-").replace("’", "'"),
+                    "title":       e.get("title", ""),
                     "date":        e.get("lastmod", "")[:10],
                     "description": _re.sub(r"<[^>]+>", "", e.get("description", ""))[:200],
                     "url":         e.get("url", ""),
@@ -479,7 +496,7 @@ async def api_topics_mine(days: int = 30, domain: str = "smartphone"):
 
 @app.get("/api/archives/entries")
 async def api_archives_entries(source: str, limit: int = 300):
-    """특정 소스의 전체 아카이브 기사 반환 (키워드 필터 없음)."""
+    """특정 소스의 전체 아카이브 기사 반환. 키워드 필터 없음."""
     import re as _re
 
     for _, json_name in ARCHIVE_REGISTRY:
@@ -494,7 +511,7 @@ async def api_archives_entries(source: str, limit: int = 300):
             entries_sorted = sorted(entries, key=lambda x: x.get("lastmod", ""), reverse=True)
             items = [
                 {
-                    "title": e.get("title", "").replace("‑", "-").replace("'", "'"),
+                    "title": e.get("title", ""),
                     "date":  e.get("lastmod", "")[:10],
                     "url":   e.get("url", ""),
                     "description": _re.sub(r"<[^>]+>", "", e.get("description", ""))[:200],
@@ -508,9 +525,7 @@ async def api_archives_entries(source: str, limit: int = 300):
     return {"source": source, "total": 0, "items": []}
 
 
-# ══════════════════════════════════════════════════════════════════════════
-# Report Generation — run_report.py 파이프라인 웹 UI 브릿지
-# ══════════════════════════════════════════════════════════════════════════
+# Report Generation — run_report.py pipeline UI bridge
 
 class ReportSession:
     def __init__(self, topic: str, domain_id: str = "smartphone"):
@@ -534,7 +549,7 @@ REPORT_SESSIONS: dict[str, "ReportSession"] = {}
 
 
 def _sec_to_dict(sec: dict) -> dict:
-    """GATE 1용 섹션 직렬화 (results 미포함)."""
+    """GATE 1용 섹션 직렬화. results 미포함."""
     return {
         "title": sec.get("title", ""),
         "causal_role": sec.get("causal_role", "analysis"),
@@ -545,7 +560,7 @@ def _sec_to_dict(sec: dict) -> dict:
 
 
 def _sec_with_results_to_dict(sec: dict) -> dict:
-    """GATE 2용 섹션 직렬화 (results 포함)."""
+    """GATE 2용 섹션 직렬화. results 포함."""
     d = _sec_to_dict(sec)
     d["results"] = [
         {
@@ -559,7 +574,7 @@ def _sec_with_results_to_dict(sec: dict) -> dict:
 
 
 def _merge_sec(confirmed: dict, orig: dict) -> dict:
-    """브라우저 응답 dict를 원본 섹션에 병합 (results 등 보존)."""
+    """브라우저 응답 dict를 원본 섹션에 병합. results는 보존."""
     sec = dict(orig)
     queries = list(confirmed.get("queries", orig.get("queries", [])))
     included = list(confirmed.get("included", [True] * len(queries)))
@@ -569,6 +584,29 @@ def _merge_sec(confirmed: dict, orig: dict) -> dict:
     sec["included"] = included[:len(queries)]
     sec["title"] = confirmed.get("title", orig.get("title", ""))
     return sec
+
+
+def _topic_to_report_slug(topic: str) -> str:
+    slug = re.sub(r"\s+", "_", str(topic or "").strip())
+    slug = re.sub(r"[^\w가-힣]", "_", slug)
+    return slug.strip("_")[:60]
+
+
+def _remember_topic_report_slug(domain_id: str, topic: str, slug: str) -> None:
+    try:
+        suggested_path = ROOT / load_domain(domain_id)["suggested_path"]
+        if not suggested_path.exists():
+            return
+        data = json.loads(suggested_path.read_text(encoding="utf-8"))
+        changed = False
+        for item in data.get("topics", []):
+            if isinstance(item, dict) and str(item.get("title") or "").strip() == str(topic or "").strip():
+                item["report_slug"] = slug
+                changed = True
+        if changed:
+            suggested_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception:
+        return
 
 
 async def _run_report(sess: ReportSession):
@@ -618,12 +656,14 @@ async def _run_report(sess: ReportSession):
         await sess.emit(type="report_step_b", by_source=by_source, total=len(archive_results))
         await sess.emit(type="report_log", text=f"Archive {len(archive_results)}건 수집")
 
-        # EXT DECISION — 사용자 토글 대기 (최대 10분)
+        # External search decision: terminate on 10-minute inactivity.
         sess.ext_event.clear()
         try:
-            await asyncio.wait_for(sess.ext_event.wait(), timeout=600)
+            await asyncio.wait_for(sess.ext_event.wait(), timeout=USER_ACTION_TIMEOUT_SECONDS)
         except asyncio.TimeoutError:
-            await sess.emit(type="report_log", text="외부 검색 결정 대기 초과 — 아카이브만 사용")
+            await sess.emit(type="report_error", text="외부 검색 진행 여부를 10분 동안 선택하지 않아 프로세스를 종료했습니다.")
+            await sess.emit(type="done")
+            return
 
         use_external = sess.ext_use_external
 
@@ -664,10 +704,9 @@ async def _run_report(sess: ReportSession):
         async def gate1_cb(secs):
             await sess.emit(type="report_gate1", sections=[_sec_to_dict(s) for s in secs])
             try:
-                await asyncio.wait_for(sess.gate1_event.wait(), timeout=600)
+                await asyncio.wait_for(sess.gate1_event.wait(), timeout=USER_ACTION_TIMEOUT_SECONDS)
             except asyncio.TimeoutError:
-                await sess.emit(type="report_log", text="GATE 1 타임아웃 — 자동 확정")
-                return secs
+                raise RuntimeError("GATE 1 목차 확인을 10분 동안 진행하지 않아 프로세스를 종료했습니다.")
             confirmed = sess.gate1_data or []
             result = []
             for i, orig in enumerate(secs):
@@ -678,7 +717,7 @@ async def _run_report(sess: ReportSession):
         sections = await user_gate_1(sections, auto=False, gate_cb=gate1_cb)
         await sess.emit(type="report_log", text="목차 확정")
 
-        # D↔D' 루프
+        # D -> query/search refinement loop
         refine_round = 0
         max_rounds = 3
         while refine_round < max_rounds:
@@ -701,10 +740,9 @@ async def _run_report(sess: ReportSession):
             async def gate2_cb(secs, _ev=sess.gate2_event):
                 await sess.emit(type="report_gate2", sections=[_sec_with_results_to_dict(s) for s in secs])
                 try:
-                    await asyncio.wait_for(_ev.wait(), timeout=600)
+                    await asyncio.wait_for(_ev.wait(), timeout=USER_ACTION_TIMEOUT_SECONDS)
                 except asyncio.TimeoutError:
-                    await sess.emit(type="report_log", text="GATE 2 타임아웃 — 분석 진행")
-                    return True, secs
+                    raise RuntimeError("GATE 2 검색 결과 확인을 10분 동안 진행하지 않아 프로세스를 종료했습니다.")
                 proceed, updated = sess.gate2_data or (True, [])
                 if proceed:
                     return True, secs
@@ -718,7 +756,7 @@ async def _run_report(sess: ReportSession):
             if proceed:
                 break
             refine_round += 1
-            await sess.emit(type="report_log", text=f"쿼리 보완 후 재검색 (라운드 {refine_round + 1})")
+            await sess.emit(type="report_log", text=f"쿼리 보완 재검색 (라운드 {refine_round + 1})")
 
         # E+F
         await sess.emit(type="report_log", text="목차별 분석 시작...")
@@ -736,6 +774,7 @@ async def _run_report(sess: ReportSession):
         await sess.emit(type="report_log", text="저장 중...")
         md_path, html_path = _save_report(topic, sections, run_ts, archive_results, pre_queries, meta)
         slug = html_path.name.removesuffix("_report.html")
+        _remember_topic_report_slug(sess.domain_id, topic, slug)
 
         await sess.emit(type="report_done", report_url=f"/archive/{slug}")
         await sess.emit(type="done")
@@ -756,17 +795,116 @@ async def _run_report(sess: ReportSession):
 async def api_topics_suggested(domain: str = "smartphone"):
     """도메인별 GLM 선정 주제 반환."""
     p = ROOT / load_domain(domain)["suggested_path"]
-    if not p.exists():
-        return {"topics": [], "generated_at": None, "days": 30}
-    try:
-        data = json.loads(p.read_text(encoding="utf-8"))
-        return {
-            "topics": data.get("topics", []),
-            "generated_at": data.get("generated_at"),
-            "days": data.get("days", 30),
-        }
-    except Exception:
-        return {"topics": [], "generated_at": None, "days": 30}
+    topics: list[dict] = []
+    generated_at = None
+    days = 30
+    if p.exists():
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+            topics = list(data.get("topics", []))
+            generated_at = data.get("generated_at")
+            days = data.get("days", 30)
+        except Exception:
+            pass
+
+    # Merge emerging "Curiosity Pick" topics (weekly pass — smartphone & humanoid).
+    # All emerging topics carry criteria="Criterion 3" so frontend's existing
+    # Crit2/Crit3 split surfaces them in the "이번 주 새롭게 등장한 주제" section.
+    EMERGING_PATHS = {
+        "smartphone": "scripts/_topic_suggestions_emerging.json",
+        "humanoid":   "scripts/_humanoid_topic_suggestions_emerging.json",
+    }
+    em_rel = EMERGING_PATHS.get(domain)
+    if em_rel:
+        emerging_path = ROOT / em_rel
+        if emerging_path.exists():
+            try:
+                em_data = json.loads(emerging_path.read_text(encoding="utf-8"))
+                for t in em_data.get("topics", []):
+                    if not isinstance(t, dict):
+                        continue
+                    t["criteria"] = "Criterion 3"  # force, regardless of LLM output
+                    t.setdefault("source", "emerging")
+                    topics.append(t)
+            except Exception:
+                pass
+
+    for topic in topics:
+        if not isinstance(topic, dict):
+            continue
+        title = str(topic.get("title") or "").strip()
+        slug = str(topic.get("report_slug") or "").strip() or _topic_to_report_slug(title)
+        if slug and (ROOT / "reports" / f"{slug}_report.md").exists():
+            topic["report_slug"] = slug
+        else:
+            topic.pop("report_slug", None)
+    return {
+        "topics": topics,
+        "generated_at": generated_at,
+        "days": days,
+    }
+
+
+@app.get("/api/usage")
+async def api_usage():
+    """GLM 토큰 사용량 및 비용 집계."""
+    from collections import defaultdict
+    raw_entries = read_token_log()
+    entries = []
+    for e in raw_entries:
+        try:
+            prompt_tokens = int(e.get("prompt_tokens") or 0)
+            completion_tokens = int(e.get("completion_tokens") or 0)
+            cost_cny = float(e.get("cost_cny") or 0)
+        except (TypeError, ValueError):
+            continue
+        try:
+            total_tokens = int(e.get("total_tokens") or prompt_tokens + completion_tokens)
+        except (TypeError, ValueError):
+            total_tokens = prompt_tokens + completion_tokens
+        entries.append({
+            "ts": str(e.get("ts") or ""),
+            "model": str(e.get("model") or "unknown"),
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "total_tokens": total_tokens,
+            "cost_cny": cost_cny,
+            "caller": str(e.get("caller") or ""),
+        })
+    if not entries:
+        return {"summary": {}, "by_model": [], "by_day": [], "recent": []}
+
+    total_prompt = sum(e["prompt_tokens"] for e in entries)
+    total_completion = sum(e["completion_tokens"] for e in entries)
+    total_cost = sum(e["cost_cny"] for e in entries)
+
+    by_model: dict = defaultdict(lambda: {"prompt_tokens": 0, "completion_tokens": 0, "cost_cny": 0.0, "calls": 0})
+    by_day:   dict = defaultdict(lambda: {"prompt_tokens": 0, "completion_tokens": 0, "cost_cny": 0.0, "calls": 0})
+    for e in entries:
+        m = by_model[e["model"]]
+        m["prompt_tokens"]     += e["prompt_tokens"]
+        m["completion_tokens"] += e["completion_tokens"]
+        m["cost_cny"]          += e["cost_cny"]
+        m["calls"]             += 1
+        day = e["ts"][:10] or "unknown"
+        d = by_day[day]
+        d["prompt_tokens"]     += e["prompt_tokens"]
+        d["completion_tokens"] += e["completion_tokens"]
+        d["cost_cny"]          += e["cost_cny"]
+        d["calls"]             += 1
+
+    return {
+        "summary": {
+            "total_prompt_tokens":     total_prompt,
+            "total_completion_tokens": total_completion,
+            "total_tokens":            total_prompt + total_completion,
+            "total_cost_cny":          round(total_cost, 4),
+            "call_count":              len(entries),
+        },
+        "by_model": [{"model": k, **v, "cost_cny": round(v["cost_cny"], 4)} for k, v in sorted(by_model.items())],
+        "by_day":   [{"day": k,   **v, "cost_cny": round(v["cost_cny"], 4)} for k, v in sorted(by_day.items(), reverse=True)],
+        "recent":   list(reversed(entries[-50:])),
+    }
 
 
 def _extract_metrics(*texts: str) -> list[str]:
@@ -799,15 +937,33 @@ _AUTOMOTIVE_SOURCES = {
     "Automotive World", "Electrek", "InsideEVs", "Toyota Newsroom",
 }
 
+_SMARTPHONE_SOURCES = {
+    "Counterpoint Research", "TrendForce", "Omdia", "IDC",
+    "Yole", "Yole Group", "DigiTimes Asia", "Digitimes", "CCS Insight",
+}
+
 def _detect_domain(process_data: dict | None) -> str:
+    """Majority-vote 기반 도메인 판정.
+
+    한 보고서가 여러 도메인 출처를 섞어 인용할 수 있으므로 (예: D2D 위성통신 토픽이
+    스마트폰 + 자동차 출처를 모두 인용), 단일 매칭 대신 가장 많이 인용된 도메인을 채택.
+    동률·미매칭이거나 smartphone이 최다이면 smartphone fallback.
+    """
     if not process_data:
         return "smartphone"
+    counts = {"smartphone": 0, "humanoid": 0, "automotive": 0}
     for src in process_data.get("archive_sources", []):
-        src_name = src.get("source_name")
-        if src_name in _HUMANOID_SOURCES:
-            return "humanoid"
-        if src_name in _AUTOMOTIVE_SOURCES:
-            return "automotive"
+        name = src.get("source_name")
+        if name in _HUMANOID_SOURCES:
+            counts["humanoid"] += 1
+        elif name in _AUTOMOTIVE_SOURCES:
+            counts["automotive"] += 1
+        elif name in _SMARTPHONE_SOURCES:
+            counts["smartphone"] += 1
+    if counts["humanoid"] > counts["automotive"] and counts["humanoid"] > counts["smartphone"]:
+        return "humanoid"
+    if counts["automotive"] > counts["humanoid"] and counts["automotive"] > counts["smartphone"]:
+        return "automotive"
     return "smartphone"
 
 
@@ -817,7 +973,7 @@ def _parse_report_markdown(md_text: str, process_data: dict | None = None) -> di
     run_ts = ""
     for line in lines[:8]:
         if line.startswith("생성일시:"):
-            run_ts = line.replace("생성일시:", "", 1).strip()
+            run_ts = line.split(":", 1)[1].strip()
             break
 
     exec_summary = ""
@@ -826,14 +982,21 @@ def _parse_report_markdown(md_text: str, process_data: dict | None = None) -> di
         exec_summary = exec_match.group(1).strip()
 
     insights = []
-    insights_match = re.search(r"## 시사점 \(Market Insights\)\s+(.*)$", md_text, re.S)
+    insights_match = re.search(r"##\s+[^\n]*Market Insights[^\n]*\n(.*)$", md_text, re.S)
     report_body = md_text[:insights_match.start()] if insights_match else md_text
     if insights_match:
         for match in re.finditer(r"###\s+\d+\.\s*(.*?)\n\n(.*?)(?=\n###\s+\d+\.|\Z)", insights_match.group(1), re.S):
             insights.append({"title": match.group(1).strip(), "body": match.group(2).strip()})
 
+    def split_source_block(body: str) -> tuple[str, str]:
+        for marker in ("**출처**", "**Sources**"):
+            if marker in body:
+                before, after = body.split(marker, 1)
+                return before, after
+        return body, ""
+
     sections = []
-    for match in re.finditer(r"\n##\s+(\d+)\.\s*(.*?)\n(.*?)(?=\n##\s+\d+\.|\n---\n|\Z)", report_body, re.S):
+    for match in re.finditer(r"(?:^|\n)##\s+(\d+)\.\s*(.*?)\n(.*?)(?=\n##\s+\d+\.|\n---\n|\Z)", report_body, re.S):
         idx = int(match.group(1))
         title = match.group(2).strip()
         body = match.group(3).strip()
@@ -842,14 +1005,24 @@ def _parse_report_markdown(md_text: str, process_data: dict | None = None) -> di
         if headline_match:
             headline = headline_match.group(1).strip()
 
-        before_sources = body.split("**출처**", 1)[0]
-        bullets = [line[1:].strip() for line in before_sources.splitlines() if line.strip().startswith("•")]
+        before_sources, source_block = split_source_block(body)
+        bullets = [
+            line.strip().lstrip("-*•ㆍ· ").strip()
+            for line in before_sources.splitlines()
+            if line.strip().startswith(("-", "*", "•", "ㆍ", "·"))
+        ]
         narrative = re.sub(r"\*\*.*?\*\*", "", before_sources, count=1, flags=re.S)
-        narrative = "\n".join(line.strip() for line in narrative.splitlines() if line.strip() and not line.strip().startswith("•"))
+        narrative = "\n".join(
+            line.strip()
+            for line in narrative.splitlines()
+            if line.strip() and not line.strip().startswith(("-", "*", "•", "ㆍ", "·"))
+        )
 
         sources = []
-        source_block = body.split("**출처**", 1)[1] if "**출처**" in body else ""
-        for src_match in re.finditer(r"\[(\d+)\]\s+\[(.*?)(?:\s+—\s+\"(.*?)\")?\]\((.*?)\)(?:\s+\((.*?)\))?", source_block):
+        source_re = re.compile(
+            r"\[(\d+)\]\s+\[(.*?)(?:\s+(?:—|--)\s*\"(.*?)\")?\]\((.*?)\)(?:\s+\((.*?)\))?"
+        )
+        for src_match in source_re.finditer(source_block):
             source_name = src_match.group(2).strip()
             source_title = (src_match.group(3) or "").strip()
             url = src_match.group(4).strip()

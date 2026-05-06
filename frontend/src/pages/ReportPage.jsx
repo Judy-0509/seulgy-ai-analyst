@@ -30,21 +30,87 @@ function makeR(domain) {
     emBg: "rgba(37,99,235,.09)",
     emBr: "rgba(37,99,235,.24)",
   };
+  // smartphone — light bg에서 LandingPage 의 forest 톤과 일관성 있게 어둡고 차분한 forest green
   return {
     ...BASE_R,
-    em:   "#10b981",
-    emD:  "#047857",
-    emBg: "rgba(16,185,129,.09)",
-    emBr: "rgba(16,185,129,.24)",
+    em:   "#047857",                  // 진한 forest (LandingPage emD)
+    emD:  "#065f46",                  // 더 진한 톤 (h2, link)
+    emBg: "rgba(6,95,70,.06)",        // 매우 옅은 forest 틴트
+    emBr: "rgba(6,95,70,.18)",        // 차분한 border
   };
 }
 
-function SourceBadge({ children, R }) {
+const SOURCE_DOMAIN_ACCENTS = {
+  smartphone: {
+    emD: "#065f46",
+    emBg: "rgba(6,95,70,.06)",
+    emBr: "rgba(6,95,70,.18)",
+  },
+  humanoid: {
+    emD: "#b91c1c",
+    emBg: "rgba(239,68,68,.09)",
+    emBr: "rgba(239,68,68,.24)",
+  },
+  automotive: {
+    emD: "#1d4ed8",
+    emBg: "rgba(37,99,235,.09)",
+    emBr: "rgba(37,99,235,.24)",
+  },
+};
+
+const SOURCE_DOMAIN_BY_NAME = {
+  "DigiTimes Asia": "smartphone",
+  "Counterpoint Research": "smartphone",
+  "TrendForce": "smartphone",
+  "Nikkei Asia": "smartphone",
+  "Omdia": "smartphone",
+  "IDC": "smartphone",
+  "Reuters": "smartphone",
+  "CCS Insight": "smartphone",
+  "Yole": "smartphone",
+  "Bloomberg Technology": "smartphone",
+  "Gartner": "smartphone",
+  "The Robot Report": "humanoid",
+  "IEEE Spectrum": "humanoid",
+  "TechCrunch Robotics": "humanoid",
+  "MIT Technology Review": "humanoid",
+  "Robotics & Automation News": "humanoid",
+  "The Verge": "humanoid",
+  "arXiv (cs.RO)": "humanoid",
+  "NVIDIA": "humanoid",
+  "Boston Dynamics": "humanoid",
+  "Figure AI": "humanoid",
+  "Unitree Robotics": "humanoid",
+  "JATO Dynamics": "automotive",
+  "Cox Automotive": "automotive",
+  "AlixPartners": "automotive",
+  "WardsAuto": "automotive",
+  "SAE International": "automotive",
+  "Automotive Dive": "automotive",
+  "Automotive World": "automotive",
+  "InsideEVs": "automotive",
+  "Electrek": "automotive",
+  "Toyota Newsroom": "automotive",
+  "VW Group": "automotive",
+  "Mercedes-Benz Media": "automotive",
+};
+
+function sourceAccent(sourceName, R) {
+  const domain = SOURCE_DOMAIN_BY_NAME[sourceName];
+  return SOURCE_DOMAIN_ACCENTS[domain] || {
+    emD: R.emD,
+    emBg: R.emBg,
+    emBr: R.emBr,
+  };
+}
+
+function SourceBadge({ children, R, accent }) {
+  const A = accent || R;
   return (
     <span style={{
       display: "inline-flex", alignItems: "center", height: 20,
-      padding: "0 7px", borderRadius: 6, background: R.emBg,
-      color: R.emD, border: `1px solid ${R.emBr}`,
+      padding: "0 7px", borderRadius: 6, background: A.emBg,
+      color: A.emD, border: `1px solid ${A.emBr}`,
       fontSize: 10.5, fontWeight: 700, whiteSpace: "nowrap",
     }}>
       {children}
@@ -52,12 +118,13 @@ function SourceBadge({ children, R }) {
   );
 }
 
-function MetricPill({ value, R }) {
+function MetricPill({ value, R, accent }) {
+  const A = accent || R;
   return (
     <span style={{
       display: "inline-flex", alignItems: "center", height: 22,
-      padding: "0 8px", borderRadius: 99, background: R.emBg,
-      color: R.emD, border: `1px solid ${R.emBr}`,
+      padding: "0 8px", borderRadius: 99, background: A.emBg,
+      color: A.emD, border: `1px solid ${A.emBr}`,
       fontSize: 11, fontWeight: 700,
     }}>
       {value}
@@ -100,6 +167,7 @@ function ViewToggle({ value, onChange, R }) {
 }
 
 function ReferenceCard({ refItem, R }) {
+  const accent = sourceAccent(refItem.source_name || refItem.source || "", R);
   return (
     <a
       href={refItem.url}
@@ -112,9 +180,9 @@ function ReferenceCard({ refItem, R }) {
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8 }}>
-        <SourceBadge R={R}>{refItem.source_name || "Source"}</SourceBadge>
+        <SourceBadge R={R} accent={accent}>{refItem.source_name || "Source"}</SourceBadge>
         {refItem.section_index && (
-          <span style={{ fontSize: 10.5, color: R.emD, fontWeight: 700 }}>
+          <span style={{ fontSize: 10.5, color: accent.emD, fontWeight: 700 }}>
             섹션 {refItem.section_index}
           </span>
         )}
@@ -128,7 +196,7 @@ function ReferenceCard({ refItem, R }) {
       </p>
       {refItem.metrics?.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 10 }}>
-          {refItem.metrics.map((metric) => <MetricPill key={metric} value={metric} R={R} />)}
+          {refItem.metrics.map((metric) => <MetricPill key={metric} value={metric} R={R} accent={accent} />)}
         </div>
       )}
     </a>
@@ -161,6 +229,8 @@ function buildInsightSummary(insights = []) {
 }
 
 function SectionBlock({ section, R }) {
+  const [open, setOpen] = useState(false);
+  const bullets = section.bullets || [];
   return (
     <section style={{ padding: "28px 0", borderTop: `1px solid ${R.border}` }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
@@ -185,18 +255,51 @@ function SectionBlock({ section, R }) {
           {section.narrative}
         </p>
       )}
-      {section.bullets?.length > 0 && (
-        <div style={{ display: "grid", gap: 8 }}>
-          {section.bullets.map((bullet, index) => (
-            <p key={index} style={{
-              margin: 0, padding: "10px 12px", borderRadius: 8,
-              background: R.emBg, border: `1px solid ${R.emBr}`,
-              fontSize: 13, color: R.t2, lineHeight: 1.55,
+      {bullets.length > 0 && (
+        <>
+          <button
+            onClick={() => setOpen(o => !o)}
+            aria-expanded={open}
+            style={{
+              display: "flex", alignItems: "center", gap: 8,
+              margin: 0, padding: "6px 0", border: 0, background: "none",
+              cursor: "pointer", color: R.t1,
+            }}
+          >
+            <span style={{ fontSize: 13, fontWeight: 700, color: R.t1 }}>상세 수치</span>
+            <span style={{ fontSize: 11, color: R.t4, fontWeight: 500 }}>{bullets.length}건</span>
+            <span style={{
+              fontSize: 13, color: R.emD, fontWeight: 700,
+              transition: "transform 0.25s ease",
+              transform: open ? "rotate(90deg)" : "rotate(0deg)",
+              display: "inline-block", lineHeight: 1,
+            }}>›</span>
+          </button>
+          <div style={{
+            maxHeight: open ? "3000px" : "0px",
+            opacity: open ? 1 : 0,
+            overflow: "hidden",
+            transition: "max-height 0.35s ease, opacity 0.2s ease",
+          }}>
+            <ul style={{
+              margin: "8px 0 0", padding: "0 0 0 4px", listStyle: "none",
+              display: "grid", gap: 8,
             }}>
-              {bullet}
-            </p>
-          ))}
-        </div>
+              {bullets.map((bullet, index) => (
+                <li key={index} style={{
+                  display: "flex", alignItems: "flex-start", gap: 10,
+                  fontSize: 13.5, color: R.t1, lineHeight: 1.7,
+                }}>
+                  <span style={{
+                    color: R.emD, fontSize: 16, lineHeight: 1.4, flexShrink: 0,
+                    marginTop: -1,
+                  }}>•</span>
+                  <span style={{ minWidth: 0 }}>{bullet}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </>
       )}
     </section>
   );
@@ -208,8 +311,8 @@ function CustomSlideView({ report, R }) {
   const sections = report.sections || [];
   return (
     <article style={{
-      minWidth: 0, padding: "28px", borderRadius: 16, background: R.panel,
-      border: `1px solid ${R.border}`, boxShadow: R.shadow,
+      minWidth: 0, padding: "0", background: "transparent",
+      border: 0, boxShadow: "none",
     }}>
       <div style={{
         display: "grid", gridTemplateRows: "auto auto auto 1fr",
@@ -233,18 +336,15 @@ function CustomSlideView({ report, R }) {
           <p style={{ margin: 0, fontSize: 14, color: R.t2, lineHeight: 1.7 }}>{background}</p>
         </section>
 
-        <section style={{
-          padding: "18px 22px", borderRadius: 12, background: R.panelStrong,
-          border: `1px solid ${R.border}`,
-        }}>
-          <h2 style={{ margin: "0 0 10px", fontSize: 15, color: R.emD }}>시사점</h2>
+        <section style={{ padding: "4px 0 0" }}>
+          <h2 style={{ margin: "0 0 8px", fontSize: 14, color: R.emD }}>시사점</h2>
           <div style={{ display: "grid", gap: 10 }}>
             {(insightLines.length
               ? insightLines
               : [{ title: "시장 분석", summary: "분석 결과를 바탕으로 시장 변화와 기업 대응 방향을 요약합니다." }]
             ).map((item, index) => (
               <div key={index} style={{
-                padding: "11px 14px", borderRadius: 9,
+                padding: "12px 14px", borderRadius: 8,
                 background: R.emBg, border: `1px solid ${R.emBr}`,
               }}>
                 <p style={{ margin: "0 0 5px", fontSize: 12.5, fontWeight: 800, color: R.emD, letterSpacing: "-.01em" }}>
@@ -307,6 +407,7 @@ export default function ReportPage() {
   const [report, setReport] = useState(null);
   const [error, setError] = useState("");
   const [viewMode, setViewMode] = useState("report");
+  const [refsOpen, setRefsOpen] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -437,14 +538,47 @@ export default function ReportPage() {
             padding: "18px", borderRadius: 14, background: R.panel,
             border: `1px solid ${R.border}`, boxShadow: R.shadow,
           }}>
-            <h2 style={{ margin: "0 0 5px", fontSize: 15, color: R.t1 }}>참고 수치</h2>
-            <p style={{ margin: "0 0 14px", fontSize: 11.5, color: R.t4 }}>
-              본문에 사용된 링크와 해당 근거
-            </p>
-            <div style={{ display: "grid", gap: 10 }}>
-              {references.map((refItem, index) => (
-                <ReferenceCard key={`${refItem.url}-${index}`} refItem={refItem} R={R} />
-              ))}
+            <button
+              onClick={() => setRefsOpen(o => !o)}
+              aria-expanded={refsOpen}
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                width: "100%", margin: 0, padding: 0, border: 0, background: "none",
+                textAlign: "left", cursor: "pointer", color: R.t1,
+              }}
+            >
+              <span style={{
+                display: "flex", alignItems: "baseline", gap: 8, minWidth: 0,
+              }}>
+                <span style={{ fontSize: 15, fontWeight: 700, color: R.t1 }}>참고 수치</span>
+                <span style={{ fontSize: 11, color: R.t4, fontWeight: 500 }}>
+                  {references.length}건
+                </span>
+              </span>
+              <span style={{
+                fontSize: 13, color: R.emD, fontWeight: 700,
+                transition: "transform 0.25s ease",
+                transform: refsOpen ? "rotate(90deg)" : "rotate(0deg)",
+                display: "inline-block", lineHeight: 1, marginLeft: 8,
+              }}>
+                ›
+              </span>
+            </button>
+            {/* 펼침 영역 — max-height 슬라이딩 */}
+            <div style={{
+              maxHeight: refsOpen ? "5000px" : "0px",
+              opacity: refsOpen ? 1 : 0,
+              overflow: "hidden",
+              transition: "max-height 0.35s ease, opacity 0.2s ease",
+            }}>
+              <p style={{ margin: "8px 0 14px", fontSize: 11.5, color: R.t4 }}>
+                본문에 사용된 링크와 해당 근거
+              </p>
+              <div style={{ display: "grid", gap: 10 }}>
+                {references.map((refItem, index) => (
+                  <ReferenceCard key={`${refItem.url}-${index}`} refItem={refItem} R={R} />
+                ))}
+              </div>
             </div>
           </div>
         </aside>

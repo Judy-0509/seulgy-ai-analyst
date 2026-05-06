@@ -136,14 +136,6 @@ def test_state_machine_uses_asyncio_to_thread_for_input():
     assert "외부 검색 진행할까요" in src
 
 
-def test_run_phase0_debug_uses_asyncio_to_thread_for_input():
-    """run_phase0_debug.py 에도 동일 패턴 존재."""
-    from pathlib import Path
-    src = Path("run_phase0_debug.py").read_text(encoding="utf-8")
-    assert "asyncio.to_thread(" in src
-    assert "외부 검색 진행할까요" in src
-
-
 # === Real integration tests for plan_propose (REV4 code-review MAJOR-1 fix) ===
 
 @pytest.mark.asyncio

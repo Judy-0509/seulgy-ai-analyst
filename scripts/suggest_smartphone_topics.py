@@ -1,8 +1,11 @@
-"""스마트폰 시장 주제 자동 선정 (구 suggest_topics.py).
+"""스마트폰 시장 주제 자동 선정 (옵션 B 정식 채택판).
+
+10개 Tier-1 출처 + SOURCE_TAXONOMY (A~F 레이어) + cross-layer corroboration 룰.
 
 2-pass 파이프라인:
   Pass 1 — 스마트폰 키워드 필터 → LLM → 초기 주제
   Pass 2 — 주제별 검색어 추출 → 전체 아카이브 탐색 → 추가 기사 발견 시 재작성
+  + source_layers 자동 채움 (코드가 인용 출처에서 직접 도출)
 
 사용법:
   python scripts/suggest_smartphone_topics.py [--days 30]
@@ -16,17 +19,34 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from _suggest_core import ROOT, run_pipeline  # noqa: E402
 
-# ── Archive registry ────────────────────────────────────────────────────────
+# ── Archive registry (10 Tier-1 출처) ───────────────────────────────────────
 
 ARCHIVE_REGISTRY = [
     ("Counterpoint Research", "counterpoint.json"),
     ("TrendForce",            "trendforce.json"),
     ("Omdia",                 "omdia.json"),
     ("IDC",                   "idc.json"),
-    ("Morgan Stanley",        "morgan_stanley.json"),
+    ("Yole",                  "yole.json"),
+    ("DigiTimes Asia",        "digitimes.json"),
+    ("CCS Insight",           "ccs_insight.json"),
 ]
 
-SOURCE_LABEL = "Counterpoint Research, TrendForce, Omdia, IDC, Morgan Stanley"
+SOURCE_LABEL = (
+    "Counterpoint Research, TrendForce, Omdia, IDC, "
+    "Yole, DigiTimes Asia, CCS Insight"
+)
+
+# ── Source taxonomy (post-process로 source_layers 자동 채움) ────────────────
+
+SOURCE_TAXONOMY = {
+    "Counterpoint Research": "A",  # Tracker
+    "TrendForce":            "A",
+    "Omdia":                 "A",
+    "IDC":                   "A",
+    "Yole":                  "C",  # Component
+    "DigiTimes Asia":        "E",  # Asian supply chain
+    "CCS Insight":           "F",  # Carrier / EU consumer
+}
 
 # ── Keyword filter ──────────────────────────────────────────────────────────
 
@@ -70,7 +90,21 @@ Also flag:
 Do NOT flag:
 - Routine periodic data tracker updates with no directional insight
 - Semiconductor/memory supply chain signals with no direct OEM strategy implication
-- Incremental updates to already well-documented trends"""
+- Incremental updates to already well-documented trends
+
+[SOURCE TAXONOMY — 본 corpus는 7개 Tier-1 출처로 구성, 각 출처의 관점이 다르다]
+
+A. Market trackers (출하/점유율 정량 데이터, 다중 합의로 신뢰):
+   Counterpoint Research, TrendForce, Omdia, IDC
+
+C. Component specialist (반도체 패키징·광학 부품 — 기술적 사실 확정):
+   Yole
+
+E. Asian supply chain (대만/한국/중국 ODM·EMS·부품, 단독 leak이 잦음 — 보강 증거 필요):
+   DigiTimes Asia
+
+F. Carrier / EU consumer perspective (영국/유럽 통신사·소비자 행동):
+   CCS Insight"""
 
 USER_PROMPT_TEMPLATE = """
 [EXISTING REPORTS — exclude these topics from Criterion 3 ONLY]
@@ -88,21 +122,38 @@ Total: {total} articles | Sources: {source_label}
 
 ---
 
-[SELECTION CRITERIA]
+[SELECTION CRITERIA — 7개 소스 / 4개 레이어]
 
 Criterion 2 — Multi-Source Signal:
-2 or more independent research institutions covered the SAME market phenomenon
-within a {days}-day window. Institutions must be drawn from the Tier-1 list above.
+2 or more independent sources cover the SAME market phenomenon within a {days}-day window.
 "Same phenomenon" is judged semantically, not by keyword overlap.
 
-OEM-level signals qualify: if 2+ institutions independently confirm the same brand's
-strategic shift, competitive milestone, or structural advantage — even from different
-angles — that counts as one multi-source signal.
+CROSS-LAYER 보강도 multi-source로 인정한다. 같은 현상에 대해 서로 다른 레이어의 증거가 동시에 등장하는 경우가 strong signal:
+- Component layer (Yole 부품) + Tracker layer (Counterpoint/Omdia 출하)
+  → "이 칩셋/부품이 실제 양산·출하되었음" 의 양면 확정
+- Supply chain leak (DigiTimes) + Tracker confirmation (Counterpoint/Omdia/TrendForce)
+  → 루머가 데이터로 corroborate 된 phenomenon
+- Carrier/consumer behavior (CCS Insight) + Shipment data (Counterpoint/IDC)
+  → 채널과 sell-through 의 일치/불일치 시그널
 
-CRITICAL — Opposing-direction articles can be the SAME phenomenon:
-If one institution reports what OEMs are building or planning (supply-side roadmap)
-while another reports how consumers are actually responding (demand-side reality),
-these are TWO SIDES OF THE SAME STRUCTURAL SIGNAL.
+OPPOSING-DIRECTION 도 same phenomenon 으로 인정:
+한 소스가 OEM의 supply-side 로드맵을 보도하고, 다른 소스가 demand-side 소비자 반응을 보도하면
+이는 같은 구조적 신호의 양면이다.
+
+[SOURCE WEIGHTING — 단독 출처 신호 처리]
+
+Single-source (1개 출처만) 인 경우 신호 강도 차등:
+
+- DigiTimes Asia 단독:
+  공급망 leak 단독 인용 → 가능한 한 Criterion 3 (emerging) 으로 분류.
+  다른 소스(특히 A·C·F 중 하나)의 corroboration 이 없으면 Criterion 2 부여 금지.
+
+- Yole 단독 / CCS Insight 단독:
+  Vertical specialist single-source → Criterion 3.
+
+- Market tracker (A 그룹) 단독 1개 vs 같은 그룹 2개 이상 일치:
+  A 그룹 2개 이상 일치 = 강한 Criterion 2 (시장 정량 합의).
+  A 그룹 1개 단독 = Criterion 3.
 
 Criterion 3 — Emerging Topic:
 A topic that appears in the last {days} days and is NOT covered by any existing report above.
@@ -113,6 +164,7 @@ High-value Criterion 3 signals include:
 - A brand's strategic pivot into a new segment or technology
 - A specific OEM's competitive position shifting in a key market
 - An OEM product launch that signals industry-wide direction change
+- A teardown 또는 component 단독 신호 중 SoC 노드/배터리 셀 화학/카메라 모듈 등 OEM 차별화에 직결되는 기술 fact
 
 ---
 
@@ -131,7 +183,7 @@ Identify 5 to 10 topics. For each topic output:
       "<concrete data point with %, $, year, or volume figures>",
       "..."
     ],
-    "rationale": "왜 이 주제가 일시적 트렌드가 아닌 구조적 신호인지 2~3문장으로 설명. 구체적 기사 근거 포함. 반드시 한국어로 작성."
+    "rationale": "왜 이 주제가 일시적 트렌드가 아닌 구조적 신호인지 2~3문장으로 설명. 어떤 레이어들이 corroborate 했는지 명시. 반드시 한국어로 작성."
   }}
 ]"""
 
@@ -171,14 +223,15 @@ Output a single JSON object only (no markdown, no other text):
     {{"date": "YYYY-MM-DD", "source": "<institution>", "title": "<article title>"}}
   ],
   "key_data": ["<updated data points — add new concrete figures if found>"],
-  "rationale": "모든 기사를 반영한 2~3문장 선정 근거. 반드시 한국어로 작성."
+  "rationale": "모든 기사를 반영한 2~3문장 선정 근거. 어떤 레이어가 추가 corroborate 했는지 명시. 반드시 한국어로 작성."
 }}
 
 Rules:
 - Keep ALL original cited articles; add additional ones that genuinely support this phenomenon
 - Discard additional articles that are not actually about this phenomenon
 - Update institution_count to reflect unique institutions across all included articles
-- If institution_count rises to 2+, upgrade single-source Criterion 3 to Criterion 2 or 2+3
+- If institution_count rises to 2+ AND cross-layer (다른 레이어 추가), upgrade to Criterion 2 or 2+3
+- Single-source DigiTimes/Yole/CCS leaks → Criterion 3 유지
 - Preserve the Korean title unless a better framing emerges from the new evidence"""
 
 
@@ -203,6 +256,7 @@ def main():
         source_label=SOURCE_LABEL,
         days=args.days,
         with_existing=args.with_existing,
+        source_taxonomy=SOURCE_TAXONOMY,
     )
 
 

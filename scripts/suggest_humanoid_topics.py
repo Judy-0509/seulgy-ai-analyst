@@ -22,20 +22,53 @@ from _suggest_core import ROOT, run_pipeline  # noqa: E402
 # ── Archive registry ────────────────────────────────────────────────────────
 
 ARCHIVE_REGISTRY = [
+    # Tier A — independent media
     ("Robotics & Automation News", "robotics_automation_news.json"),
     ("TechCrunch Robotics",        "techcrunch_robotics.json"),
     ("IEEE Spectrum Robotics",     "ieee_spectrum_robotics.json"),
     ("The Robot Report",           "robot_report.json"),
     ("MIT Technology Review",      "mit_tech_review.json"),
+    ("The Verge",                  "verge_robotics.json"),
+    # Tier B — first-party OEM / supplier announcements
     ("Boston Dynamics",            "boston_dynamics.json"),
     ("Figure AI",                  "figure_ai.json"),
+    ("Unitree",                    "unitree.json"),
+    ("NVIDIA News",                "nvidia_news.json"),
+    ("Apptronik",                  "apptronik.json"),
+    ("Agility Robotics",           "agility_robotics.json"),
+    ("1X Technologies",            "onex_technologies.json"),
+    # Tier C — academic
     ("arXiv (cs.RO)",              "arxiv_robotics.json"),
+    # Tier D — industry association
+    ("IFR",                        "ifr.json"),
 ]
 
 SOURCE_LABEL = (
     "Robotics & Automation News, TechCrunch Robotics, IEEE Spectrum, "
-    "The Robot Report, MIT Technology Review, Boston Dynamics, Figure AI, arXiv"
+    "The Robot Report, MIT Technology Review, The Verge, "
+    "Boston Dynamics, Figure AI, Unitree, NVIDIA, Apptronik, Agility Robotics, 1X, "
+    "arXiv, IFR"
 )
+
+# ── Source taxonomy (post-process로 source_layers 자동 채움) ────────────────
+
+SOURCE_TAXONOMY = {
+    "Robotics & Automation News": "A",  # Independent media
+    "TechCrunch Robotics":        "A",
+    "IEEE Spectrum Robotics":     "A",
+    "The Robot Report":           "A",
+    "MIT Technology Review":      "A",
+    "The Verge":                  "A",
+    "Boston Dynamics":            "B",  # First-party OEM
+    "Figure AI":                  "B",
+    "Unitree":                    "B",
+    "NVIDIA News":                "B",
+    "Apptronik":                  "B",
+    "Agility Robotics":           "B",
+    "1X Technologies":            "B",
+    "arXiv (cs.RO)":              "C",  # Academic
+    "IFR":                        "D",  # Industry association
+}
 
 # ── Keyword filter ──────────────────────────────────────────────────────────
 # Robotics & Automation News는 off-topic 기사(금융, SNS 등)를 포함하므로 가볍게 필터링.
@@ -57,13 +90,18 @@ def _load_keywords() -> list[str]:
     return _KEYWORDS
 
 def keyword_filter(entry: dict) -> bool:
-    # 소스가 이미 로보틱스 특화인 경우 통과
+    # 소스가 이미 로보틱스 특화인 경우 통과 (1차 OEM, 학술, 로보틱스 전문 매체)
     source = entry.get("source", "")
-    if source in ("arXiv (cs.RO)", "Boston Dynamics", "Figure AI",
-                  "TechCrunch Robotics", "IEEE Spectrum Robotics",
-                  "The Robot Report", "MIT Technology Review"):
+    if source in (
+        "arXiv (cs.RO)",
+        "Boston Dynamics", "Figure AI", "Unitree", "Apptronik",
+        "Agility Robotics", "1X Technologies",
+        "TechCrunch Robotics", "IEEE Spectrum Robotics",
+        "The Robot Report", "MIT Technology Review",
+        "IFR",
+    ):
         return True
-    # Robotics & Automation News는 넓게 필터
+    # 일반 매체(R&AN, Verge, NVIDIA blog)는 키워드 필터 적용
     text = (entry.get("title", "") + " " + entry.get("description", "")).lower()
     kw = _load_keywords()
     return any(k in text for k in kw) or any(k in text for k in _BROAD_KEYWORDS)
@@ -72,6 +110,13 @@ def keyword_filter(entry: dict) -> bool:
 
 SYSTEM_PROMPT = """You are a senior humanoid robotics market intelligence analyst focused on
 commercialization strategy, technology readiness, and competitive dynamics.
+
+[ROLE SPLIT — IMPORTANT]
+This is the MAJOR pass. A separate "Curiosity Pick" emerging pass handles
+single-source niche signals (minor OEM movements, contrarian data, standalone
+technical leaks, major-OEM off-trend actions). DO NOT surface those here.
+Focus this pass on phenomena with multi-source consensus or clear market-defining
+significance.
 
 [Core Principle]
 Cluster articles by the MARKET PHENOMENON they describe, not by shared keywords.
@@ -95,7 +140,25 @@ Do NOT flag:
 - Routine product demos or video releases with no strategic signal
 - Academic papers without clear near-term commercial application
 - Incremental hardware spec updates with no market significance
-- General automation or non-humanoid robotics topics"""
+- General automation or non-humanoid robotics topics
+- Single-source niche/contrarian signals (delegated to the emerging pass)
+
+[SOURCE TAXONOMY — 본 corpus는 4개 레이어로 구성, 각 레이어의 신호 강도가 다르다]
+
+A. Independent media (저널리즘, 다중 합의로 신뢰):
+   Robotics & Automation News, TechCrunch Robotics, IEEE Spectrum,
+   The Robot Report, MIT Technology Review, The Verge
+
+B. First-party OEM / supplier (1차 발표 — 기업 자체 announcement):
+   Boston Dynamics, Figure AI, Unitree, NVIDIA News, Apptronik,
+   Agility Robotics, 1X Technologies
+   → Tier B 다수가 동일 시점 일제히 보도하면 "산업 전반 phase shift" 신호
+
+C. Academic (arXiv) — 모델/기술 fact 확정용:
+   arXiv (cs.RO)
+
+D. Industry association — 산업 정량 지표 / 정책 동향:
+   IFR (International Federation of Robotics)"""
 
 USER_PROMPT_TEMPLATE = """
 [EXISTING REPORTS — exclude these topics from Criterion 3 ONLY]
@@ -120,13 +183,27 @@ Criterion 2 — Multi-Source Signal:
 "Same phenomenon" is judged semantically, not by keyword overlap.
 
 Source independence tiers for humanoid robotics:
-- Tier A (independent media): Robotics & Automation News, TechCrunch, IEEE Spectrum,
-  The Robot Report, MIT Technology Review — each counts as a distinct independent source
-- Tier B (company signals): Boston Dynamics, Figure AI, Unitree announcements
-  — all company blogs together count as ONE source type
-- Tier C (academic): arXiv papers — count as ONE source type
+- Tier A (independent media): Robotics & Automation News, TechCrunch Robotics,
+  IEEE Spectrum, The Robot Report, MIT Technology Review, The Verge
+  — each Tier-A outlet counts as a distinct independent source
+- Tier B (first-party OEM/supplier): Boston Dynamics, Figure AI, Unitree, NVIDIA,
+  Apptronik, Agility Robotics, 1X — each company is its own first-party source.
+  Two distinct OEMs = TWO independent sources (different companies, different
+  strategic positions). Same company multiple posts = ONE source.
+- Tier C (academic): arXiv papers — papers from different research groups count
+  as distinct sources; multiple papers from the same group = ONE source.
+- Tier D (industry association): IFR — counts as one source type.
 
-Criterion 2 requires 2+ Tier A sources, OR 1 Tier A + 1 Tier B/C covering the same phenomenon.
+Criterion 2 requires 2+ sources covering the same phenomenon, where:
+- 2+ Tier A outlets, OR
+- 2+ Tier B OEMs (cross-company convergence is itself a strong market signal), OR
+- 1 Tier A + 1 Tier B/C/D, OR
+- 1 Tier B + 1 Tier C (e.g., OEM announces capability + arXiv paper validates approach)
+
+CROSS-LAYER 보강이 strong signal:
+- Tier B (OEM 발표) + Tier A (독립 매체 검증) → 양면 확정
+- Tier C (arXiv 모델) + Tier B (OEM 적용 발표) → 학술→상용 전이 신호
+- Tier D (IFR 통계) + Tier A (사례 보도) → 산업 차원 vs 개별 사례 일치
 
 CRITICAL — Opposing-direction articles can be the SAME phenomenon:
 If one source reports what companies are building (technology roadmap) while another
@@ -233,6 +310,7 @@ def main():
         source_label=SOURCE_LABEL,
         days=args.days,
         with_existing=args.with_existing,
+        source_taxonomy=SOURCE_TAXONOMY,
     )
 
 

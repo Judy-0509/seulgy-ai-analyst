@@ -7,6 +7,7 @@ import json
 import os
 import re
 import sys
+import time as _time
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
@@ -14,6 +15,9 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 ROOT = Path(__file__).parent.parent
+sys.path.insert(0, str(ROOT))
+from src.services.token_logger import log_usage, usage_counts  # noqa: E402
+from src.services.glm_limiter import glm47_slot  # noqa: E402
 
 _env = ROOT / ".env"
 if _env.exists():
@@ -27,6 +31,7 @@ from openai import OpenAI  # noqa: E402
 
 ARCHIVES_DIR = ROOT / "data" / "archives"
 REPORTS_DIR  = ROOT / "reports"
+GLM_REQUEST_TIMEOUT_SECONDS = float(os.environ.get("GLM_REQUEST_TIMEOUT_SECONDS", "600"))
 
 STOP_WORDS = {
     "the", "and", "for", "with", "from", "that", "this", "will", "have",
@@ -46,21 +51,13 @@ STOP_WORDS = {
 
 def make_client():
     """LLM_BACKEND 환경변수에 따라 (client, model, thinking_body) 반환."""
-    backend = os.environ.get("LLM_BACKEND", "glm")
-    if backend == "qwen":
-        client = OpenAI(
-            api_key=os.environ["QWEN_API_KEY"],
-            base_url=os.environ.get("QWEN_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
-        )
-        model = os.environ.get("QWEN_MODEL", "qwen3-32b")
-        thinking_body = {"enable_thinking": True}
-    else:
-        client = OpenAI(
-            api_key=os.environ["ZHIPU_API_KEY"],
-            base_url="https://open.bigmodel.cn/api/paas/v4/",
-        )
-        model = "glm-4.7"
-        thinking_body = {"thinking": {"type": "enabled"}}
+    client = OpenAI(
+        api_key=os.environ["ZHIPU_API_KEY"],
+        base_url="https://open.bigmodel.cn/api/paas/v4/",
+        timeout=GLM_REQUEST_TIMEOUT_SECONDS,
+    )
+    model = "glm-4.7"
+    thinking_body = {"thinking": {"type": "enabled"}}
     return client, model, thinking_body
 
 
@@ -184,19 +181,19 @@ def enrich_topic(topic: dict, extra: list[dict], client, model: str,
         rationale           = topic.get("rationale", ""),
         additional_articles = format_article_list(extra),
     )
-    import time as _time
     response = None
     for _attempt in range(5):
         try:
-            response = client.chat.completions.create(
-                model=model,
-                messages=[
-                    {"role": "system", "content": enrich_system},
-                    {"role": "user",   "content": prompt},
-                ],
-                max_tokens=4000,
-                temperature=0.1,
-            )
+            with glm47_slot():
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {"role": "system", "content": enrich_system},
+                        {"role": "user",   "content": prompt},
+                    ],
+                    max_tokens=4000,
+                    temperature=0.1,
+                )
             break
         except Exception as _e:
             if "429" in str(_e) or "1302" in str(_e) or "rate" in str(_e).lower():
@@ -207,6 +204,8 @@ def enrich_topic(topic: dict, extra: list[dict], client, model: str,
                 raise
     if response is None:
         return topic
+    prompt_tokens, completion_tokens = usage_counts(getattr(response, "usage", None))
+    log_usage(model, prompt_tokens, completion_tokens, "suggest.enrich")
     raw = response.choices[0].message.content or ""
     raw = re.sub(r"```(?:json)?\s*", "", raw).strip().rstrip("`").strip()
     m = re.search(r"\{.*\}", raw, re.DOTALL)
@@ -233,6 +232,8 @@ def run_pipeline(
     source_label: str,       # USER_PROMPT_TEMPLATE 내 {source_label}
     days: int,
     with_existing: bool = False,
+    source_taxonomy: dict[str, str] | None = None,  # {source_name: layer_code} — 제공 시 source_layers 자동 채움
+    extra_existing: list[str] | None = None,        # existing_reports에 추가로 주입할 토픽 list (예: 메이저 패스 결과)
 ):
     """5-step 공통 파이프라인."""
     # Step 1 — 기사 로드
@@ -241,8 +242,10 @@ def run_pipeline(
     print(f"      → {len(articles)} articles")
 
     existing = get_existing_reports() if with_existing else []
+    if extra_existing:
+        existing = existing + list(extra_existing)
     if existing:
-        print(f"[2/5] Existing reports ({len(existing)}):")
+        print(f"[2/5] Existing reports / topics to exclude ({len(existing)}):")
         for r in existing:
             print(f"      · {r}")
     else:
@@ -260,19 +263,19 @@ def run_pipeline(
     # Step 3 — Pass 1 LLM
     client, model, thinking_body = make_client()
     print(f"[3/5] Pass 1 — {model} thinking ({domain_label})...")
-    import time as _time
     for _attempt in range(5):
         try:
-            response = client.chat.completions.create(
-                model=model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user",   "content": user_prompt},
-                ],
-                max_tokens=30000,
-                temperature=0.1,
-                extra_body=thinking_body,
-            )
+            with glm47_slot():
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user",   "content": user_prompt},
+                    ],
+                    max_tokens=30000,
+                    temperature=0.1,
+                    extra_body=thinking_body,
+                )
             break
         except Exception as _e:
             if "429" in str(_e) or "1302" in str(_e) or "rate" in str(_e).lower():
@@ -287,6 +290,8 @@ def run_pipeline(
     msg       = response.choices[0].message
     reasoning = getattr(msg, "reasoning_content", "") or ""
     content   = msg.content or ""
+    prompt_tokens, completion_tokens = usage_counts(getattr(response, "usage", None))
+    log_usage(model, prompt_tokens, completion_tokens, "suggest.pass1")
     print(f"      thinking: {len(reasoning):,} chars")
 
     try:
@@ -308,6 +313,8 @@ def run_pipeline(
         extra = find_additional_articles(topic, all_articles, pass1_titles)
         label = topic.get("title", "")[:50]
         if extra:
+            if enriched_count > 0:
+                _time.sleep(5)  # 연속 호출 간 throttle — rate limit 예방
             print(f"      [{i}] +{len(extra)} articles — re-writing: {label}...")
             updated = enrich_topic(topic, extra, client, model, enrich_system, enrich_tpl)
             enriched_topics.append(updated)
@@ -326,9 +333,51 @@ def run_pipeline(
             if not art.get("url"):
                 art["url"] = url_map.get(art["title"], "")
 
+    # source_layers 자동 채우기 — LLM 출력 대신 코드가 인용 출처에서 직접 도출 (라벨 정확도 100%)
+    if source_taxonomy:
+        # LLM이 출처명을 줄여 쓰는 경우 ("arXiv" vs "arXiv (cs.RO)") 정확 매칭이 실패하므로
+        # taxonomy 캐논 키로 normalize한다. 정확 매칭 → 부분 매칭 순서로 시도.
+        canonical = list(source_taxonomy.keys())
+
+        def _normalize(src: str) -> str:
+            if not src:
+                return src
+            if src in source_taxonomy:
+                return src
+            sl = src.lower().strip()
+            # 부분 매칭: registry 키가 src를 포함하거나 src가 registry 키를 포함
+            best = None
+            for c in canonical:
+                cl = c.lower()
+                if sl == cl or sl in cl or cl in sl:
+                    # 더 긴 매칭이 더 구체적
+                    if best is None or len(c) > len(best):
+                        best = c
+            return best or src
+
+        for topic in enriched_topics:
+            for art in topic.get("articles", []):
+                art["source"] = _normalize(art.get("source", ""))
+            layers = sorted({
+                source_taxonomy[a["source"]]
+                for a in topic.get("articles", [])
+                if a.get("source") in source_taxonomy
+            })
+            topic["source_layers"] = layers
+
     # Step 5 — 저장
     out = ROOT / out_path
     out.parent.mkdir(parents=True, exist_ok=True)
+
+    # 기존 파일이 있으면 히스토리 폴더에 보관
+    if out.exists():
+        hist_dir = out.parent / "_history"
+        hist_dir.mkdir(exist_ok=True)
+        existing_data = json.loads(out.read_text(encoding="utf-8"))
+        ts = existing_data.get("generated_at", datetime.now().isoformat())[:19].replace(":", "-")
+        hist_name = f"{domain_label}_{ts}.json"
+        (hist_dir / hist_name).write_text(out.read_text(encoding="utf-8"), encoding="utf-8")
+
     out.write_text(
         json.dumps({
             "generated_at":    datetime.now().isoformat(),

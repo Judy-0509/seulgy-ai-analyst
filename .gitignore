@@ -19,11 +19,28 @@ reports/*_report.md
 reports/*_process.json
 reports/archive_viewer.html
 reports/glm_topic_suggestions.html
+reports/_backup*/
+reports/*.log
 scripts/_topic_suggestions.json
+scripts/_topic_suggestions_emerging.json
 scripts/_humanoid_topic_suggestions.json
+scripts/_humanoid_topic_suggestions_emerging.json
 scripts/_automotive_topic_suggestions.json
+scripts/_space_datacenter_topic_suggestions.json
+scripts/_history/
 test_image/
 data/mi_news/
+
+# ── 런타임 로그 / 락 / 사용량 ─────────────────
+*.log
+*.bak
+data/token_usage.*
+data/locks/
+uvicorn_err.log
+server-*.log
+
+# ── 개인 작업 메모 ────────────────────────────
+todo.md
 
 # ── 프론트엔드 ────────────────────────────────
 frontend/node_modules/

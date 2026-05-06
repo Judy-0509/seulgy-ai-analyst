@@ -6,6 +6,10 @@ const DOMAINS = [
   { id: "smartphone", label: "Smartphone" },
   { id: "humanoid",   label: "Humanoid"   },
   { id: "automotive", label: "Automotive" },
+  { id: "smartglass", label: "SmartGlass" },
+  { id: "tablet",     label: "Tablet"     },
+  { id: "space_datacenter", label: "Space Datacenter" },
+  { id: "macro",      label: "Macro"      },
 ];
 
 function HamburgerIcon() {
@@ -39,7 +43,7 @@ export default function Sidebar() {
         left: 16,
         zIndex: 200,
         width: open ? 196 : 42,
-        height: open ? 206 : 42,
+        height: open ? 360 : 42,
         pointerEvents: "none",
       }}
     >
@@ -75,7 +79,7 @@ export default function Sidebar() {
           top: 0,
           left: 0,
           width: 196,
-          minHeight: 198,
+          minHeight: 344,
           overflow: "hidden",
           transform: open ? "translateX(0)" : "translateX(-218px)",
           opacity: open ? 1 : 0,

@@ -3,7 +3,7 @@
 흐름:
   1. body_cache.get_body(url) → 있으면 즉시 반환
   2. SKIP_SOURCES (Naver) → 'empty' 마킹 후 빈 문자열 (description에 PDF text 이미 있음)
-  3. BLOCKED_SOURCES (Reuters/Omdia/Yole) → Wayback Machine 시도 → 실패 시 'wayback_miss'
+  3. BLOCKED_SOURCES (Omdia/Yole) → Wayback Machine 시도 → 실패 시 'wayback_miss'
   4. FETCHABLE → httpx → 본문 추출 → 캐시 저장
 
 Status 분기:
@@ -18,16 +18,29 @@ import httpx
 from bs4 import BeautifulSoup
 from . import body_cache
 
-# 첫 fetch 시도에서 차단 확인된 소스 (403/CAPTCHA/paywall)
-BLOCKED_SOURCES = {"Reuters", "Omdia", "Yole Group"}
+# 첫 fetch 시도에서 차단 확인된 소스 (403/CAPTCHA/paywall) — Wayback Machine 폴백 시도
+BLOCKED_SOURCES = {"Omdia", "Yole Group"}
+
+# 정책상 어떤 형태의 fetch도 시도하지 않는 소스 (ToS / robots.txt 명시 차단).
+# 즉시 'blocked'/'skip' 으로 캐시에 마킹하고 본문은 비워둔다 — Wayback도 시도 안 함.
+HARD_BLOCKED_SOURCES = {"Reuters"}
 
 # Naver Research: description 필드에 PDF 텍스트 이미 있으므로 별도 fetch 불필요
 SKIP_SOURCES = {"Naver Research"}
 
 # httpx 직접 fetch 가능한 소스
 FETCHABLE_SOURCES = {
-    "Counterpoint Research", "IDC", "Morgan Stanley", "TrendForce",
+    "Counterpoint Research", "IDC", "TrendForce",
     "MacRumors", "AppleInsider", "9to5Mac", "9to5Google", "Digitimes", "Wccftech",
+}
+
+# robots.txt / ToS 정책상 본문 fetch 금지 — metadata only.
+# state_machine.py는 FETCHABLE_SOURCES ∪ BLOCKED_SOURCES 에만 fetch 시도하므로,
+# 이 셋에 들어있는 이름은 (둘 다 미등록 상태로) 자동 skip됨. 본 셋은 문서/감사 목적.
+# 근거: docs/crawling_robots_review.md
+METADATA_ONLY_SOURCES = {
+    "DigiTimes Asia",       # robots.txt: GPTBot/The Knowledge AI 차단; codex 정책 metadata-only
+    "CCS Insight",          # 유료 리서치 firm; codex 정책 metadata-only
 }
 
 HEADERS = {
@@ -98,6 +111,10 @@ def fetch_or_cached(url: str, source: str = "") -> str:
         if source not in BLOCKED_SOURCES:
             return ""  # blocked/error/empty — 재시도 안 함
         # BLOCKED_SOURCES + 이전 상태가 'blocked' → Wayback 아직 미시도, fall through
+
+    if source in HARD_BLOCKED_SOURCES:
+        body_cache.put_body(url, "", source, "blocked", "skip")
+        return ""
 
     if source in SKIP_SOURCES:
         body_cache.put_body(url, "", source, "empty", "skip")

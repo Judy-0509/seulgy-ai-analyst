@@ -1,0 +1,13 @@
+{
+  "id": "space_datacenter",
+  "label": "Space Datacenter",
+  "icon": "◐",
+  "keywords_file": "data/space_datacenter_keywords.json",
+  "analyst_role": "space datacenter infrastructure analyst",
+  "search_profile": "space datacenter, orbital computing, satellite edge computing, space infrastructure",
+  "fallback_query_suffix": "space datacenter orbital computing",
+  "suggested_path": "scripts/_space_datacenter_topic_suggestions.json",
+  "theme": {
+    "accent": "#22d3a6"
+  }
+}

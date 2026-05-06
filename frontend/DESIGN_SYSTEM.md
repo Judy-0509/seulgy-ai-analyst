@@ -63,6 +63,37 @@
 - Soft background: `rgba(37,99,235,.06)` to `rgba(37,99,235,.12)`
 - Use case: automotive/EV market research (Build · Market · Shift 3축)
 
+### SmartGlass
+
+- Background asset: `frontend/public/smartglass-bg.png`
+- Accent: teal/cyan
+- Main accent: `#0891b2`
+- Accent light: `#06b6d4`
+- Accent lighter: `#67e8f9`
+- Soft background: `rgba(8,145,178,.12)`
+- bgPos: `100% 40%`
+- Use case: smart glasses / AI glass market research (폼팩터·광학계·온디바이스 AI)
+
+### Tablet
+
+- Background asset: `frontend/public/tablet-bg.png`
+- Accent: violet/purple
+- Main accent: `#7c3aed`
+- Accent light: `#8b5cf6`
+- Accent lighter: `#c4b5fd`
+- Soft background: `rgba(124,58,237,.12)`
+- Use case: tablet market research (iPad·Android·폼팩터·엔터프라이즈)
+
+### Macro
+
+- Background asset: `frontend/public/macro-bg.png`
+- Accent: amber/gold
+- Main accent: `#d97706`
+- Accent light: `#f59e0b`
+- Accent lighter: `#fcd34d`
+- Soft background: `rgba(217,119,6,.12)`
+- Use case: macroeconomics research (금리·환율·무역·지정학 분석)
+
 ### Theme Rules
 
 - Do not hardcode smartphone green inside shared pipeline components.

@@ -5,6 +5,10 @@ const DOMAINS = [
   { id: "smartphone", label: "Smartphone", icon: "📱" },
   { id: "humanoid",   label: "Humanoid",   icon: "🤖" },
   { id: "automotive", label: "Automotive", icon: "🚗" },
+  { id: "smartglass", label: "SmartGlass", icon: "🥽" },
+  { id: "tablet",     label: "Tablet",     icon: "📲" },
+  { id: "space_datacenter", label: "Space Datacenter", icon: "◐" },
+  { id: "macro",      label: "Macro",      icon: "📊" },
 ];
 
 const DomainContext = createContext(null);

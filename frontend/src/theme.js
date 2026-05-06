@@ -18,15 +18,18 @@ export const SRC_COLORS = ["#4f46e5","#7c6af7","#a5b4fc","#f59e0b","#64748b"];
 // Smartphone sources → shades of green
 // Humanoid sources   → shades of red
 export const SRC_COLOR_MAP = {
-  // Smartphone (8 distinct greens)
-  "Counterpoint Research": "#166534",
-  "TrendForce":            "#15803d",
-  "Omdia":                 "#16a34a",
-  "IDC":                   "#22c55e",
-  "Reuters":               "#4ade80",
-  "Yole":                  "#86efac",
-  "Gartner":               "#bbf7d0",
-  "Morgan Stanley":        "#dcfce7",
+  // Smartphone (7 active green/emerald shades, dark → light)
+  "DigiTimes Asia":         "#064e3b",
+  "Counterpoint Research":  "#166534",
+  "TrendForce":             "#15803d",
+  "Nikkei Asia":            "#047857",
+  "Omdia":                  "#16a34a",
+  "IDC":                    "#22c55e",
+  "Reuters":                "#4ade80",
+  "CCS Insight":            "#34d399",
+  "Yole":                   "#86efac",
+  "Bloomberg Technology":   "#6ee7b7",
+  "Gartner":                "#bbf7d0",
   // Humanoid (11 distinct reds)
   "The Robot Report":        "#7f1d1d",
   "IEEE Spectrum":           "#991b1b",

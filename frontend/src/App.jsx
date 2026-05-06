@@ -9,6 +9,8 @@ import DbPage from "./pages/DbPage";
 import NewsPage from "./pages/NewsPage";
 import ReportPage from "./pages/ReportPage";
 import ReportsArchivePage from "./pages/ReportsArchivePage";
+import KeywordsPage from "./pages/KeywordsPage";
+import UsagePage from "./pages/UsagePage";
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth();
@@ -34,12 +36,14 @@ function RouterContent() {
         <Routes>
           <Route path="/"       element={<LandingPage />} />
           <Route path="/login"  element={<LoginPage />} />
-          <Route path="/news"   element={<NewsPage />} />
+          <Route path="/news"   element={<ProtectedRoute><NewsPage /></ProtectedRoute>} />
 
           <Route path="/app"    element={<ProtectedRoute><AppPage /></ProtectedRoute>} />
           <Route path="/db"     element={<ProtectedRoute><DbPage /></ProtectedRoute>} />
           <Route path="/archive"       element={<ProtectedRoute><ReportsArchivePage /></ProtectedRoute>} />
-          <Route path="/archive/:slug" element={<ProtectedRoute><ReportPage /></ProtectedRoute>} />
+          <Route path="/archive/:slug" element={<ReportPage />} />
+          <Route path="/keywords"      element={<ProtectedRoute><KeywordsPage /></ProtectedRoute>} />
+          <Route path="/usage"         element={<ProtectedRoute><UsagePage /></ProtectedRoute>} />
 
           <Route path="/reports"       element={<Navigate to="/archive" replace />} />
           <Route path="/report/:slug"  element={<LegacyReportRedirect />} />

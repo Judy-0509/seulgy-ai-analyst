@@ -18,6 +18,8 @@ import os
 import re
 from typing import Optional
 
+from src.services.token_logger import log_usage, usage_counts
+
 logger = logging.getLogger(__name__)
 
 VENDOR_LIST = [
@@ -99,6 +101,7 @@ def _get_glm_client():
     return OpenAI(
         api_key=os.getenv("ZHIPU_API_KEY"),
         base_url="https://open.bigmodel.cn/api/paas/v4/",
+        timeout=float(os.getenv("GLM_REQUEST_TIMEOUT_SECONDS", "600")),
     )
 
 
@@ -153,6 +156,9 @@ def tag_article(title: str, description: str) -> dict:
                 temperature=0.1,
                 max_tokens=2048,
             )
+
+        prompt_tokens, completion_tokens = usage_counts(getattr(resp, "usage", None))
+        log_usage(model, prompt_tokens, completion_tokens, "ai_tagger.tag_article")
 
         raw = _strip_fences(resp.choices[0].message.content or "")
         data = json.loads(raw)
