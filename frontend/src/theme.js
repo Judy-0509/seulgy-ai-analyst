@@ -36,6 +36,8 @@ export const SRC_COLOR_MAP = {
   "TechCrunch Robotics":     "#b91c1c",
   "MIT Technology Review":   "#dc2626",
   "Robotics & Automation News": "#ef4444",
+  "Humanoids Daily":         "#e11d48",
+  "RoboticsTomorrow":        "#be123c",
   "The Verge":               "#f87171",
   "arXiv (cs.RO)":           "#fca5a5",
   "NVIDIA":                  "#fecaca",

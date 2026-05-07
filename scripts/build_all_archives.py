@@ -1,5 +1,5 @@
 """
-36개 archive 빌더를 순차 실행하는 오케스트레이터.
+43개 archive 빌더를 순차 실행하는 오케스트레이터.
 
 각 빌더는 자체 incremental 로직을 갖고 있어서, 기존 JSON에 없는 URL만 새로 fetch한다.
 즉 이 스크립트를 다시 돌릴수록 DB가 누적된다.
@@ -42,6 +42,8 @@ BUILDERS = [
     ("TechCrunch Robotics",        "build_techcrunch_robotics_archive.py",   "techcrunch_robotics.json"),
     ("MIT Technology Review",      "build_mit_tech_review_archive.py",       "mit_tech_review.json"),
     ("Robotics & Automation News", "build_robotics_automation_news_archive.py", "robotics_automation_news.json"),
+    ("Humanoids Daily",            "build_humanoids_daily_archive.py",      "humanoids_daily.json"),
+    ("RoboticsTomorrow",           "build_robotics_tomorrow_archive.py",    "robotics_tomorrow.json"),
     ("The Verge",                  "build_verge_robotics_archive.py",        "verge_robotics.json"),
     ("arXiv (cs.RO)",              "build_arxiv_robotics_archive.py",        "arxiv_robotics.json"),
     ("NVIDIA",                     "build_nvidia_news_archive.py",           "nvidia_news.json"),
@@ -64,6 +66,25 @@ BUILDERS = [
     ("Electrek",            "build_electrek_archive.py",         "electrek.json"),
     ("InsideEVs",           "build_insideevs_archive.py",        "insideevs.json"),
     ("Toyota Newsroom",     "build_toyota_archive.py",           "toyota.json"),
+    # 2026-05-07 추가 — 중국 EV 가시성 + EU 정책/통계
+    ("CnEVPost",            "build_cnevpost_archive.py",         "cnevpost.json"),
+    ("CarNewsChina",        "build_carnewschina_archive.py",     "carnewschina.json"),
+    ("ICCT",                "build_icct_archive.py",             "icct.json"),
+    ("ACEA",                "build_acea_archive.py",             "acea.json"),
+    # 컨설팅·EV/정책 (2026-05-07)
+    ("BloombergNEF",        "build_bnef_archive.py",             "bnef.json"),
+    ("RMI",                 "build_rmi_archive.py",              "rmi.json"),
+    ("Transport & Environment", "build_te_archive.py",           "transport_environment.json"),
+    ("IRENA",               "build_irena_archive.py",            "irena.json"),
+    # ── Space Datacenter sources ───────────────────────────────────────
+    ("SpaceNews",             "build_spacenews_archive.py",             "spacenews.json"),
+    ("Space.com",             "build_spacecom_archive.py",              "spacecom.json"),
+    ("IEEE Spectrum (Space)", "build_ieee_spectrum_space_archive.py",   "ieee_spectrum_space.json"),
+    ("Data Center Knowledge", "build_datacenter_knowledge_archive.py",  "datacenter_knowledge.json"),
+    ("Data Center Frontier",  "build_datacenter_frontier_archive.py",   "datacenter_frontier.json"),
+    ("TechCrunch (Space)",    "build_techcrunch_space_archive.py",      "techcrunch_space.json"),
+    ("arXiv (cs.DC)",         "build_arxiv_space_archive.py",           "arxiv_space.json"),
+    # NVIDIA (nvidia_news.json) — humanoid와 공유, 별도 빌더 없음
 ]
 
 PER_BUILDER_TIMEOUT_SEC = 900  # 빌더당 최대 15분

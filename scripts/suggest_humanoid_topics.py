@@ -28,6 +28,8 @@ ARCHIVE_REGISTRY = [
     ("IEEE Spectrum Robotics",     "ieee_spectrum_robotics.json"),
     ("The Robot Report",           "robot_report.json"),
     ("MIT Technology Review",      "mit_tech_review.json"),
+    ("Humanoids Daily",            "humanoids_daily.json"),
+    ("RoboticsTomorrow",           "robotics_tomorrow.json"),
     ("The Verge",                  "verge_robotics.json"),
     # Tier B — first-party OEM / supplier announcements
     ("Boston Dynamics",            "boston_dynamics.json"),
@@ -45,7 +47,7 @@ ARCHIVE_REGISTRY = [
 
 SOURCE_LABEL = (
     "Robotics & Automation News, TechCrunch Robotics, IEEE Spectrum, "
-    "The Robot Report, MIT Technology Review, The Verge, "
+    "The Robot Report, MIT Technology Review, Humanoids Daily, RoboticsTomorrow, The Verge, "
     "Boston Dynamics, Figure AI, Unitree, NVIDIA, Apptronik, Agility Robotics, 1X, "
     "arXiv, IFR"
 )
@@ -58,6 +60,8 @@ SOURCE_TAXONOMY = {
     "IEEE Spectrum Robotics":     "A",
     "The Robot Report":           "A",
     "MIT Technology Review":      "A",
+    "Humanoids Daily":            "A",
+    "RoboticsTomorrow":           "A",
     "The Verge":                  "A",
     "Boston Dynamics":            "B",  # First-party OEM
     "Figure AI":                  "B",
@@ -97,8 +101,8 @@ def keyword_filter(entry: dict) -> bool:
         "Boston Dynamics", "Figure AI", "Unitree", "Apptronik",
         "Agility Robotics", "1X Technologies",
         "TechCrunch Robotics", "IEEE Spectrum Robotics",
-        "The Robot Report", "MIT Technology Review",
-        "IFR",
+        "The Robot Report", "MIT Technology Review", "Humanoids Daily",
+        "RoboticsTomorrow", "IFR",
     ):
         return True
     # 일반 매체(R&AN, Verge, NVIDIA blog)는 키워드 필터 적용

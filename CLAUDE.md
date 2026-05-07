@@ -1,13 +1,14 @@
 # Research Helper — 프로젝트 가이드
 
-스마트폰·휴머노이드·자동차 시장 리서치 자동화 도구.  
+스마트폰·휴머노이드·자동차·스페이스 데이터센터 시장 리서치 자동화 도구.  
 Tier-1 리서치 기관 아카이브를 기반으로 주제를 자동 선정하고, 목차 기반 보고서를 생성한다.
 
 | 도메인 | 소스 수 | 키워드 수 | 색상 |
 |--------|---------|-----------|------|
 | Smartphone | 7 | 73 | 초록 (`#10b981`) |
 | Humanoid | 11 | 27 | 빨강 (`#b73745`) |
-| Automotive | 11 | 63 | 파랑 (`#2563eb`) |
+| Automotive | 26 | 168 | 파랑 (`#2563eb`) |
+| Space Datacenter | 8 | 52 | 청록 (`#22d3a6`) |
 
 ---
 
@@ -60,18 +61,24 @@ python run_report.py --auto "분석 토픽"
 ### 2. 주제 추천
 
 아카이브 DB에서 최근 기사를 분석해 GLM-4.7 Thinking 모드로 보고서 주제를 자동 선정.
-스마트폰은 두 종류의 주간 패스로 운영 (둘 다 주 1회 실행 권장):
+네 도메인 모두 메이저(30일) + Curiosity Pick(7일) 2-pass 구성 (둘 다 주 1회 실행 권장):
 
 ```bash
-# 메이저 — 30일 윈도우, Crit 2 다중 출처 합의 + Crit 3 강한 emerging
+# 스마트폰
 python scripts/suggest_smartphone_topics.py --days 30
-
-# Curiosity Pick — 7일 윈도우, niche/contrarian/단발 기술 fact/대형 OEM off-trend
 python scripts/suggest_smartphone_emerging.py --days 7
 
-# 휴머노이드/자동차 (메이저만)
-python scripts/suggest_humanoid_topics.py
-# 자동차는 suggest_automotive_topics.py 미구현 — 추후 추가
+# 휴머노이드
+python scripts/suggest_humanoid_topics.py --days 30
+python scripts/suggest_humanoid_emerging.py --days 7
+
+# 자동차
+python scripts/suggest_automotive_topics.py --days 30
+python scripts/suggest_automotive_emerging.py --days 7
+
+# 스페이스 데이터센터
+python scripts/suggest_space_datacenter_topics.py --days 30
+python scripts/suggest_space_datacenter_emerging.py --days 7
 
 # 보고서 follow-up 추천 (별도 entrypoint)
 python run_suggest.py
@@ -81,8 +88,12 @@ python run_suggest.py
 |--------|-----------|-----|
 | 스마트폰 메이저 (30일) | `scripts/_topic_suggestions.json` | `GET /api/topics/suggested?domain=smartphone` |
 | 스마트폰 Curiosity (7일) | `scripts/_topic_suggestions_emerging.json` | `↑ 같은 응답에 합쳐짐 (criteria=Crit 3)` |
-| 휴머노이드 | `scripts/_humanoid_topic_suggestions.json` | `GET /api/topics/suggested?domain=humanoid` |
-| 자동차 | `scripts/_automotive_topic_suggestions.json` | `GET /api/topics/suggested?domain=automotive` |
+| 휴머노이드 메이저 (30일) | `scripts/_humanoid_topic_suggestions.json` | `GET /api/topics/suggested?domain=humanoid` |
+| 휴머노이드 Curiosity (7일) | `scripts/_humanoid_topic_suggestions_emerging.json` | `↑ 같은 응답에 합쳐짐` |
+| 자동차 메이저 (30일) | `scripts/_automotive_topic_suggestions.json` | `GET /api/topics/suggested?domain=automotive` |
+| 자동차 Curiosity (7일) | `scripts/_automotive_topic_suggestions_emerging.json` | `↑ 같은 응답에 합쳐짐` |
+| 스페이스 DC 메이저 (30일) | `scripts/_space_datacenter_topic_suggestions.json` | `GET /api/topics/suggested?domain=space_datacenter` |
+| 스페이스 DC Curiosity (7일) | `scripts/_space_datacenter_topic_suggestions_emerging.json` | `↑ 같은 응답에 합쳐짐` |
 
 > Emerging 토픽은 server.py가 응답에 자동 merge하며 모두 `criteria="Criterion 3"`으로 강제됨.
 > Frontend의 "이번 주 새롭게 등장한 주제" 섹션이 Crit 3 토픽을 자동 분류해 노출.
@@ -115,7 +126,7 @@ python scripts/build_nvidia_news_archive.py
 python scripts/build_unitree_archive.py
 python scripts/build_verge_robotics_archive.py
 
-# 개별 소스 — 자동차 (11개)
+# 개별 소스 — 자동차 전용 빌더 (15개, 2026년만)
 python scripts/build_jato_archive.py
 python scripts/build_alixpartners_archive.py
 python scripts/build_wardsauto_archive.py
@@ -127,6 +138,28 @@ python scripts/build_automotive_world_archive.py
 python scripts/build_electrek_archive.py
 python scripts/build_insideevs_archive.py
 python scripts/build_toyota_archive.py
+python scripts/build_cnevpost_archive.py        # 영문 중국 EV 매체
+python scripts/build_carnewschina_archive.py    # 영문 중국 자동차 매체
+python scripts/build_icct_archive.py            # 정책·배출 NGO
+python scripts/build_acea_archive.py            # EU 제조사 협회
+python scripts/build_bnef_archive.py            # BloombergNEF 무료 블로그 (자동차 키워드 필터)
+python scripts/build_rmi_archive.py             # Rocky Mountain Institute (자동차 키워드 필터)
+python scripts/build_te_archive.py              # Transport & Environment (EU NGO)
+python scripts/build_irena_archive.py           # IRENA Transport (UN, 자동차 키워드 필터)
+
+# 자동차는 추가로 스마트폰 트래커 7개도 자동 활용 (별도 빌드 불필요)
+# Counterpoint / TrendForce / Omdia / IDC / Yole / DigiTimes Asia / CCS Insight
+# — 자동차 키워드(168) 필터로 auto-relevant 콘텐츠만 통과
+
+# 개별 소스 — 스페이스 데이터센터 전용 빌더 (7개)
+python scripts/build_spacenews_archive.py           # RSS — 주 1회
+python scripts/build_spacecom_archive.py            # RSS — 주 1회
+python scripts/build_ieee_spectrum_space_archive.py # Sitemap + space kw 필터
+python scripts/build_datacenter_knowledge_archive.py # RSS — 주 1회
+python scripts/build_datacenter_frontier_archive.py  # RSS — 주 1회
+python scripts/build_techcrunch_space_archive.py    # 페이지 크롤 + space kw 필터
+python scripts/build_arxiv_space_archive.py         # arXiv API (cs.DC + cs.NI)
+# + NVIDIA (nvidia_news.json) — humanoid 빌더와 공유, 별도 빌드 불필요
 ```
 
 ---
@@ -194,7 +227,7 @@ python scripts/build_toyota_archive.py
 │   ├── build_unitree_archive.py
 │   ├── build_verge_robotics_archive.py
 │   │
-│   │   # 자동차 아카이브 (11개)
+│   │   # 자동차 아카이브 (19개 전용 빌더 + 7개 스마트폰 트래커 재활용 = 26개 소스)
 │   ├── build_jato_archive.py
 │   ├── build_alixpartners_archive.py
 │   ├── build_wardsauto_archive.py
@@ -206,20 +239,29 @@ python scripts/build_toyota_archive.py
 │   ├── build_electrek_archive.py
 │   ├── build_insideevs_archive.py
 │   ├── build_toyota_archive.py
+│   ├── build_cnevpost_archive.py        ← 영문 중국 EV (2026년만)
+│   ├── build_carnewschina_archive.py    ← 영문 중국 자동차 (2026년만)
+│   ├── build_icct_archive.py            ← 정책·배출 NGO (2026년만)
+│   ├── build_acea_archive.py            ← EU 제조사 협회 (2026년만)
+│   ├── build_bnef_archive.py            ← BloombergNEF 블로그 (auto kw 필터)
+│   ├── build_rmi_archive.py             ← Rocky Mountain Institute (auto kw 필터)
+│   ├── build_te_archive.py              ← Transport & Environment EU NGO
+│   ├── build_irena_archive.py           ← UN 재생에너지기구 Transport
+│   ├── _auto_research_helper.py        ← 컨설팅·정책 빌더 공통 헬퍼
 │   │
 │   ├── build_archive_viewer.py     ← archive_viewer.html 생성
 │   ├── build_topic_html.py         ← 주제 HTML 빌드 유틸
 │   └── clear_body_cache.py         ← 본문 캐시 초기화 유틸
 │
 ├── data/
-│   ├── archives/                   ← 소스별 아카이브 JSON (스마트폰 7 + 휴머노이드 11 + 자동차 11)
+│   ├── archives/                   ← 소스별 아카이브 JSON (스마트폰 7 + 휴머노이드 11 + 자동차 26)
 │   ├── domains/
 │   │   ├── smartphone.json         ← 스마트폰 도메인 설정
 │   │   ├── humanoid.json           ← 휴머노이드 도메인 설정
 │   │   └── automotive.json         ← 자동차 도메인 설정
 │   ├── smartphone_keywords.json    ← 스마트폰 필터링 키워드 (42개)
 │   ├── humanoid_keywords.json      ← 휴머노이드 필터링 키워드 (27개)
-│   ├── automotive_keywords.json    ← 자동차 필터링 키워드 (63개)
+│   ├── automotive_keywords.json    ← 자동차 필터링 키워드 (168개)
 │   └── article_bodies.db           ← 본문 fetch 캐시 (SQLite, gitignore)
 │
 ├── reports/                        ← 생성된 보고서 (gitignore)

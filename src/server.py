@@ -46,6 +46,8 @@ ARCHIVE_REGISTRY = [
     ("TechCrunch Robotics",        "techcrunch_robotics.json"),
     ("MIT Technology Review",      "mit_tech_review.json"),
     ("Robotics & Automation News", "robotics_automation_news.json"),
+    ("Humanoids Daily",            "humanoids_daily.json"),
+    ("RoboticsTomorrow",           "robotics_tomorrow.json"),
     ("The Verge",                  "verge_robotics.json"),
     ("arXiv (cs.RO)",              "arxiv_robotics.json"),
     ("NVIDIA",                     "nvidia_news.json"),
@@ -56,6 +58,34 @@ ARCHIVE_REGISTRY = [
     ("Agility Robotics",           "agility_robotics.json"),
     ("1X Technologies",            "onex_technologies.json"),
     ("IFR",                        "ifr.json"),
+    # Automotive sources
+    ("WardsAuto",          "wardsauto.json"),
+    ("Cox Automotive",     "cox_automotive.json"),
+    ("AlixPartners",       "alixpartners.json"),
+    ("SAE International",  "sae.json"),
+    ("JATO Dynamics",      "jato.json"),
+    ("Automotive Dive",    "automotive_dive.json"),
+    ("Automotive World",   "automotive_world.json"),
+    ("Electrek",           "electrek.json"),
+    ("InsideEVs",          "insideevs.json"),
+    ("VW Group",           "vw_group.json"),
+    ("Toyota Newsroom",    "toyota.json"),
+    ("CnEVPost",           "cnevpost.json"),
+    ("CarNewsChina",       "carnewschina.json"),
+    ("ICCT",               "icct.json"),
+    ("ACEA",               "acea.json"),
+    ("BloombergNEF",       "bnef.json"),
+    ("RMI",                "rmi.json"),
+    ("Transport & Environment", "transport_environment.json"),
+    ("IRENA",              "irena.json"),
+    # Space Datacenter sources
+    ("SpaceNews",             "spacenews.json"),
+    ("Space.com",             "spacecom.json"),
+    ("IEEE Spectrum (Space)", "ieee_spectrum_space.json"),
+    ("Data Center Knowledge", "datacenter_knowledge.json"),
+    ("Data Center Frontier",  "datacenter_frontier.json"),
+    ("TechCrunch (Space)",    "techcrunch_space.json"),
+    ("arXiv (cs.DC)",         "arxiv_space.json"),
 ]
 
 app = FastAPI()
@@ -807,12 +837,13 @@ async def api_topics_suggested(domain: str = "smartphone"):
         except Exception:
             pass
 
-    # Merge emerging "Curiosity Pick" topics (weekly pass — smartphone & humanoid).
+    # Merge emerging "Curiosity Pick" topics (weekly pass — smartphone, humanoid, automotive).
     # All emerging topics carry criteria="Criterion 3" so frontend's existing
     # Crit2/Crit3 split surfaces them in the "이번 주 새롭게 등장한 주제" section.
     EMERGING_PATHS = {
         "smartphone": "scripts/_topic_suggestions_emerging.json",
         "humanoid":   "scripts/_humanoid_topic_suggestions_emerging.json",
+        "automotive": "scripts/_automotive_topic_suggestions_emerging.json",
     }
     em_rel = EMERGING_PATHS.get(domain)
     if em_rel:
@@ -929,12 +960,17 @@ _HUMANOID_SOURCES = {
     "Robotics & Automation News", "TechCrunch Robotics", "IEEE Spectrum Robotics",
     "IEEE Spectrum", "The Robot Report", "Boston Dynamics", "Figure AI",
     "arXiv (cs.RO)", "MIT Technology Review", "Unitree Robotics", "NVIDIA", "The Verge",
+    "Humanoids Daily", "RoboticsTomorrow", "Apptronik", "Agility Robotics",
+    "1X Technologies", "IFR", "NVIDIA News", "Unitree",
 }
 
 _AUTOMOTIVE_SOURCES = {
     "JATO Dynamics", "AlixPartners", "WardsAuto", "SAE International",
     "VW Group", "Mercedes-Benz Media", "Cox Automotive", "Automotive Dive",
     "Automotive World", "Electrek", "InsideEVs", "Toyota Newsroom",
+    "CnEVPost", "CarNewsChina", "ICCT", "ACEA",
+    "BloombergNEF", "RMI", "Transport & Environment", "IRENA",
+    # 스마트폰 트래커는 _SMARTPHONE_SOURCES에 그대로 — 도메인 판정 majority vote 보존
 }
 
 _SMARTPHONE_SOURCES = {

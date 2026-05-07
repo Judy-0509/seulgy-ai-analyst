@@ -83,21 +83,33 @@ def _parse_dt(lm: str):
 
 
 def load_articles(registry: list[tuple[str, str]], days: int,
-                  keyword_filter=None) -> list[dict]:
-    """레지스트리 소스에서 기사 로드. keyword_filter(entry)->bool, None이면 전체."""
+                  keyword_filter=None,
+                  per_source_cap: int | None = 35) -> list[dict]:
+    """레지스트리 소스에서 기사 로드. keyword_filter(entry)->bool, None이면 전체.
+
+    per_source_cap: 소스당 최근 N개로 제한 (default 35). LLM 컨텍스트 보호 +
+    mass-publisher(예: Cox 133, Omdia 260)가 prompt를 잠식하는 것 방지.
+    None이면 무제한.
+    """
     cutoff = datetime.now(tz=timezone.utc) - timedelta(days=days)
     articles = []
     for source, fname in registry:
         p = ARCHIVES_DIR / fname
         if not p.exists():
             continue
+        per_source: list[tuple[datetime, dict]] = []
         for e in json.loads(p.read_text(encoding="utf-8")).get("entries", []):
             dt = _parse_dt(e.get("lastmod", ""))
             if dt is None or dt < cutoff:
                 continue
             if keyword_filter and not keyword_filter(e):
                 continue
-            articles.append(_clean_entry(e, source))
+            per_source.append((dt, _clean_entry(e, source)))
+        # 최신순 정렬 후 cap 적용
+        per_source.sort(key=lambda x: x[0], reverse=True)
+        if per_source_cap is not None:
+            per_source = per_source[:per_source_cap]
+        articles.extend(c for _, c in per_source)
     return articles
 
 
@@ -374,7 +386,7 @@ def run_pipeline(
         hist_dir = out.parent / "_history"
         hist_dir.mkdir(exist_ok=True)
         existing_data = json.loads(out.read_text(encoding="utf-8"))
-        ts = existing_data.get("generated_at", datetime.now().isoformat())[:19].replace(":", "-")
+        ts = (existing_data.get("generated_at") or datetime.now().isoformat())[:19].replace(":", "-")
         hist_name = f"{domain_label}_{ts}.json"
         (hist_dir / hist_name).write_text(out.read_text(encoding="utf-8"), encoding="utf-8")
 

@@ -476,7 +476,62 @@
     letter-spacing: 0.05em;
   }
 
+  /* ===================== Step example panel (2-column) ===================== */
+
+  .step-body-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    align-items: start;
+  }
+  .step-body-main { min-width: 0; }
+  .step-example {
+    background: var(--card);
+    border: 1.5px solid var(--green-soft);
+    border-radius: 12px;
+    padding: 18px 20px;
+    position: relative;
+  }
+  .step-example-label {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 10px; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--green-dark);
+    background: var(--green-tint);
+    padding: 4px 10px; border-radius: 5px;
+    margin-bottom: 12px;
+  }
+  .step-example-title {
+    font-family: var(--display);
+    font-size: 14px; font-weight: 600;
+    color: var(--t1);
+    margin-bottom: 8px;
+    letter-spacing: -0.01em;
+    line-height: 1.4;
+  }
+  .step-example-body {
+    font-size: 12.5px; color: var(--t3); line-height: 1.7;
+  }
+  .step-example-body p { margin: 4px 0; }
+  .step-example-body ul { padding-left: 16px; margin: 6px 0; }
+  .step-example-body li { margin-bottom: 3px; }
+  .step-example-body strong { color: var(--t2); font-weight: 600; }
+  .step-example-quote {
+    background: var(--subtle);
+    border-left: 3px solid var(--green);
+    padding: 10px 14px;
+    border-radius: 0 6px 6px 0;
+    font-size: 12.5px; line-height: 1.65;
+    margin-top: 10px;
+    color: var(--t2);
+  }
+
   /* ===================== Responsive ===================== */
+
+  @media (max-width: 880px) {
+    .step-body-grid { grid-template-columns: 1fr; }
+  }
 
   @media (max-width: 720px) {
     .hero-title { font-size: 44px; }
@@ -619,14 +674,33 @@
         <div class="step-body">
           <span class="step-tag">data/archives/*.json</span>
           <h3 class="step-title">아카이브에서 최근 30일 기사를 수집</h3>
-          <p class="step-desc">
-            매일 빌드되는 7개 Tier-1 기관 아카이브에서, 발행일이 최근 30일 이내인 기사만 추려냅니다.
-            각 기사는 제목·발행일·요약·URL·출처 5개 필드로 정규화되어 있습니다.
-          </p>
-          <div class="step-detail">
-            <strong>현재 활성 출처</strong>는 Counterpoint Research, TrendForce, Omdia, IDC, Yole,
-            DigiTimes Asia, CCS Insight 7곳입니다 (2026-05-07 dead-weight 3개 정리 후).
-            전형적으로 30일 윈도우에서 <code>~180건</code>이 모입니다.
+          <div class="step-body-grid">
+            <div class="step-body-main">
+              <p class="step-desc">
+                매일 빌드되는 7개 Tier-1 기관 아카이브에서, 발행일이 최근 30일 이내인 기사만 추려냅니다.
+                각 기사는 제목·발행일·요약·URL·출처 5개 필드로 정규화되어 있습니다.
+              </p>
+              <div class="step-detail">
+                <strong>현재 활성 출처</strong>는 Counterpoint Research, TrendForce, Omdia, IDC, Yole,
+                DigiTimes Asia, CCS Insight 7곳입니다 (2026-05-07 dead-weight 3개 정리 후).
+                전형적으로 30일 윈도우에서 <code>~180건</code>이 모입니다.
+              </div>
+            </div>
+            <div class="step-example">
+              <span class="step-example-label">📊 실제 예시</span>
+              <div class="step-example-title">스마트폰 도메인, 2026-04-07 ~ 05-07</div>
+              <div class="step-example-body">
+                <p>총 <strong>182개</strong>의 기사가 30일 윈도우 안에 들어왔습니다.</p>
+                <ul>
+                  <li><strong>Counterpoint</strong> — 28건</li>
+                  <li><strong>Omdia</strong> — 41건</li>
+                  <li><strong>IDC</strong> — 22건</li>
+                  <li><strong>TrendForce</strong> — 35건</li>
+                  <li><strong>DigiTimes Asia</strong> — 30건</li>
+                  <li>그 외 — 26건</li>
+                </ul>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -637,14 +711,27 @@
         <div class="step-body">
           <span class="step-tag">73 keywords · OR-match</span>
           <h3 class="step-title">스마트폰 도메인 키워드로 1차 필터링</h3>
-          <p class="step-desc">
-            제목 또는 요약에 73개 큐레이션 키워드 중 하나라도 포함된 기사만 통과시킵니다.
-            반도체 수율, 디스플레이 패널, 폴더블, 위성통신, on-device AI 등 스마트폰 가치사슬 전반을 커버합니다.
-          </p>
-          <div class="step-detail">
-            키워드는 <code>data/smartphone_keywords.json</code>에 단일 진실 소스로 관리되며,
-            <strong>/keywords 페이지에서 직접 편집·즉시 반영</strong>됩니다.
-            예시: <em>silicon carbon battery, apple intelligence, galaxy ai, foldable, snapdragon, d2d satellite, exynos…</em>
+          <div class="step-body-grid">
+            <div class="step-body-main">
+              <p class="step-desc">
+                제목 또는 요약에 73개 큐레이션 키워드 중 하나라도 포함된 기사만 통과시킵니다.
+                반도체 수율, 디스플레이 패널, 폴더블, 위성통신, on-device AI 등 스마트폰 가치사슬 전반을 커버합니다.
+              </p>
+              <div class="step-detail">
+                키워드는 <code>data/smartphone_keywords.json</code>에 단일 진실 소스로 관리되며,
+                <strong>/keywords 페이지에서 직접 편집·즉시 반영</strong>됩니다.
+                예시: <em>silicon carbon battery, apple intelligence, galaxy ai, foldable, snapdragon, d2d satellite, exynos…</em>
+              </div>
+            </div>
+            <div class="step-example">
+              <span class="step-example-label">📊 실제 예시</span>
+              <div class="step-example-title">키워드 매칭 후 압축</div>
+              <div class="step-example-body">
+                <p>182개 → <strong>148개</strong>로 압축. 자동차·일반 IT 노이즈 제거.</p>
+                <div class="step-example-quote">"Samsung Sees Explosive 755% Profit Growth..." → ✅ 'samsung' 매칭</div>
+                <div class="step-example-quote">"Toyota launches new Camry in India" → ❌ 무관, 제외</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -655,15 +742,32 @@
         <div class="step-body">
           <span class="step-tag">GLM-4.7 thinking · 1 call</span>
           <h3 class="step-title">LLM이 코퍼스 전체를 읽고 후보 주제 식별</h3>
-          <p class="step-desc">
-            필터링된 기사를 한꺼번에 LLM에 입력합니다. LLM은 thinking 모드에서 코퍼스를 통독한 뒤,
-            "키워드 일치"가 아니라 "같은 시장 현상을 가리키는 기사 묶음"을 의미적으로 클러스터링하여
-            5~10개의 후보 주제를 출력합니다.
-          </p>
-          <div class="step-detail">
-            <strong>핵심 원리.</strong> "Amazon이 Globalstar를 인수했다"와 "위성통신 시장 변곡점 분석"은
-            키워드를 공유하지 않지만 <em>D2D 위성 연결성으로의 구조 전환</em>이라는 동일 현상이므로 한 주제로 묶입니다.
-            반대로 단순 정기 데이터 업데이트나 방향성 없는 일상 트래커 보고는 제외하도록 지시받습니다.
+          <div class="step-body-grid">
+            <div class="step-body-main">
+              <p class="step-desc">
+                필터링된 기사를 한꺼번에 LLM에 입력합니다. LLM은 thinking 모드에서 코퍼스를 통독한 뒤,
+                "키워드 일치"가 아니라 "같은 시장 현상을 가리키는 기사 묶음"을 의미적으로 클러스터링하여
+                5~10개의 후보 주제를 출력합니다.
+              </p>
+              <div class="step-detail">
+                <strong>핵심 원리.</strong> "Amazon이 Globalstar를 인수했다"와 "위성통신 시장 변곡점 분석"은
+                키워드를 공유하지 않지만 <em>D2D 위성 연결성으로의 구조 전환</em>이라는 동일 현상이므로 한 주제로 묶입니다.
+                반대로 단순 정기 데이터 업데이트나 방향성 없는 일상 트래커 보고는 제외하도록 지시받습니다.
+              </div>
+            </div>
+            <div class="step-example">
+              <span class="step-example-label">📊 실제 예시</span>
+              <div class="step-example-title">"메모리 가격 폭등"이 자동으로 묶임</div>
+              <div class="step-example-body">
+                <ul>
+                  <li>📍 <strong>Counterpoint</strong> — Q1 출하 -6% YoY, 메모리 부족</li>
+                  <li>📍 <strong>Omdia</strong> — Memory cost · macro volatility weigh on shipments</li>
+                  <li>📍 <strong>DigiTimes</strong> — 'Chipflation' hits Samsung, boosts Apple</li>
+                  <li>📍 <strong>TrendForce</strong> — Samsung 메모리 영업이익 +755%</li>
+                </ul>
+                <p style="margin-top:8px">4개 기관이 <em>다른 단어로 같은 사건</em>을 보도 → 하나의 후보 주제로 묶임.</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -674,33 +778,50 @@
         <div class="step-body">
           <span class="step-tag">자동 분류</span>
           <h3 class="step-title">각 후보 주제에 Criterion 라벨링</h3>
-          <p class="step-desc">
-            LLM은 각 주제를 다음 두 기준 중 하나(또는 둘 다)로 분류합니다.
-            기준 자체는 후보 개수를 강제하지 않으며, 풀에 신호가 약하면 5개로 줄고 풍부하면 10개까지 늘어납니다.
-          </p>
-
-          <div class="crit-grid">
-            <div class="crit-card amber">
-              <div class="crit-label">Criterion 2 — Hot</div>
-              <div class="crit-title">다중 출처 합의 신호</div>
-              <p class="crit-desc">
-                서로 다른 2개 이상의 기관이 <strong>같은 시장 현상</strong>을 30일 안에 보도.
-                키워드가 달라도 의미가 같으면 같은 현상으로 인정합니다.
+          <div class="step-body-grid">
+            <div class="step-body-main">
+              <p class="step-desc">
+                LLM은 각 주제를 다음 두 기준 중 하나(또는 둘 다)로 분류합니다.
+                기준 자체는 후보 개수를 강제하지 않으며, 풀에 신호가 약하면 5개로 줄고 풍부하면 10개까지 늘어납니다.
               </p>
-            </div>
-            <div class="crit-card green">
-              <div class="crit-label">Criterion 3 — New</div>
-              <div class="crit-title">새롭게 등장한 신호</div>
-              <p class="crit-desc">
-                30일 안에 처음 등장한 의미 있는 단일 출처 신호.
-                특정 OEM의 시장 진입·전략 전환·가시화된 경쟁 우위 등.
-              </p>
-            </div>
-          </div>
 
-          <div class="step-detail" style="margin-top:14px">
-            두 기준을 동시에 만족하면 <strong>Criterion 2+3</strong> (Hot · New)으로 표시됩니다.
-            UI에서는 각각 노랑/초록/보라 배지로 구분됩니다.
+              <div class="crit-grid">
+                <div class="crit-card amber">
+                  <div class="crit-label">Criterion 2 — Hot</div>
+                  <div class="crit-title">다중 출처 합의 신호</div>
+                  <p class="crit-desc">
+                    서로 다른 2개 이상의 기관이 <strong>같은 시장 현상</strong>을 30일 안에 보도.
+                    키워드가 달라도 의미가 같으면 같은 현상으로 인정합니다.
+                  </p>
+                </div>
+                <div class="crit-card green">
+                  <div class="crit-label">Criterion 3 — New</div>
+                  <div class="crit-title">새롭게 등장한 신호</div>
+                  <p class="crit-desc">
+                    30일 안에 처음 등장한 의미 있는 단일 출처 신호.
+                    특정 OEM의 시장 진입·전략 전환·가시화된 경쟁 우위 등.
+                  </p>
+                </div>
+              </div>
+
+              <div class="step-detail" style="margin-top:14px">
+                두 기준을 동시에 만족하면 <strong>Criterion 2+3</strong> (Hot · New)으로 표시됩니다.
+                UI에서는 각각 노랑/초록/보라 배지로 구분됩니다.
+              </div>
+            </div>
+            <div class="step-example">
+              <span class="step-example-label">📊 실제 예시</span>
+              <div class="step-example-title">"Chipflation" 토픽 라벨</div>
+              <div class="step-example-body">
+                <ul>
+                  <li><strong>4개 기관 합의</strong> ✅ Criterion 2 인정</li>
+                  <li><strong>Tracker 관점</strong> (출하 -6%) — Counterpoint·Omdia·IDC</li>
+                  <li><strong>공급망 관점</strong> (Samsung 메모리 +755%) — DigiTimes·TrendForce</li>
+                  <li><strong>같은 사건의 양면</strong> ⚡ Cross-layer 강한 신호</li>
+                </ul>
+                <p style="margin-top:8px">출하 감소(시장)와 공급망 leak(기업)이 동시에 잡힌 가장 강력한 패턴.</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -711,26 +832,99 @@
         <div class="step-body">
           <span class="step-tag">GLM-4.7 thinking · N calls</span>
           <h3 class="step-title">각 주제에 대해 전체 아카이브 재검색 → 보강</h3>
-          <p class="step-desc">
-            Pass 1에서 식별된 N개 주제 각각에 대해, 전체 아카이브를 다시 검색하여 추가 기사를 찾습니다.
-            그런 다음 LLM이 원래 인용한 기사 + 새 기사를 모두 보고 <strong>institution_count, key_data, rationale</strong>을 갱신합니다.
-          </p>
-          <div class="step-detail">
-            결과적으로 각 주제는 다음 필드를 갖춥니다:
-            <ul>
-              <li><code>title</code> — 한국어 명사구 제목</li>
-              <li><code>criteria</code> — Criterion 2 / 3 / 2+3</li>
-              <li><code>institution_count</code> — 인용된 고유 기관 수</li>
-              <li><code>articles</code> — 인용 기사 목록 (날짜·출처·제목)</li>
-              <li><code>key_data</code> — 정량 지표 (%, $, 출하량 등)</li>
-              <li><code>rationale</code> — 왜 구조적 신호인지 2~3문장 (한국어)</li>
-            </ul>
-            저장 위치: <code>scripts/_topic_suggestions.json</code>.
-            랜딩 페이지의 추천 주제 카드는 <code>GET /api/topics/suggested</code>로 이 결과를 읽어 보여줍니다.
+          <div class="step-body-grid">
+            <div class="step-body-main">
+              <p class="step-desc">
+                Pass 1에서 식별된 N개 주제 각각에 대해, 전체 아카이브를 다시 검색하여 추가 기사를 찾습니다.
+                그런 다음 LLM이 원래 인용한 기사 + 새 기사를 모두 보고 <strong>institution_count, key_data, rationale</strong>을 갱신합니다.
+              </p>
+              <div class="step-detail">
+                결과적으로 각 주제는 다음 필드를 갖춥니다:
+                <ul>
+                  <li><code>title</code> — 한국어 명사구 제목</li>
+                  <li><code>criteria</code> — Criterion 2 / 3 / 2+3</li>
+                  <li><code>institution_count</code> — 인용된 고유 기관 수</li>
+                  <li><code>articles</code> — 인용 기사 목록 (날짜·출처·제목)</li>
+                  <li><code>key_data</code> — 정량 지표 (%, $, 출하량 등)</li>
+                  <li><code>rationale</code> — 왜 구조적 신호인지 2~3문장 (한국어)</li>
+                </ul>
+                저장 위치: <code>scripts/_topic_suggestions.json</code>.
+                랜딩 페이지의 추천 주제 카드는 <code>GET /api/topics/suggested</code>로 이 결과를 읽어 보여줍니다.
+              </div>
+            </div>
+            <div class="step-example">
+              <span class="step-example-label">📊 최종 카드 결과</span>
+              <div class="step-example-title">메모리 가격 폭등(Chipflation)에 따른 OEM 간 수익성 양극화 심화</div>
+              <div class="step-example-body">
+                <p><strong>핵심 수치</strong></p>
+                <ul>
+                  <li>글로벌 출하 -6% YoY</li>
+                  <li>ODM 출하 -10% YoY</li>
+                  <li>India 6년 최저치</li>
+                  <li>Samsung 메모리 매출 $50.4B 사상 최고</li>
+                </ul>
+                <div class="step-example-quote">
+                  단순 가격 상승이 아닌 <strong>시장 양극화의 구조적 신호</strong> — Tracker와 공급망 레이어가 교차 검증됨.
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
+    </div>
+  </div>
+</section>
+
+<!-- ============== PART 1B: CURIOSITY PICK ============== -->
+<section id="emerging">
+  <div class="container">
+    <span class="section-eyebrow">PART 1B — Curiosity Pick</span>
+    <h2 class="section-title">단발 신호도 따로 챙겨줍니다</h2>
+    <p class="section-lead">
+      메이저 패스(30일)는 "여러 출처가 합의한 큰 흐름"을 잡습니다. 그러나 분석가가 보면 흥미로운데
+      한 출처에서만 보도된 단발 신호도 가치가 있습니다. 이를 위해 별도의 <strong>7일 윈도우 Curiosity Pick</strong>
+      패스를 추가로 운영합니다. 메이저 패스가 이미 잡은 주제는 자동 reject 됩니다.
+    </p>
+
+    <div class="step-stack">
+      <div class="step">
+        <div class="step-num">★<span class="of">CURIOSITY</span></div>
+        <div class="step-body">
+          <span class="step-tag">7일 윈도우 · 단일 출처 OK</span>
+          <h3 class="step-title">4가지 흥미 신호 패턴을 탐색</h3>
+          <div class="step-body-grid">
+            <div class="step-body-main">
+              <p class="step-desc">
+                메이저 패스와 다른 시각으로 코퍼스를 한 번 더 읽되, 다음 4 패턴 중 하나에 해당하는 주제만 surface 합니다.
+              </p>
+              <div class="step-detail">
+                <ul>
+                  <li><strong>(a) 마이너 OEM의 의외 행보</strong> — Honor, Nothing, Vivo 같은 마이너 OEM의 큰 전략 변화</li>
+                  <li><strong>(b) Contrarian 데이터</strong> — 주류 narrative와 정반대의 reality check 데이터</li>
+                  <li><strong>(e) 단발 기술 leak</strong> — 한 출처에서만 나온 부품·로드맵 leak이지만 흥미로운 기술 fact</li>
+                  <li><strong>(g) 메이저의 의외 액션</strong> — Apple·Samsung이 평소 안 하던 영역 진출이나 가격 정책 급변</li>
+                </ul>
+                저장 위치: <code>scripts/_topic_suggestions_emerging.json</code>.
+                결과는 메이저 패스 카드와 함께 노출되며 모두 <code>Criterion 3</code>으로 강제됩니다.
+              </div>
+            </div>
+            <div class="step-example">
+              <span class="step-example-label">📊 이번 주 Curiosity</span>
+              <div class="step-example-title">4개 토픽 surface 됨</div>
+              <div class="step-example-body">
+                <ul>
+                  <li>📍 <strong>(a)</strong> 글로벌파운드리, 모바일 둔화로 자동차·데이터센터 중심 사업 재편</li>
+                  <li>📍 <strong>(b)</strong> AI 글래스 전략 전환에 따른 근안 디스플레이 시장 성장 둔화</li>
+                  <li>📍 <strong>(e)</strong> 삼성전자 파운드리의 실리콘 포토닉스·CPO 기술 고도화 (단독 leak)</li>
+                  <li>📍 <strong>(e)</strong> DDR6 프로토타입 개발 — 2028~2029 상용화 목표</li>
+                </ul>
+                <p style="margin-top:8px">네 개 모두 <em>단일 출처</em>의 일회성 보도지만 분석가가 보면 가치 있는 단발 신호.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </section>
@@ -797,10 +991,26 @@
         <div class="step-body">
           <span class="step-tag">LLM · Korean → English</span>
           <h3 class="step-title">한국어 주제를 영문 검색 쿼리로 변환</h3>
-          <p class="step-desc">
-            "위성 통신의 대중화" 같은 한국어 자연어 주제를 받아, Tier-1 영문 매체에서 가장 잘 잡히는
-            검색 쿼리(키워드 조합)를 LLM이 만들어냅니다. 이후 모든 검색은 이 쿼리를 기반으로 합니다.
-          </p>
+          <div class="step-body-grid">
+            <div class="step-body-main">
+              <p class="step-desc">
+                "위성 통신의 대중화" 같은 한국어 자연어 주제를 받아, Tier-1 영문 매체에서 가장 잘 잡히는
+                검색 쿼리(키워드 조합)를 LLM이 만들어냅니다. 이후 모든 검색은 이 쿼리를 기반으로 합니다.
+              </p>
+            </div>
+            <div class="step-example">
+              <span class="step-example-label">📊 실제 예시</span>
+              <div class="step-example-title">"Chipflation에 따른 OEM 양극화" → 영문 변환</div>
+              <div class="step-example-body">
+                <div class="step-example-quote">
+                  · "Memory price surge DRAM crunch smartphone OEM profitability"<br/>
+                  · "Apple Samsung premium pricing memory cost margin defense"<br/>
+                  · "ODM IDH low-end smartphone shipment decline memory"<br/>
+                  · "Chipflation smartphone supply chain India market hit"
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -809,10 +1019,21 @@
         <div class="step-body">
           <span class="step-tag">3-tier · archive first</span>
           <h3 class="step-title">아카이브 + RSS + DDG로 1차 검색</h3>
-          <p class="step-desc">
-            먼저 로컬 아카이브 JSON에서 토픽 관련 기사를 찾고, 부족하면 RSS 피드를, 그래도 부족하면
-            DuckDuckGo로 외부 검색까지 자동 fallback합니다. 결과는 본문 fetch 가능 여부에 따라 분기됩니다.
-          </p>
+          <div class="step-body-grid">
+            <div class="step-body-main">
+              <p class="step-desc">
+                먼저 로컬 아카이브 JSON에서 토픽 관련 기사를 찾고, 부족하면 RSS 피드를, 그래도 부족하면
+                DuckDuckGo로 외부 검색까지 자동 fallback합니다. 결과는 본문 fetch 가능 여부에 따라 분기됩니다.
+              </p>
+            </div>
+            <div class="step-example">
+              <span class="step-example-label">📊 실제 예시</span>
+              <div class="step-example-title">약 50건 발견</div>
+              <div class="step-example-body">
+                <p>Counterpoint·Omdia·IDC·TrendForce·DigiTimes·CCS Insight·Yole 7개 출처에서 메모리 가격 관련 기사 50건 추출. RSS·DDG 호출 없이 archive만으로 충분.</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -821,10 +1042,25 @@
         <div class="step-body">
           <span class="step-tag">LLM · table of contents</span>
           <h3 class="step-title">목차(TOC)와 섹션별 영문 검색어 생성</h3>
-          <p class="step-desc">
-            1차 검색 결과를 컨텍스트로 LLM이 보고서 목차를 짭니다. 각 섹션마다 어떤 영문 키워드 조합으로
-            추가 검색을 돌릴지도 함께 정해집니다. 일반적으로 4~6개 섹션 + 시사점.
-          </p>
+          <div class="step-body-grid">
+            <div class="step-body-main">
+              <p class="step-desc">
+                1차 검색 결과를 컨텍스트로 LLM이 보고서 목차를 짭니다. 각 섹션마다 어떤 영문 키워드 조합으로
+                추가 검색을 돌릴지도 함께 정해집니다. 일반적으로 4~6개 섹션 + 시사점.
+              </p>
+            </div>
+            <div class="step-example">
+              <span class="step-example-label">📊 실제 예시</span>
+              <div class="step-example-title">3개 섹션 목차</div>
+              <div class="step-example-body">
+                <div class="step-example-quote">
+                  <strong>1.</strong> 메모리 부족이 만든 시장 양극화 <em>(원인)</em><br/>
+                  <strong>2.</strong> Apple·Samsung의 마진 방어 vs ODM·중저가의 위기 <em>(영향)</em><br/>
+                  <strong>3.</strong> 인도·중국 시장의 하방 압력 <em>(결과)</em>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -838,10 +1074,26 @@
         <div class="step-body">
           <span class="step-tag">per-section search</span>
           <h3 class="step-title">섹션별 정밀 검색</h3>
-          <p class="step-desc">
-            확정된 목차의 각 섹션에 대해 다시 한 번 3-tier 검색을 돌려 더 풍부한 자료를 모읍니다.
-            이 단계에서 인용 가능한 본문(fetchable) 기사는 본문을 가져와 캐싱합니다.
-          </p>
+          <div class="step-body-grid">
+            <div class="step-body-main">
+              <p class="step-desc">
+                확정된 목차의 각 섹션에 대해 다시 한 번 3-tier 검색을 돌려 더 풍부한 자료를 모읍니다.
+                이 단계에서 인용 가능한 본문(fetchable) 기사는 본문을 가져와 캐싱합니다.
+              </p>
+            </div>
+            <div class="step-example">
+              <span class="step-example-label">📊 실제 예시</span>
+              <div class="step-example-title">섹션별 자동 추출 검색어</div>
+              <div class="step-example-body">
+                <ul>
+                  <li><strong>섹션 1:</strong> "DRAM price surge 2026" + "memory crunch shipment"</li>
+                  <li><strong>섹션 2:</strong> "Apple Q1 2026 record revenue" + "Samsung memory profit"</li>
+                  <li><strong>섹션 3:</strong> "India smartphone 6 year low" + "China memory price hike"</li>
+                </ul>
+                <p style="margin-top:6px">3개 섹션 합산 약 60건 추가 수집 → 총 110건.</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -855,10 +1107,24 @@
         <div class="step-body">
           <span class="step-tag">LLM · per-section</span>
           <h3 class="step-title">섹션별 분석 + 본문 작성</h3>
-          <p class="step-desc">
-            각 섹션의 검색 결과를 컨텍스트로 LLM이 본문을 작성합니다. 인용은 [N] 형식으로 자동 번호가 붙고,
-            출처 URL이 보고서 말미에 일괄 정리됩니다.
-          </p>
+          <div class="step-body-grid">
+            <div class="step-body-main">
+              <p class="step-desc">
+                각 섹션의 검색 결과를 컨텍스트로 LLM이 본문을 작성합니다. 인용은 [N] 형식으로 자동 번호가 붙고,
+                출처 URL이 보고서 말미에 일괄 정리됩니다.
+              </p>
+            </div>
+            <div class="step-example">
+              <span class="step-example-label">📊 섹션 1 본문 (일부)</span>
+              <div class="step-example-title">한국어 본문 자동 작성</div>
+              <div class="step-example-body">
+                <div class="step-example-quote">
+                  "2026년 1분기 글로벌 스마트폰 시장은 DRAM 및 CPU 부족으로 인한 부품 공급망 위기와 중국 시장의 위축이라는 이중고를 겪었습니다. 그러나 Apple은 iPhone 17의 강력한 sell-through 성과로..."
+                </div>
+                <p style="margin-top:6px">섹션당 10~25초, 3섹션 총 약 50초.</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -867,10 +1133,25 @@
         <div class="step-body">
           <span class="step-tag">LLM · synthesis</span>
           <h3 class="step-title">시사점 (Conclusions) 생성</h3>
-          <p class="step-desc">
-            전체 섹션을 종합하여 시사점을 LLM이 마지막에 작성합니다.
-            "그래서 결국 무엇이 변하고 있는가"에 답하는 짧은 마무리 섹션입니다.
-          </p>
+          <div class="step-body-grid">
+            <div class="step-body-main">
+              <p class="step-desc">
+                전체 섹션을 종합하여 시사점을 LLM이 마지막에 작성합니다.
+                "그래서 결국 무엇이 변하고 있는가"에 답하는 짧은 마무리 섹션입니다.
+              </p>
+            </div>
+            <div class="step-example">
+              <span class="step-example-label">📊 3개 Market Insights</span>
+              <div class="step-example-title">향후 6~12개월 watch points</div>
+              <div class="step-example-body">
+                <ul>
+                  <li>📍 프리미엄 시장 양극화 심화</li>
+                  <li>📍 중국 시장에서 Apple vs Huawei 점유율 경쟁 격화</li>
+                  <li>📍 AI 보급형(예: iPhone 17e) 전략의 부상</li>
+                </ul>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -879,9 +1160,20 @@
         <div class="step-body">
           <span class="step-tag">reports/</span>
           <h3 class="step-title">3개 파일로 저장</h3>
-          <p class="step-desc">
-            완성된 보고서는 Markdown·HTML·process JSON 3종 파일로 저장되어 즉시 공유 가능합니다.
-          </p>
+          <div class="step-body-grid">
+            <div class="step-body-main">
+              <p class="step-desc">
+                완성된 보고서는 Markdown·HTML·process JSON 3종 파일로 저장되어 즉시 공유 가능합니다.
+              </p>
+            </div>
+            <div class="step-example">
+              <span class="step-example-label">📊 실제 예시</span>
+              <div class="step-example-title">3분 22초 만에 완성</div>
+              <div class="step-example-body">
+                <p>7개 출처에서 110건 인용. Executive Summary + 3개 본문 섹션 + 3개 Market Insights → HTML 자동 렌더 → 아카이브에 저장.</p>
+              </div>
+            </div>
+          </div>
           <div class="step-detail">
             <ul>
               <li><code>reports/{slug}_report.md</code> — 원본 마크다운</li>
