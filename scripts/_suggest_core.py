@@ -17,7 +17,7 @@ if hasattr(sys.stdout, "reconfigure"):
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 from src.services.token_logger import log_usage, usage_counts  # noqa: E402
-from src.services.glm_limiter import glm47_slot  # noqa: E402
+from src.services.glm_limiter import glm47_slot, flashx_slot  # noqa: E402
 
 _env = ROOT / ".env"
 if _env.exists():
@@ -50,15 +50,24 @@ STOP_WORDS = {
 # ── LLM client ─────────────────────────────────────────────────────────────
 
 def make_client():
-    """LLM_BACKEND 환경변수에 따라 (client, model, thinking_body) 반환."""
+    """LLM_BACKEND 환경변수에 따라 (client, model, thinking_body) 반환.
+
+    Pass 1 은 깊은 reasoning (semantic clustering, criterion 판단)이 필요하므로
+    glm-4.7 thinking 모드 유지. Pass 2 enrich 는 단일 JSON 재작성 작업이라
+    enrich_topic() 내부에서 별도로 ENRICH_MODEL (glm-4.7-flashx) 사용.
+    """
     client = OpenAI(
         api_key=os.environ["ZHIPU_API_KEY"],
         base_url="https://open.bigmodel.cn/api/paas/v4/",
         timeout=GLM_REQUEST_TIMEOUT_SECONDS,
     )
-    model = "glm-4.7"
+    model = os.getenv("GLM_PASS1_MODEL", "glm-4.7")
     thinking_body = {"thinking": {"type": "enabled"}}
     return client, model, thinking_body
+
+
+# Pass 2 enrichment 전용 모델 — flashx 가 ~10배 저렴하면서 JSON 재작성에 충분.
+ENRICH_MODEL = os.getenv("GLM_ENRICH_MODEL", "glm-4.7-flashx")
 
 
 # ── Article helpers ─────────────────────────────────────────────────────────
@@ -135,8 +144,10 @@ def find_additional_articles(topic: dict, all_articles: list[dict],
         if a["title"] in pass1_titles or a["title"] in topic_titles:
             continue
         text = (a["title"] + " " + a["desc"]).lower()
-        if sum(1 for t in common if t in text) >= 2 or \
-           sum(1 for t in specific if t in text) >= 1:
+        # Threshold raised from 2/1 → 3/2 to reduce noise & enrich call frequency.
+        # See db_research / enrich 비용 분석 (2026-05-07).
+        if sum(1 for t in common if t in text) >= 3 or \
+           sum(1 for t in specific if t in text) >= 2:
             additional.append(a)
     return additional
 
@@ -171,6 +182,312 @@ def parse_json_response(raw: str) -> list[dict]:
     return json.loads(raw)
 
 
+def _topic_terms(topic: dict) -> set[str]:
+    text_parts = [topic.get("title", "")]
+    for article in topic.get("articles", []):
+        text_parts.append(article.get("title", ""))
+        text_parts.append(article.get("source", ""))
+    text = " ".join(text_parts).lower()
+    raw_terms = re.findall(r"[a-z0-9가-힣]{2,}", text)
+    stop = {
+        "market", "smartphone", "smartphones", "phone", "phones", "global", "research",
+        "display", "dynamics", "april", "2025", "2026", "시장", "스마트폰", "기반",
+        "구조", "전략", "따른", "심화", "가속화", "변화",
+    }
+    return {term for term in raw_terms if term not in stop}
+
+
+def _topic_similarity(a: dict, b: dict) -> float:
+    a_terms = _topic_terms(a)
+    b_terms = _topic_terms(b)
+    if not a_terms or not b_terms:
+        return 0.0
+    overlap = len(a_terms & b_terms)
+    union = len(a_terms | b_terms)
+    title_bonus = 0.0
+    a_title_terms = set(re.findall(r"[a-z0-9가-힣]{2,}", a.get("title", "").lower()))
+    b_title_terms = set(re.findall(r"[a-z0-9가-힣]{2,}", b.get("title", "").lower()))
+    if a_title_terms and b_title_terms:
+        title_bonus = len(a_title_terms & b_title_terms) / len(a_title_terms | b_title_terms)
+    return (overlap / union * 0.75) + (title_bonus * 0.25)
+
+
+def _topic_article_dates(topic: dict) -> list[datetime]:
+    dates = []
+    for article in topic.get("articles", []):
+        date_str = (article.get("date") or "")[:10]
+        try:
+            dates.append(datetime.fromisoformat(date_str))
+        except ValueError:
+            continue
+    return dates
+
+
+def _load_topic_history(out: Path, domain_label: str, max_snapshots: int = 8) -> list[dict]:
+    hist_dir = out.parent / "_history"
+    snapshots = []
+    if not hist_dir.exists():
+        return snapshots
+    for path in sorted(hist_dir.glob(f"{domain_label}_*.json"), key=lambda p: p.stat().st_mtime, reverse=True):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        topics = data.get("topics", [])
+        if not isinstance(topics, list):
+            continue
+        snapshots.append({
+            "path": path.name,
+            "generated_at": data.get("generated_at", ""),
+            "topics": topics,
+        })
+        if len(snapshots) >= max_snapshots:
+            break
+    return snapshots
+
+
+_HUMANOID_SOURCE_WEIGHTS = {
+    "IFR": 0.98,
+    "ABI Research": 0.95,
+    "IDTechEx": 0.94,
+    "Yano Research": 0.90,
+    "The Robot Report": 0.90,
+    "IEEE Spectrum Robotics": 0.86,
+    "IEEE Spectrum": 0.86,
+    "Figure AI": 0.82,
+    "1X Technologies": 0.82,
+    "Apptronik": 0.80,
+    "Agility Robotics": 0.80,
+    "Unitree Robotics": 0.78,
+    "Unitree": 0.78,
+    "NVIDIA News": 0.78,
+    "NVIDIA": 0.78,
+    "TechCrunch Robotics": 0.72,
+    "Robotics & Automation News": 0.64,
+    "RoboticsTomorrow": 0.56,
+    "The Verge": 0.55,
+    "Humanoids Daily": 0.52,
+    "arXiv (cs.RO)": 0.48,
+}
+
+
+def _humanoid_source_quality(topic: dict) -> float:
+    sources = {a.get("source") for a in topic.get("articles", []) if a.get("source")}
+    if not sources:
+        return 0.0
+    return sum(_HUMANOID_SOURCE_WEIGHTS.get(source, 0.60) for source in sources) / len(sources)
+
+
+def _humanoid_impact_score(topic: dict) -> float:
+    text_parts = [
+        topic.get("title", ""),
+        topic.get("rationale", ""),
+        " ".join(topic.get("key_data", [])),
+    ]
+    for article in topic.get("articles", []):
+        text_parts.append(article.get("title", ""))
+    text = " ".join(text_parts).lower()
+
+    patterns = [
+        (1.00, [
+            "production", "ramp", "high-volume", "vertically integrated",
+            "botq", "neo factory", "양산", "대량 생산",
+        ]),
+        (1.00, [
+            "deploy", "deployment", "install", "1,000", "1000", "factory network",
+            "계약", "도입", "배치", "상용화",
+        ]),
+        (0.88, [
+            "national strategy", "national robotics center", "$629", "ban", "law", "security", "sovereignty",
+            "국가 전략", "법안", "규제", "안보",
+        ]),
+        (0.68, [
+            "physical ai", "robot brain", "nvidia", "siemens", "foundation model",
+            "소프트웨어", "표준화", "생태계",
+        ]),
+        (0.66, [
+            "consumer", "home", "$42,000", "42000", "companion", "familiar",
+            "소비자", "가정용", "가격", "반려",
+        ]),
+        (0.54, [
+            "tactile", "touch", "dataset", "sim2real", "simulation", "arxiv",
+            "촉각", "데이터셋", "시뮬레이션",
+        ]),
+    ]
+    for score, keywords in patterns:
+        if any(keyword in text for keyword in keywords):
+            return score
+    return 0.45
+
+
+def _humanoid_commitment_score(topic: dict) -> float:
+    text_parts = [
+        topic.get("title", ""),
+        topic.get("rationale", ""),
+        " ".join(topic.get("key_data", [])),
+    ]
+    for article in topic.get("articles", []):
+        text_parts.append(article.get("title", ""))
+    text = " ".join(text_parts).lower()
+
+    if any(keyword in text for keyword in [
+        "production", "ramp", "high-volume", "vertically integrated", "botq",
+        "deploy", "deployment", "install", "1,000", "1000", "factory network",
+        "양산", "대량 생산", "도입", "배치", "계약",
+    ]):
+        return 1.00
+    if any(keyword in text for keyword in [
+        "national strategy", "national robotics center", "$629", "ban", "law",
+        "국가 전략", "법안", "규제", "안보",
+    ]):
+        return 0.80
+    if any(keyword in text for keyword in ["consumer", "home", "$42,000", "42000", "소비자", "가정용", "가격"]):
+        return 0.65
+    if any(keyword in text for keyword in ["partner", "partnership", "nvidia", "siemens", "physical ai", "협력", "파트너"]):
+        return 0.55
+    if any(keyword in text for keyword in ["funding", "raises", "investment", "투자", "펀딩"]):
+        return 0.50
+    return 0.45
+
+
+def _humanoid_repetition_penalty(topic: dict) -> float:
+    sources = [a.get("source") for a in topic.get("articles", []) if a.get("source")]
+    if not sources:
+        return 0.0
+    low_weight_sources = {"arXiv (cs.RO)", "Humanoids Daily", "RoboticsTomorrow", "Robotics & Automation News"}
+    low_count = sum(1 for source in sources if source in low_weight_sources)
+    single_source_repeat = len(set(sources)) == 1 and len(sources) >= 3
+    penalty = 0.0
+    if low_count / len(sources) >= 0.60:
+        penalty += 0.08
+    if single_source_repeat:
+        penalty += 0.08
+    return penalty
+
+
+def apply_trend_ranking(
+    topics: list[dict],
+    *,
+    out_path: str | Path,
+    domain_label: str,
+    generated_at: str | None = None,
+) -> list[dict]:
+    """Re-rank topics by domain-specific trend and evidence quality."""
+    if domain_label not in {"smartphone", "humanoid"} or not topics:
+        return topics
+
+    out = ROOT / out_path
+    snapshots = _load_topic_history(out, domain_label)
+    now = datetime.fromisoformat((generated_at or datetime.now().isoformat())[:19])
+    ranked = []
+
+    for topic in topics:
+        articles = topic.get("articles", [])
+        dates = _topic_article_dates(topic)
+        current_count = len(articles)
+        sources = {a.get("source") for a in articles if a.get("source")}
+        latest_date = max(dates) if dates else now
+        age_days = max((now - latest_date).days, 0)
+
+        matches = []
+        for snap in snapshots:
+            best = None
+            best_similarity = 0.0
+            for old_topic in snap.get("topics", []):
+                similarity = _topic_similarity(topic, old_topic)
+                if similarity > best_similarity:
+                    best = old_topic
+                    best_similarity = similarity
+            if best and best_similarity >= 0.18:
+                matches.append((snap, best, best_similarity))
+
+        previous_count = len(matches[0][1].get("articles", [])) if matches else 0
+        first_seen = matches[-1][0].get("generated_at", "") if matches else (generated_at or "")
+        weeks_seen = len(matches) + 1
+        growth_ratio = current_count / max(previous_count, 1)
+
+        freshness_score = max(0.0, 1.0 - (age_days / 30.0))
+        volume_score = min(current_count, 10) / 10.0
+        source_score = min(len(sources), 5) / 5.0
+        momentum_score = max(0.0, min(growth_ratio - 1.0, 2.0) / 2.0)
+        novelty_score = 1.0 if not matches else 0.0
+        decline_penalty = max(0.0, min((previous_count - current_count) / max(previous_count, 1), 1.0))
+        stale_penalty = 0.25 if age_days > 21 else 0.0
+
+        extra_trend_fields = {}
+        if domain_label == "humanoid":
+            source_quality_score = _humanoid_source_quality(topic)
+            impact_score = _humanoid_impact_score(topic)
+            commitment_score = _humanoid_commitment_score(topic)
+            repetition_penalty = _humanoid_repetition_penalty(topic)
+            final_score = (
+                0.08 * volume_score
+                + 0.08 * momentum_score
+                + 0.10 * source_score
+                + 0.24 * source_quality_score
+                + 0.25 * impact_score
+                + 0.18 * commitment_score
+                + 0.05 * freshness_score
+                + 0.02 * novelty_score
+                - 0.18 * decline_penalty
+                - stale_penalty
+                - repetition_penalty
+            )
+            extra_trend_fields = {
+                "source_quality_score": round(source_quality_score, 3),
+                "impact_score": round(impact_score, 3),
+                "commitment_score": round(commitment_score, 3),
+                "repetition_penalty": round(repetition_penalty, 3),
+            }
+        else:
+            final_score = (
+                0.35 * volume_score
+                + 0.25 * momentum_score
+                + 0.20 * source_score
+                + 0.10 * freshness_score
+                + 0.10 * novelty_score
+                - 0.20 * decline_penalty
+                - stale_penalty
+            )
+
+        if not matches:
+            trend_status = "New"
+        elif current_count >= max(previous_count * 1.5, previous_count + 2):
+            trend_status = "Rising"
+        elif current_count <= previous_count * 0.6:
+            trend_status = "Cooling"
+        elif weeks_seen >= 3:
+            trend_status = "Sustained"
+        else:
+            trend_status = "Stable"
+
+        topic["trend"] = {
+            "status": trend_status,
+            "rank_score": round(final_score, 4),
+            "current_article_count": current_count,
+            "previous_article_count": previous_count,
+            "source_count": len(sources),
+            "latest_article_date": latest_date.date().isoformat(),
+            "first_seen": first_seen,
+            "weeks_seen": weeks_seen,
+            "growth_ratio": round(growth_ratio, 2),
+            **extra_trend_fields,
+        }
+        ranked.append(topic)
+
+    ranked.sort(
+        key=lambda t: (
+            t.get("trend", {}).get("rank_score", 0),
+            t.get("trend", {}).get("current_article_count", 0),
+            t.get("trend", {}).get("latest_article_date", ""),
+        ),
+        reverse=True,
+    )
+    for index, topic in enumerate(ranked, 1):
+        topic.setdefault("trend", {})["rank"] = index
+    return ranked
+
+
 def get_existing_reports() -> list[str]:
     reports = []
     for p in sorted(REPORTS_DIR.glob("*_report.md")):
@@ -181,8 +498,12 @@ def get_existing_reports() -> list[str]:
 
 # ── Enrichment ──────────────────────────────────────────────────────────────
 
-def enrich_topic(topic: dict, extra: list[dict], client, model: str,
+def enrich_topic(topic: dict, extra: list[dict], client,
                  enrich_system: str, enrich_tpl: str) -> dict:
+    """Pass 2 enrichment — JSON 재작성 작업이라 ENRICH_MODEL (flashx) 사용.
+
+    flashx 는 ~10배 저렴 + concurrency 3 (4.7 의 1.5배).
+    """
     prompt = enrich_tpl.format(
         title               = topic.get("title", ""),
         criteria            = topic.get("criteria", ""),
@@ -196,15 +517,19 @@ def enrich_topic(topic: dict, extra: list[dict], client, model: str,
     response = None
     for _attempt in range(5):
         try:
-            with glm47_slot():
+            with flashx_slot():
                 response = client.chat.completions.create(
-                    model=model,
+                    model=ENRICH_MODEL,
                     messages=[
                         {"role": "system", "content": enrich_system},
                         {"role": "user",   "content": prompt},
                     ],
-                    max_tokens=4000,
+                    # max_tokens 4000 → 2000: 실제 JSON 800-1000 토큰, thinking off 시 충분.
+                    max_tokens=2000,
                     temperature=0.1,
+                    # enrich 는 단일 JSON 재작성 작업이라 reasoning 불필요.
+                    # thinking 명시적 disable → 출력 토큰 ~70% 감소 (median 2781 → ~900).
+                    extra_body={"thinking": {"type": "disabled"}},
                 )
             break
         except Exception as _e:
@@ -217,7 +542,7 @@ def enrich_topic(topic: dict, extra: list[dict], client, model: str,
     if response is None:
         return topic
     prompt_tokens, completion_tokens = usage_counts(getattr(response, "usage", None))
-    log_usage(model, prompt_tokens, completion_tokens, "suggest.enrich")
+    log_usage(ENRICH_MODEL, prompt_tokens, completion_tokens, "suggest.enrich")
     raw = response.choices[0].message.content or ""
     raw = re.sub(r"```(?:json)?\s*", "", raw).strip().rstrip("`").strip()
     m = re.search(r"\{.*\}", raw, re.DOTALL)
@@ -324,11 +649,17 @@ def run_pipeline(
     for i, topic in enumerate(topics, 1):
         extra = find_additional_articles(topic, all_articles, pass1_titles)
         label = topic.get("title", "")[:50]
-        if extra:
+        existing_count = len(topic.get("articles", []))
+        # Saturation skip: 토픽이 이미 4개 이상 인용 보유 시 enrich 효용 낮음.
+        # 비용 절감 — see db_research/enrich 비용 분석 (2026-05-07).
+        if existing_count >= 4:
+            print(f"      [{i}] saturated ({existing_count} articles) — skip enrich: {label}")
+            enriched_topics.append(topic)
+        elif extra:
             if enriched_count > 0:
                 _time.sleep(5)  # 연속 호출 간 throttle — rate limit 예방
             print(f"      [{i}] +{len(extra)} articles — re-writing: {label}...")
-            updated = enrich_topic(topic, extra, client, model, enrich_system, enrich_tpl)
+            updated = enrich_topic(topic, extra, client, enrich_system, enrich_tpl)
             enriched_topics.append(updated)
             enriched_count += 1
         else:
@@ -370,16 +701,37 @@ def run_pipeline(
         for topic in enriched_topics:
             for art in topic.get("articles", []):
                 art["source"] = _normalize(art.get("source", ""))
+            sources = {
+                a.get("source")
+                for a in topic.get("articles", [])
+                if a.get("source")
+            }
+            topic["institution_count"] = len(sources)
             layers = sorted({
                 source_taxonomy[a["source"]]
                 for a in topic.get("articles", [])
                 if a.get("source") in source_taxonomy
             })
             topic["source_layers"] = layers
+    else:
+        for topic in enriched_topics:
+            sources = {
+                a.get("source")
+                for a in topic.get("articles", [])
+                if a.get("source")
+            }
+            topic["institution_count"] = len(sources)
 
     # Step 5 — 저장
     out = ROOT / out_path
     out.parent.mkdir(parents=True, exist_ok=True)
+    generated_at = datetime.now().isoformat()
+    enriched_topics = apply_trend_ranking(
+        enriched_topics,
+        out_path=out_path,
+        domain_label=domain_label,
+        generated_at=generated_at,
+    )
 
     # 기존 파일이 있으면 히스토리 폴더에 보관
     if out.exists():
@@ -392,7 +744,7 @@ def run_pipeline(
 
     out.write_text(
         json.dumps({
-            "generated_at":    datetime.now().isoformat(),
+            "generated_at":    generated_at,
             "domain":          domain_label,
             "days":            days,
             "article_count":   len(articles),

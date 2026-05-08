@@ -174,10 +174,19 @@ function critKey(criteria = "") {
   return "new";
 }
 
+function uniqueSourceCount(t) {
+  return new Set((t.articles || []).map(a => a.source).filter(Boolean)).size;
+}
+
+function isCoreTopic(t) {
+  return critKey(t.criteria) !== "new" && uniqueSourceCount(t) >= 2;
+}
+
 function toRow(t) {
   const sources = [...new Set((t.articles || []).map(a => a.source))];
   const org = sources.join(" · ");
   const dates = (t.articles || []).map(a => a.date).filter(Boolean).sort().reverse();
+  const displayDate = dates[0] || "";
   let daysAgo = "";
   if (dates[0]) {
     const diff = Math.floor((Date.now() - new Date(dates[0]).getTime()) / 86400000);
@@ -185,21 +194,26 @@ function toRow(t) {
   }
   return {
     title: t.title, org, days: daysAgo,
+    displayDate,
     report_slug: t.report_slug || "",
     rationale: t.rationale || "",
     key_data: t.key_data || [],
+    trend: t.trend || null,
     articles: (t.articles || []).map(a => ({
       date: a.date, source: a.source, title: a.title, url: a.url || "",
     })),
+    week_of: t.week_of || "",
   };
 }
 
-const FALLBACK_EXAMPLES = [
-  "메모리 위기와 스마트폰 OEM 가격 전략 2026",
-  "AI 글래스 시장 OEM 진출 전략",
-];
+const TREND_LABELS = {
+  Rising: "상승",
+  New: "신규",
+  Sustained: "유지",
+  Stable: "유지",
+  Cooling: "하락",
+};
 
-/* ── Line icons ── */
 const DOMAIN_EXAMPLES = {
   smartphone: [
     "메모리 가격 급등과 스마트폰 OEM 가격 전략 2026",
@@ -231,21 +245,20 @@ const DOMAIN_EXAMPLES = {
   ],
 };
 
-function SearchIcon() {
-  return (
-    <svg width={20} height={20} viewBox="0 0 24 24" fill="none"
-      stroke="rgba(255,255,255,.55)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
-    </svg>
-  );
+function formatDate(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toISOString().slice(0, 10);
 }
-function ArrowRightIcon() {
-  return (
-    <svg width={17} height={17} viewBox="0 0 24 24" fill="none"
-      stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M5 12h14"/><path d="m13 5 7 7-7 7"/>
-    </svg>
-  );
+
+function topicWindowLabel(generatedAt, days) {
+  const end = generatedAt ? new Date(generatedAt) : new Date();
+  if (Number.isNaN(end.getTime())) return "";
+  const span = Number(days) || 30;
+  const start = new Date(end);
+  start.setDate(start.getDate() - Math.max(span - 1, 0));
+  return `${formatDate(start)} ~ ${formatDate(end)} · 최근 ${span}일`;
 }
 
 function TopicMessage({ status, fallback, theme }) {
@@ -265,6 +278,13 @@ function TopicRow({ item, right, onStart, index, theme, isAuthenticated }) {
   const E = theme;
   const [hov, setHov] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const trendStatus = item.trend?.status;
+  const trendLabel = trendStatus ? TREND_LABELS[trendStatus] || trendStatus : "";
+  const trendColor = trendStatus === "Rising" || trendStatus === "New"
+    ? E.emLL
+    : trendStatus === "Cooling"
+      ? "rgba(255,176,114,.92)"
+      : E.t4;
 
   return (
     <div
@@ -308,11 +328,19 @@ function TopicRow({ item, right, onStart, index, theme, isAuthenticated }) {
             <p style={{ fontSize: 12, color: E.t4, margin: 0,
               whiteSpace: expanded ? "normal" : "nowrap",
               overflow: expanded ? "visible" : "hidden",
-              textOverflow: expanded ? "clip" : "ellipsis" }}>{item.org}</p>
+              textOverflow: expanded ? "clip" : "ellipsis" }}>
+              {right && item.displayDate ? `${item.org} · ${item.displayDate}` : item.org}
+            </p>
           </div>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginLeft: 12, flexShrink: 0 }}>
+          {trendLabel && (
+            <span style={{ fontSize: 10, fontWeight: 800, color: trendColor, background: E.emBg,
+              borderRadius: 99, padding: "3px 9px", border: `1px solid ${E.emBr}`, whiteSpace: "nowrap" }}>
+              {trendLabel}
+            </span>
+          )}
           {right && (
             <>
               <span style={{ fontSize: 9, fontWeight: 700, color: E.emLL, background: E.emBg,
@@ -364,19 +392,50 @@ function TopicRow({ item, right, onStart, index, theme, isAuthenticated }) {
   );
 }
 
+/* ── Previous-week topic group ── */
+function WeekGroup({ weekOf, topics, onStart, theme, isAuthenticated }) {
+  const E = theme;
+  const [open, setOpen] = useState(false);
+  const d = new Date(weekOf + "T00:00:00");
+  const label = `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 기준`;
+  return (
+    <div style={{ borderTop: "1px solid rgba(255,255,255,.07)", marginTop: 2 }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "11px 8px", background: "transparent", border: "none", cursor: "pointer", textAlign: "left" }}
+      >
+        <span style={{ fontSize: 13, fontWeight: 700, color: E.t3 }}>{label}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 11, color: E.t5 }}>{topics.length}개 주제</span>
+          <span style={{ fontSize: 11, color: E.t5, display: "inline-block",
+            transition: "transform .2s", transform: open ? "rotate(180deg)" : "rotate(0deg)" }}>▾</span>
+        </div>
+      </button>
+      {open && (
+        <div style={{ paddingBottom: 8 }}>
+          {topics.map((item, i) => (
+            <TopicRow key={item.title || i} item={item} onStart={onStart} index={i} theme={E} isAuthenticated={isAuthenticated} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Main ── */
 export default function LandingPage() {
   const nav = useNavigate();
   const { domain } = useDomain();
   const { isAuthenticated } = useAuth();
   const E = THEMES[domain.id] || THEMES.smartphone;
-  const [val, setVal] = useState("");
   const [monthlyHot, setMonthlyHot] = useState([]);
   const [monthlyNew, setMonthlyNew] = useState([]);
   const [generatedAt, setGeneratedAt] = useState("");
   const [topicStatus, setTopicStatus] = useState("loading");
   const [topicDays, setTopicDays] = useState(30);
-  const [examples, setExamples] = useState(DOMAIN_EXAMPLES[domain.id] || FALLBACK_EXAMPLES);
+  const [historyByWeek, setHistoryByWeek] = useState([]);
+  const topicWindow = topicWindowLabel(generatedAt, topicDays);
 
   useEffect(() => {
     fetch(`/api/topics/suggested?domain=${domain.id}`)
@@ -386,25 +445,25 @@ export default function LandingPage() {
       })
       .then(data => {
         const topics = data.topics || [];
-        const hot = topics.filter(t => critKey(t.criteria) !== "new").map(toRow);
-        const newT = topics.filter(t => critKey(t.criteria) === "new").map(toRow);
+        const hot = topics.filter(isCoreTopic).map(toRow);
+        const newT = topics.filter(t => !isCoreTopic(t)).map(toRow);
         setMonthlyHot(hot);
         setMonthlyNew(newT);
         setTopicDays(data.days || 30);
         setTopicStatus(topics.length ? "ready" : "empty");
-        const all = [...hot, ...newT];
-        setExamples(all.length >= 2
-          ? all.slice(0, 2).map(t => t.title)
-          : (DOMAIN_EXAMPLES[domain.id] || DOMAIN_EXAMPLES.smartphone));
+        setHistoryByWeek(
+          (data.history_by_week || []).map(week => ({
+            week_of: week.week_of,
+            topics: (week.topics || []).filter(isCoreTopic).map(toRow),
+          }))
+        );
         if (data.generated_at) {
-          const d = new Date(data.generated_at);
-          setGeneratedAt(`${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 기준`);
+          setGeneratedAt(data.generated_at);
         }
       })
       .catch(() => {
         setMonthlyHot([]);
         setMonthlyNew([]);
-        setExamples(DOMAIN_EXAMPLES[domain.id] || DOMAIN_EXAMPLES.smartphone);
         setTopicStatus("error");
       });
   }, [domain.id]);
@@ -476,63 +535,16 @@ export default function LandingPage() {
 
         {/* ── Hero section ── */}
         <section style={{ maxWidth: 1320, margin: "0 auto", display: "flex", flexDirection: "column",
-          alignItems: "center", padding: "18px 32px 0", textAlign: "center" }}>
+          alignItems: "center", padding: "18px 32px 18px", textAlign: "center" }}>
 
           {/* Headline */}
           <h1 style={{ fontSize: 80, fontWeight: 900, color: E.t1, letterSpacing: "-0.06em",
-            lineHeight: 0.98, marginBottom: 28, textShadow: "0 4px 32px rgba(0,0,0,.5)",
+            lineHeight: 0.98, margin: "16px 0 0", textShadow: "0 4px 32px rgba(0,0,0,.5)",
             animation: "fadeUp .5s ease .06s both" }}>
             Deep research.<br/>
             <span style={{ color: E.em }}>{domain.label}</span>
             <span style={{ color: E.t1 }}> insights.</span>
           </h1>
-
-          {/* Search bar */}
-          <div style={{ width: "100%", maxWidth: 900, borderRadius: 28,
-            border: `1px solid ${E.borderL}`, background: "rgba(255,255,255,.08)",
-            padding: 8, boxShadow: "0 8px 48px rgba(0,0,0,.45)",
-            backdropFilter: "blur(20px)", marginBottom: 20,
-            animation: "fadeUp .5s ease .14s both" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "0 8px" }}>
-              <SearchIcon />
-              <input
-                value={val}
-                onChange={e => setVal(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && handleStart(val)}
-                placeholder="분석할 주제를 입력하세요"
-                style={{ flex: 1, height: 56, background: "transparent", border: "none",
-                  outline: "none", fontSize: 15, fontWeight: 500, color: E.t1,
-                  caretColor: E.emL }}
-              />
-              <button onClick={() => handleStart(val)}
-                style={{ display: "flex", alignItems: "center", gap: 8,
-                  height: 50, background: E.em, border: "none", borderRadius: 20,
-                  padding: "0 30px", fontSize: 14, fontWeight: 700, color: "#fff",
-                  cursor: "pointer", boxShadow: `0 4px 20px ${E.emBg}`,
-                  whiteSpace: "nowrap", flexShrink: 0, transition: "background .15s" }}
-                onMouseEnter={e => e.currentTarget.style.background = E.emL}
-                onMouseLeave={e => e.currentTarget.style.background = E.em}>
-                Start Research <ArrowRightIcon />
-              </button>
-            </div>
-          </div>
-
-          {/* Example chips */}
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center",
-            marginBottom: 44, animation: "fadeUp .5s ease .18s both" }}>
-            <span style={{ fontSize: 13, color: E.t4, fontWeight: 600, alignSelf: "center" }}>Try:</span>
-            {examples.map(ex => (
-              <button key={ex} onClick={() => handleStart(ex)}
-                style={{ borderRadius: 99, border: `1px solid ${E.border}`,
-                  background: "rgba(255,255,255,.06)", padding: "8px 20px",
-                  fontSize: 13, color: E.t3, cursor: "pointer",
-                  backdropFilter: "blur(8px)", transition: "background .15s" }}
-                onMouseEnter={e => e.currentTarget.style.background = E.glassH}
-                onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,.06)"}>
-                {ex}
-              </button>
-            ))}
-          </div>
         </section>
 
         {/* ── Topic sections ── */}
@@ -549,7 +561,7 @@ export default function LandingPage() {
                 <div>
                   <h2 style={{ fontSize: 20, fontWeight: 800, color: E.t1, margin: "0 0 4px", letterSpacing: "-0.02em" }}>이번 주 핵심 주제</h2>
                   <p style={{ fontSize: 11, color: E.t4, margin: 0 }}>
-                    {generatedAt || "데이터 로딩 중…"}
+                    {topicWindow || "데이터 로딩 중…"}
                   </p>
                 </div>
               </div>
@@ -583,6 +595,24 @@ export default function LandingPage() {
 
           </div>
         </section>
+
+        {/* ── 이전 주 주제 ── */}
+        {historyByWeek.length > 0 && (
+          <section style={{ width: "100%", maxWidth: 1320, margin: "0 auto",
+            padding: "0 clamp(16px, 4vw, 48px) 56px", boxSizing: "border-box" }}>
+            <div style={{ borderRadius: 24, border: `1px solid ${E.border}`, background: E.surf,
+              padding: "20px clamp(16px, 4vw, 40px)", boxShadow: "0 4px 24px rgba(0,0,0,.3)",
+              backdropFilter: "blur(20px)" }}>
+              <h2 style={{ fontSize: 15, fontWeight: 800, color: E.t2, margin: "0 0 2px",
+                letterSpacing: "-0.02em" }}>이전 주 주제</h2>
+              <p style={{ fontSize: 11, color: E.t4, margin: "0 0 8px" }}>주 1회 선정 기록 — 최근 8주</p>
+              {historyByWeek.map(({ week_of, topics }) => (
+                <WeekGroup key={week_of} weekOf={week_of} topics={topics}
+                  onStart={handleStart} theme={E} isAuthenticated={isAuthenticated} />
+              ))}
+            </div>
+          </section>
+        )}
 
       </div>{/* end scrollable */}
     </div>

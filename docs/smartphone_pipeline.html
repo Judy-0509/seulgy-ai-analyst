@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>스마트폰 리서치 파이프라인</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --bg2: #161b22;
+    --bg3: #1c2128;
+    --border: #30363d;
+    --t1: #e6edf3;
+    --t2: #8b949e;
+    --t3: #6e7681;
+    --green: #10b981;
+    --green-dim: rgba(16,185,129,.12);
+    --blue: #3b82f6;
+    --blue-dim: rgba(59,130,246,.12);
+    --purple: #8b5cf6;
+    --purple-dim: rgba(139,92,246,.12);
+    --amber: #f59e0b;
+    --amber-dim: rgba(245,158,11,.12);
+    --red: #ef4444;
+    --red-dim: rgba(239,68,68,.12);
+    --cyan: #22d3ee;
+    --cyan-dim: rgba(34,211,238,.12);
+    --mono: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--t1); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.6; }
+
+  .page { max-width: 1100px; margin: 0 auto; padding: 40px 24px 80px; }
+  h1 { font-size: 24px; font-weight: 700; color: var(--t1); margin-bottom: 6px; }
+  .subtitle { font-size: 13px; color: var(--t2); margin-bottom: 40px; }
+
+  /* Phase header */
+  .phase { margin-bottom: 48px; }
+  .phase-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 18px; border-radius: 10px 10px 0 0;
+    font-size: 15px; font-weight: 700;
+    border: 1px solid var(--border); border-bottom: none;
+  }
+  .phase-num {
+    width: 26px; height: 26px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 800; flex-shrink: 0;
+  }
+  .phase-body {
+    border: 1px solid var(--border); border-top: none;
+    border-radius: 0 0 10px 10px;
+    overflow: hidden;
+  }
+
+  /* Stage card */
+  .stage {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 20px 22px;
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 20px;
+  }
+  .stage:last-child { border-bottom: none; }
+  .stage-meta { display: flex; flex-direction: column; gap: 8px; }
+  .stage-label {
+    font-size: 11px; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--t3);
+  }
+  .stage-name { font-size: 15px; font-weight: 700; color: var(--t1); }
+  .stage-desc { font-size: 12px; color: var(--t2); margin-top: 2px; }
+
+  /* Badges */
+  .badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .badge {
+    font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 20px;
+    font-family: var(--mono); white-space: nowrap;
+  }
+  .badge-model-47   { background: var(--blue-dim);   color: var(--blue);   border: 1px solid var(--blue); }
+  .badge-model-47fx { background: var(--cyan-dim);   color: var(--cyan);   border: 1px solid var(--cyan); }
+  .badge-model-51   { background: var(--purple-dim); color: var(--purple); border: 1px solid var(--purple); }
+  .badge-model-45f  { background: var(--green-dim);  color: var(--green);  border: 1px solid var(--green); }
+  .badge-model-none { background: var(--bg3);        color: var(--t3);     border: 1px solid var(--border); }
+  .badge-think-on   { background: rgba(245,158,11,.15); color: var(--amber); border: 1px solid var(--amber); }
+  .badge-think-off  { background: var(--bg3);        color: var(--t3);     border: 1px solid var(--border); }
+  .badge-neutral    { background: var(--bg3);        color: var(--t2);     border: 1px solid var(--border); }
+  .badge-gate       { background: rgba(239,68,68,.12); color: #f87171;     border: 1px solid #f87171; }
+
+  /* Detail grid */
+  .detail-grid { display: flex; flex-direction: column; gap: 14px; }
+
+  /* Param table */
+  .params { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
+  .param {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 6px; padding: 5px 10px;
+    font-size: 12px; display: flex; gap: 6px; align-items: baseline;
+  }
+  .param-key { color: var(--t3); font-size: 11px; }
+  .param-val { color: var(--t1); font-family: var(--mono); font-weight: 600; }
+
+  /* Prompt box */
+  .prompt-box {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 7px; overflow: hidden;
+  }
+  .prompt-header {
+    background: var(--bg3); padding: 7px 12px;
+    font-size: 11px; font-weight: 700; color: var(--t3);
+    letter-spacing: .06em; text-transform: uppercase;
+    display: flex; align-items: center; gap: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .prompt-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .prompt-body {
+    padding: 12px 14px; font-size: 12px; color: var(--t2);
+    font-family: var(--mono); white-space: pre-wrap; line-height: 1.65;
+    max-height: 220px; overflow-y: auto;
+  }
+  .prompt-body::-webkit-scrollbar { width: 4px; }
+  .prompt-body::-webkit-scrollbar-track { background: transparent; }
+  .prompt-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  /* Highlight within prompt */
+  .hl-key   { color: #79c0ff; }
+  .hl-val   { color: #a5d6ff; }
+  .hl-str   { color: #a8ff78; }
+  .hl-num   { color: var(--amber); }
+  .hl-kw    { color: var(--purple); }
+  .hl-comment { color: var(--t3); }
+
+  /* Output row */
+  .output-row {
+    display: flex; align-items: flex-start; gap: 10px;
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 7px; padding: 10px 14px; font-size: 12px;
+  }
+  .output-icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+  .output-text { color: var(--t2); }
+  .output-text strong { color: var(--t1); font-weight: 600; }
+
+  /* Arrow connector */
+  .arrow { text-align: center; padding: 8px 0; color: var(--t3); font-size: 18px; }
+
+  /* Gate card */
+  .gate {
+    background: rgba(239,68,68,.06);
+    border: 1px dashed #f87171;
+    border-radius: 8px;
+    padding: 14px 18px;
+    display: flex; align-items: center; gap: 14px;
+    margin: 0 22px 0;
+  }
+  .gate-icon { font-size: 22px; flex-shrink: 0; }
+  .gate-title { font-size: 13px; font-weight: 700; color: #f87171; margin-bottom: 3px; }
+  .gate-desc { font-size: 12px; color: var(--t2); }
+
+  /* Source grid */
+  .source-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+  .source-card {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 7px; padding: 9px 12px;
+  }
+  .source-card .src-name { font-size: 12px; font-weight: 700; color: var(--t1); }
+  .source-card .src-layer {
+    display: inline-block; margin-top: 4px;
+    font-size: 10px; font-weight: 700; padding: 2px 7px;
+    border-radius: 20px; font-family: var(--mono);
+  }
+  .layer-A { background: rgba(59,130,246,.15); color: #60a5fa; }
+  .layer-C { background: rgba(139,92,246,.15); color: #a78bfa; }
+  .layer-E { background: rgba(34,211,238,.15); color: #67e8f9; }
+  .layer-F { background: rgba(16,185,129,.15); color: #34d399; }
+
+  /* Mini table */
+  .mini-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .mini-table th {
+    text-align: left; padding: 6px 10px;
+    color: var(--t3); font-weight: 700; font-size: 11px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg3);
+  }
+  .mini-table td { padding: 7px 10px; border-bottom: 1px solid var(--border); color: var(--t2); vertical-align: top; }
+  .mini-table tr:last-child td { border-bottom: none; }
+  .mini-table td:first-child { font-family: var(--mono); font-weight: 600; color: var(--t1); white-space: nowrap; }
+
+  /* Tag */
+  .tag { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; font-family: var(--mono); }
+
+  /* Phase colors */
+  .phase-1 .phase-header { background: rgba(16,185,129,.08); }
+  .phase-1 .phase-num   { background: var(--green); color: #000; }
+  .phase-2 .phase-header { background: rgba(59,130,246,.08); }
+  .phase-2 .phase-num   { background: var(--blue); color: #fff; }
+  .phase-3 .phase-header { background: rgba(139,92,246,.08); }
+  .phase-3 .phase-num   { background: var(--purple); color: #fff; }
+
+  .note { font-size: 11px; color: var(--t3); font-style: italic; margin-top: 6px; }
+
+  /* Collapsible prompt */
+  details summary {
+    cursor: pointer; font-size: 11px; font-weight: 700;
+    color: var(--t3); letter-spacing: .06em; text-transform: uppercase;
+    list-style: none; display: flex; align-items: center; gap: 6px;
+    padding: 7px 12px; background: var(--bg3);
+    border-bottom: 1px solid var(--border);
+  }
+  details summary::before { content: '▶'; font-size: 9px; transition: transform .2s; }
+  details[open] summary::before { transform: rotate(90deg); }
+  details summary::-webkit-details-marker { display: none; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <h1>📱 스마트폰 리서치 파이프라인</h1>
+  <p class="subtitle">아카이브 수집 → 주제 선정 → 보고서 생성 전 단계 상세 (모델·프롬프트·파라미터)</p>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- PHASE 1 — 아카이브 수집                                -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="phase phase-1">
+    <div class="phase-header">
+      <div class="phase-num">1</div>
+      PHASE 1 — 아카이브 수집
+      <span style="font-size:12px;font-weight:400;color:var(--t2);margin-left:auto">scripts/build_*_archive.py · 주 1회 이상 실행</span>
+    </div>
+    <div class="phase-body">
+      <div class="stage">
+        <div class="stage-meta">
+          <div class="stage-label">데이터 수집</div>
+          <div class="stage-name">소스 크롤링</div>
+          <div class="stage-desc">7개 Tier-1 소스에서 기사 수집 후 JSON 저장</div>
+          <div class="badges">
+            <span class="badge badge-model-none">LLM 없음</span>
+          </div>
+        </div>
+        <div class="detail-grid">
+          <div class="source-grid">
+            <div class="source-card">
+              <div class="src-name">Counterpoint Research</div>
+              <span class="src-layer layer-A">A — Tracker</span>
+            </div>
+            <div class="source-card">
+              <div class="src-name">TrendForce</div>
+              <span class="src-layer layer-A">A — Tracker</span>
+            </div>
+            <div class="source-card">
+              <div class="src-name">Omdia</div>
+              <span class="src-layer layer-A">A — Tracker</span>
+            </div>
+            <div class="source-card">
+              <div class="src-name">IDC</div>
+              <span class="src-layer layer-A">A — Tracker</span>
+            </div>
+            <div class="source-card">
+              <div class="src-name">Yole</div>
+              <span class="src-layer layer-C">C — Component</span>
+            </div>
+            <div class="source-card">
+              <div class="src-name">DigiTimes Asia</div>
+              <span class="src-layer layer-E">E — Supply Chain</span>
+            </div>
+            <div class="source-card">
+              <div class="src-name">CCS Insight</div>
+              <span class="src-layer layer-F">F — Carrier/EU</span>
+            </div>
+          </div>
+          <div class="output-row">
+            <div class="output-icon">💾</div>
+            <div class="output-text"><strong>출력:</strong> data/archives/*.json — 소스별 기사 누적 (title, date, url, description)<br>
+            <span class="note">키워드 필터: data/smartphone_keywords.json (42개 키워드 — 레이어별 차등 적용)</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- PHASE 2 — 주제 선정                                    -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="phase phase-2">
+    <div class="phase-header">
+      <div class="phase-num">2</div>
+      PHASE 2 — 주제 선정
+      <span style="font-size:12px;font-weight:400;color:var(--t2);margin-left:auto">suggest_smartphone_topics.py / suggest_smartphone_emerging.py · 주 1회</span>
+    </div>
+    <div class="phase-body">
+
+      <!-- 2-A: 기사 로드 -->
+      <div class="stage">
+        <div class="stage-meta">
+          <div class="stage-label">Step 1</div>
+          <div class="stage-name">기사 로드</div>
+          <div class="stage-desc">날짜 윈도우 + 키워드 필터로 후보 기사 추출</div>
+          <div class="badges">
+            <span class="badge badge-model-none">LLM 없음</span>
+          </div>
+        </div>
+        <div class="detail-grid">
+          <div class="params">
+            <div class="param"><span class="param-key">days (핵심주제)</span><span class="param-val">30</span></div>
+            <div class="param"><span class="param-key">days (Emerging)</span><span class="param-val">7</span></div>
+            <div class="param"><span class="param-key">keyword_filter</span><span class="param-val">smartphone_keywords.json</span></div>
+            <div class="param"><span class="param-key">per_source_cap</span><span class="param-val">35건</span></div>
+          </div>
+          <div class="output-row">
+            <div class="output-icon">📋</div>
+            <div class="output-text"><strong>핵심주제:</strong> 최근 30일 기사 (스마트폰 키워드 포함) → Pass 1 입력<br>
+            <strong>Emerging:</strong> 최근 7일 기사 (동일 키워드) + 메이저 패스 결과 토픽명 (reject list)</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2-B: Pass 1 -->
+      <div class="stage" style="background:rgba(59,130,246,.04)">
+        <div class="stage-meta">
+          <div class="stage-label">Step 2 — Pass 1</div>
+          <div class="stage-name">주제 발굴 (LLM)</div>
+          <div class="stage-desc">Thinking 모드로 시장 현상 클러스터링 · 기준 판단</div>
+          <div class="badges">
+            <span class="badge badge-model-47">glm-4.7</span>
+            <span class="badge badge-think-on">🧠 thinking ON</span>
+          </div>
+        </div>
+        <div class="detail-grid">
+          <div class="params">
+            <div class="param"><span class="param-key">max_tokens</span><span class="param-val">30,000</span></div>
+            <div class="param"><span class="param-key">temperature</span><span class="param-val">0.1</span></div>
+            <div class="param"><span class="param-key">thinking</span><span class="param-val">enabled</span></div>
+            <div class="param"><span class="param-key">concurrency</span><span class="param-val">2 (glm47_slot)</span></div>
+            <div class="param"><span class="param-key">retry</span><span class="param-val">5회 (지수백오프)</span></div>
+          </div>
+
+          <div class="prompt-box">
+            <details>
+              <summary><span class="prompt-dot" style="background:var(--blue)"></span>System Prompt — 핵심주제</summary>
+              <div class="prompt-body">You are a <span class="hl-kw">senior smartphone market intelligence analyst</span> focused on OEM strategy and brand-level competitive dynamics.
+
+[Core Principle]
+Cluster articles by the <span class="hl-str">MARKET PHENOMENON</span> they describe, not by shared keywords.
+
+Prioritize signals at the OEM and brand level:
+- A specific OEM achieving a competitive first
+- A brand entering a new product category
+- Structural competitive advantage becoming visible
+- Divergence between OEM roadmaps and consumer adoption
+- Supply chain or technology self-sufficiency moves
+
+[SOURCE TAXONOMY — 7개 Tier-1 출처]
+A. Market trackers: Counterpoint, TrendForce, Omdia, IDC
+C. Component specialist: Yole
+E. Asian supply chain: DigiTimes Asia
+F. Carrier / EU consumer: CCS Insight</div>
+            </details>
+          </div>
+
+          <div class="prompt-box">
+            <details>
+              <summary><span class="prompt-dot" style="background:var(--cyan)"></span>System Prompt — Emerging (Curiosity Pick)</summary>
+              <div class="prompt-body">You are a senior smartphone market analyst preparing a weekly <span class="hl-kw">"Curiosity Pick"</span> digest.
+The mainstream consensus topics are already covered — <span class="hl-str">DO NOT duplicate them</span>.
+
+Surface <span class="hl-num">3 to 5</span> niche, contrarian, or off-trend signals:
+
+(a) MINOR OEM movements  ⭐ ACTIVELY SEEK FIRST
+   Honor, Nothing, Xiaomi, Vivo, Realme, ASUS, GlobalFoundries 등
+(b) CONTRARIAN signals  — 메이저 narrative와 반대 데이터
+(e) STANDALONE technical fact / component leak  — 단발성 기술 신호
+(g) MAJOR OEM의 OFF-TREND 행동  — "왜 지금 굳이?" 액션</div>
+            </details>
+          </div>
+
+          <div class="prompt-box">
+            <details>
+              <summary><span class="prompt-dot" style="background:var(--green)"></span>User Prompt — 선정 기준 (공통)</summary>
+              <div class="prompt-body"><span class="hl-comment"># 핵심주제 기준</span>
+Criterion 2 — Multi-Source Signal:
+  <span class="hl-num">2</span>개 이상 독립 소스가 <span class="hl-str">같은 시장 현상</span>을 {days}일 내 보도
+  CROSS-LAYER 보강도 multi-source로 인정
+  (예: Yole 부품 + Counterpoint 출하 → 양산 양면 확정)
+
+Criterion 3 — Emerging Topic:
+  {days}일 내 등장, 기존 보고서 미적용 단독 신호도 가능
+
+<span class="hl-comment"># Emerging 기준 (항상 Criterion 3)</span>
+Identify <span class="hl-num">3 to 5</span> Curiosity Pick topics.
+Single-source signals are <span class="hl-str">ENCOURAGED</span> — that is the whole point.
+Tag pattern: (a) minor OEM | (b) contrarian | (e) tech fact | (g) off-trend
+
+<span class="hl-comment"># 공통 출력 형식</span>
+OUTPUT — JSON array only
+Fields: title(KO), criteria, pattern, institution_count,
+        articles[{date, source, title}], key_data[], rationale(KO)</div>
+            </details>
+          </div>
+
+          <div class="output-row">
+            <div class="output-icon">🔍</div>
+            <div class="output-text">
+              <strong>핵심주제 출력:</strong> 5~10개 topics (Criterion 2 · 3 · 2+3)<br>
+              <strong>Emerging 출력:</strong> 3~5개 topics (전부 Criterion 3)
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2-C: Pass 2 Enrich -->
+      <div class="stage">
+        <div class="stage-meta">
+          <div class="stage-label">Step 3 — Pass 2</div>
+          <div class="stage-name">토픽 보강 (Enrich)</div>
+          <div class="stage-desc">추가 기사 탐색 후 토픽 재작성</div>
+          <div class="badges">
+            <span class="badge badge-model-47fx">glm-4.7-flashx</span>
+            <span class="badge badge-think-off">thinking OFF</span>
+          </div>
+        </div>
+        <div class="detail-grid">
+          <div class="params">
+            <div class="param"><span class="param-key">max_tokens</span><span class="param-val">2,000</span></div>
+            <div class="param"><span class="param-key">temperature</span><span class="param-val">0.3</span></div>
+            <div class="param"><span class="param-key">thinking</span><span class="param-val">disabled</span></div>
+            <div class="param"><span class="param-key">concurrency</span><span class="param-val">3 (flashx_slot)</span></div>
+            <div class="param"><span class="param-key">keyword_filter</span><span class="param-val">없음 (전체)</span></div>
+          </div>
+          <div class="prompt-box">
+            <details>
+              <summary><span class="prompt-dot" style="background:var(--cyan)"></span>Enrich Prompt 요약</summary>
+              <div class="prompt-body">Update this topic to incorporate additional articles where relevant.
+Keep ALL original cited articles; add additional ones that genuinely support this phenomenon.
+Update institution_count, key_data, rationale.
+
+<span class="hl-comment"># 비용 최적화 규칙</span>
+Saturation skip: 기존 인용 기사 ≥ <span class="hl-num">4</span>개 → enrich 건너뜀
+(추가 기사 없으면 LLM 호출 없음)
+
+<span class="hl-comment"># 탐색 풀</span>
+all_articles = load_articles(registry, <span class="hl-str">days</span>, keyword_filter=<span class="hl-kw">None</span>)
+→ 같은 날짜 윈도우, keyword_filter 제거로 더 넓은 범위</div>
+            </details>
+          </div>
+          <div class="output-row">
+            <div class="output-icon">💾</div>
+            <div class="output-text">
+              <strong>핵심주제:</strong> scripts/_topic_suggestions.json<br>
+              <strong>Emerging:</strong> scripts/_topic_suggestions_emerging.json<br>
+              <span class="note">history 스냅샷 저장 → 상승/유지/신규 트렌드 추적에 활용</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- PHASE 3 — 보고서 생성                                  -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="phase phase-3">
+    <div class="phase-header">
+      <div class="phase-num">3</div>
+      PHASE 3 — 보고서 생성
+      <span style="font-size:12px;font-weight:400;color:var(--t2);margin-left:auto">run_report.py — Stage A → B → C → [Gate 1] → D → [Gate 2] → E/F → G → 저장</span>
+    </div>
+    <div class="phase-body">
+
+      <!-- Stage A -->
+      <div class="stage">
+        <div class="stage-meta">
+          <div class="stage-label">Stage A</div>
+          <div class="stage-name">영문 쿼리 생성</div>
+          <div class="stage-desc">한국어 토픽 → 6~8개 영어 검색 쿼리 (4개 각도)</div>
+          <div class="badges">
+            <span class="badge badge-model-47fx">glm-4.7-flashx</span>
+            <span class="badge badge-think-off">thinking 미지정</span>
+          </div>
+        </div>
+        <div class="detail-grid">
+          <div class="params">
+            <div class="param"><span class="param-key">max_tokens</span><span class="param-val">2,000</span></div>
+            <div class="param"><span class="param-key">temperature</span><span class="param-val">0.1</span></div>
+            <div class="param"><span class="param-key">output format</span><span class="param-val">JSON array</span></div>
+            <div class="param"><span class="param-key">env override</span><span class="param-val">GLM_ANALYSIS_MODEL</span></div>
+          </div>
+          <div class="prompt-box">
+            <details>
+              <summary><span class="prompt-dot" style="background:var(--purple)"></span>PRE_SEARCH_PROMPT 요약</summary>
+              <div class="prompt-body">Convert topic to <span class="hl-num">6-8</span> English search queries spanning <span class="hl-str">FOUR ANGLES</span>:
+
+ANGLE 1 — SUPPLY-SIDE: production capacity, pricing, supply chain
+ANGLE 2 — MARKET-DATA: shipments, ASP, market share by vendor
+ANGLE 3 — COMPONENT/COST: BOM breakdown, component pricing
+ANGLE 4 — OEM STRATEGY: competitive response
+
+Rules:
+- ALL queries in English (translate Korean topic first)
+- Queries must be specifically about THIS topic
+- Include product/company names from topic where applicable
+- No near-duplicates
+- Do NOT include research firm names in queries</div>
+            </details>
+          </div>
+          <div class="output-row">
+            <div class="output-icon">🔤</div>
+            <div class="output-text"><strong>출력:</strong> 6~8개 영어 검색 쿼리 (한국어 포함 쿼리는 자동 제거)<br>
+            <span class="note">실패 시: 단순 번역 재시도 → 키워드 폴백 쿼리</span><br>
+            <span class="note">A/B 검증 2026-05-08 — flashx가 glm-4.7 대비 동등 품질 (쿼리 수·각도 커버리지 동일), 비용 7x 절감 확인</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stage B -->
+      <div class="stage">
+        <div class="stage-meta">
+          <div class="stage-label">Stage B</div>
+          <div class="stage-name">아카이브 검색</div>
+          <div class="stage-desc">Archive-only (Tier 0) 검색 + 우선소스 보완</div>
+          <div class="badges">
+            <span class="badge badge-model-none">LLM 없음</span>
+          </div>
+        </div>
+        <div class="detail-grid">
+          <div class="params">
+            <div class="param"><span class="param-key">tier</span><span class="param-val">Tier 0 (Archive only)</span></div>
+            <div class="param"><span class="param-key">max_results</span><span class="param-val">25건</span></div>
+            <div class="param"><span class="param-key">priority sources</span><span class="param-val">TrendForce, IDC, Omdia, Yole</span></div>
+          </div>
+          <div class="output-row">
+            <div class="output-icon">📂</div>
+            <div class="output-text">
+              <strong>검색:</strong> search_archive_only() — data/archives/*.json 에서 relevance 검색<br>
+              <strong>보완:</strong> 우선소스 미포함 시 source별 추가 쿼리 자동 실행<br>
+              <strong>출력:</strong> 최대 25건 결과 (중복 URL 제거)
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stage C -->
+      <div class="stage" style="background:rgba(139,92,246,.04)">
+        <div class="stage-meta">
+          <div class="stage-label">Stage C</div>
+          <div class="stage-name">목차 생성</div>
+          <div class="stage-desc">아카이브 결과 기반 3섹션 구조 설계</div>
+          <div class="badges">
+            <span class="badge badge-model-51">glm-5.1</span>
+            <span class="badge badge-think-off">thinking OFF</span>
+          </div>
+        </div>
+        <div class="detail-grid">
+          <div class="params">
+            <div class="param"><span class="param-key">max_tokens</span><span class="param-val">3,000</span></div>
+            <div class="param"><span class="param-key">temperature</span><span class="param-val">0.2</span></div>
+            <div class="param"><span class="param-key">output format</span><span class="param-val">JSON object</span></div>
+          </div>
+          <div class="prompt-box">
+            <details>
+              <summary><span class="prompt-dot" style="background:var(--purple)"></span>TOC_PROMPT 구조</summary>
+              <div class="prompt-body">Create a <span class="hl-num">3-section</span> report outline (고정 구조):
+
+SECTION 1 — STRUCTURAL BACKDROP (<span class="hl-str">"큰 그림"</span>)
+  broad market-level change, key statistics
+  causal_role: "structural_backdrop"
+
+SECTION 2 — FIRST DERIVED ANALYSIS (<span class="hl-str">"파생 분석 1"</span>)
+  most important follow-up question raised by S1
+  causal_role: "derived_analysis_1"
+
+SECTION 3 — SECOND DERIVED ANALYSIS (<span class="hl-str">"파생 분석 2"</span>)
+  second most important, DIFFERENT angle from S2
+  causal_role: "derived_analysis_2"
+
+Each section: title(KO, ≤25자), queries[3개 ENG], angle(KO)</div>
+            </details>
+          </div>
+          <div class="output-row">
+            <div class="output-icon">📑</div>
+            <div class="output-text"><strong>출력:</strong> 3개 목차 섹션 (각 섹션당 3개 검색 쿼리)<br>
+            <span class="note">목차 제목 간 키워드 중복 ≥50% 시 자동 경고</span><br>
+            <span class="note">env: GLM_TOC_MODEL — 구조 설계 품질 우선 (A/B 검증에서 5.1이 4.7 대비 섹션 구조 완성도 우위)</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- GATE 1 -->
+      <div class="gate" style="margin:0">
+        <div class="gate-icon">🚧</div>
+        <div>
+          <div class="gate-title">USER GATE 1 — 목차 + 검색어 확인</div>
+          <div class="gate-desc">
+            검색어 추가 (<code>+N 쿼리</code>) · 제외 (<code>-N.M</code>) 가능<br>
+            <code>--auto</code> 플래그: 자동 통과 · 웹 UI: gate_cb 콜백으로 처리
+          </div>
+        </div>
+      </div>
+
+      <!-- Stage D -->
+      <div class="stage">
+        <div class="stage-meta">
+          <div class="stage-label">Stage D</div>
+          <div class="stage-name">섹션별 검색</div>
+          <div class="stage-desc">각 목차의 쿼리로 기사 검색</div>
+          <div class="badges">
+            <span class="badge badge-model-none">LLM 없음</span>
+          </div>
+        </div>
+        <div class="detail-grid">
+          <div class="params">
+            <div class="param"><span class="param-key">per_section_max</span><span class="param-val">20건</span></div>
+            <div class="param"><span class="param-key">tier</span><span class="param-val">Archive only (기본)</span></div>
+            <div class="param"><span class="param-key">중복 제거</span><span class="param-val">URL 기준</span></div>
+          </div>
+          <div class="output-row">
+            <div class="output-icon">🔎</div>
+            <div class="output-text">3개 섹션 × 최대 20건 = 최대 60건 검색 결과<br>
+            <span class="note">외부 검색(use_external=True) 시: RSS Tier 1 + DuckDuckGo Tier 2도 포함</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- GATE 2 -->
+      <div class="gate" style="margin:0">
+        <div class="gate-icon">🚧</div>
+        <div>
+          <div class="gate-title">USER GATE 2 — 검색 결과 확인</div>
+          <div class="gate-desc">
+            결과 부족 시 추가 검색어 입력 가능 · D↔D' 루프 최대 <strong>3회</strong><br>
+            <code>--auto</code> 플래그: 자동 통과
+          </div>
+        </div>
+      </div>
+
+      <!-- Stage E/F -->
+      <div class="stage" style="background:rgba(139,92,246,.04)">
+        <div class="stage-meta">
+          <div class="stage-label">Stage E / F</div>
+          <div class="stage-name">섹션 분석 + 작성</div>
+          <div class="stage-desc">목차별 증거 분석 및 보고서 본문 생성 (3회 반복)</div>
+          <div class="badges">
+            <span class="badge badge-model-47">glm-4.7</span>
+            <span class="badge badge-think-off">thinking OFF</span>
+          </div>
+        </div>
+        <div class="detail-grid">
+          <div class="params">
+            <div class="param"><span class="param-key">max_tokens</span><span class="param-val">6,000</span></div>
+            <div class="param"><span class="param-key">temperature</span><span class="param-val">0.3</span></div>
+            <div class="param"><span class="param-key">thinking</span><span class="param-val">disabled</span></div>
+            <div class="param"><span class="param-key">response_format</span><span class="param-val">json_object</span></div>
+            <div class="param"><span class="param-key">evidence per sec</span><span class="param-val">최대 12건</span></div>
+            <div class="param"><span class="param-key">body fetch</span><span class="param-val">FETCHABLE_SOURCES</span></div>
+            <div class="param"><span class="param-key">LLM 호출 수</span><span class="param-val">섹션당 1회 × 3 = 3회</span></div>
+          </div>
+          <div class="prompt-box">
+            <details>
+              <summary><span class="prompt-dot" style="background:var(--purple)"></span>SECTION_REPORT_PROMPT 요약</summary>
+              <div class="prompt-body">Write one section of a Korean market research report.
+
+Section role: {causal_role}  (structural_backdrop | derived_analysis_1 | derived_analysis_2)
+Evidence: max <span class="hl-num">12</span> archive results + fetched article bodies
+
+Output JSON:
+  headline: 핵심 결론 (≤80자, 한국어)
+  narrative: 서술형 분석 4~6문장
+  bullets: ["• fact [Source, date]"] — <span class="hl-num">80%</span> 이상 수치 포함
+  footnotes: [{n, source, url}]
+
+Rules:
+- <span class="hl-str">NO investment angle</span> — market structure, competitive dynamics, OEM strategy only
+- Claims traceable to specific articles
+- 이미 이전 섹션에서 인용된 bullet 재사용 금지 (already_cited 참조)</div>
+            </details>
+          </div>
+          <div class="output-row">
+            <div class="output-icon">📝</div>
+            <div class="output-text">
+              <strong>출력:</strong> 섹션별 {headline, narrative, bullets[], footnotes[]}<br>
+              <span class="note">정량 fact 비율 &lt;80% 시 콘솔 경고 출력</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stage G -->
+      <div class="stage" style="background:rgba(139,92,246,.08)">
+        <div class="stage-meta">
+          <div class="stage-label">Stage G</div>
+          <div class="stage-name">시사점 + 요약</div>
+          <div class="stage-desc">Executive Summary · Market Insights · Research Background 생성</div>
+          <div class="badges">
+            <span class="badge badge-model-51">glm-5.1</span>
+            <span class="badge badge-think-off">thinking OFF</span>
+          </div>
+        </div>
+        <div class="detail-grid">
+          <div class="params">
+            <div class="param"><span class="param-key">max_tokens</span><span class="param-val">5,000</span></div>
+            <div class="param"><span class="param-key">temperature</span><span class="param-val">0.3</span></div>
+            <div class="param"><span class="param-key">thinking</span><span class="param-val">disabled</span></div>
+            <div class="param"><span class="param-key">response_format</span><span class="param-val">json_object</span></div>
+            <div class="param"><span class="param-key">env override</span><span class="param-val">GLM_FINAL_MODEL</span></div>
+          </div>
+          <div class="prompt-box">
+            <details>
+              <summary><span class="prompt-dot" style="background:var(--purple)"></span>INSIGHTS_PROMPT 요약</summary>
+              <div class="prompt-body">You are a smartphone market analyst.
+Generate research_background, market insights(시사점), executive_summary.
+
+Input: 3-section report summary (headline + narrative + bullets)
+Output JSON:
+  research_background: 연구 배경 (이 토픽이 왜 중요한지)
+  executive_summary: 전체 요약 단락
+  insights: [
+    { title, body (8~10문장) }
+  ]
+
+<span class="hl-comment"># 강제 규칙</span>
+- <span class="hl-str">NO investment angle whatsoever</span>
+  "Investor Takeaway", 투자자 관점, 선제적 투자 필수,
+  매수/매도/보유 금지
+- Focus ONLY on: market structure, competitive dynamics,
+  OEM strategy, consumer outcomes
+- 모든 텍스트 한국어
+- 구체적 수치·회사명·연도 포함
+- [Source, date] 브라켓 없음
+- 과거/현재/미래 시제 구분 (전망=전망됩니다)</div>
+            </details>
+          </div>
+          <div class="output-row">
+            <div class="output-icon">💡</div>
+            <div class="output-text">
+              <strong>선택 이유:</strong> GLM-5.1 — hallucination -56%, AA-Omniscience +35pt (vs 4.7 A/B 결과)<br>
+              <strong>출력:</strong> research_background · executive_summary · insights[]
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 저장 -->
+      <div class="stage">
+        <div class="stage-meta">
+          <div class="stage-label">최종</div>
+          <div class="stage-name">저장 + 서빙</div>
+          <div class="stage-desc">Markdown → HTML 변환 후 저장</div>
+          <div class="badges">
+            <span class="badge badge-model-none">LLM 없음</span>
+          </div>
+        </div>
+        <div class="detail-grid">
+          <div class="output-row">
+            <div class="output-icon">📁</div>
+            <div class="output-text">
+              <strong>reports/{slug}_report.md</strong> — Markdown 본문<br>
+              <strong>reports/{slug}_report.html</strong> — 변환된 HTML (브라우저 서빙)<br>
+              <strong>reports/{slug}_process.json</strong> — 파이프라인 메타 로그<br>
+              <span class="note">slug: 토픽명에서 특수문자 제거, 최대 60자</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 모델 요약표 -->
+  <div style="margin-top:40px">
+    <div style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:14px">모델 배치 요약</div>
+    <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden">
+      <table class="mini-table">
+        <thead>
+          <tr>
+            <th>단계</th>
+            <th>모델</th>
+            <th>max_tokens</th>
+            <th>temp</th>
+            <th>thinking</th>
+            <th>선택 이유</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>주제 발굴 Pass 1</td>
+            <td><span class="tag" style="background:var(--blue-dim);color:var(--blue)">glm-4.7</span></td>
+            <td>30,000</td>
+            <td>0.1</td>
+            <td><span class="tag" style="background:var(--amber-dim);color:var(--amber)">ON</span></td>
+            <td>의미 클러스터링, 기준 판단 — deep reasoning 필요</td>
+          </tr>
+          <tr>
+            <td>토픽 Enrich Pass 2</td>
+            <td><span class="tag" style="background:var(--cyan-dim);color:var(--cyan)">glm-4.7-flashx</span></td>
+            <td>2,000</td>
+            <td>0.3</td>
+            <td><span class="tag" style="background:var(--bg3);color:var(--t3)">OFF</span></td>
+            <td>단순 JSON 재작성 — 4.7 대비 ~10배 저렴</td>
+          </tr>
+          <tr>
+            <td>Stage A (쿼리 생성)</td>
+            <td><span class="tag" style="background:var(--cyan-dim);color:var(--cyan)">glm-4.7-flashx</span></td>
+            <td>2,000</td>
+            <td>0.1</td>
+            <td><span class="tag" style="background:var(--bg3);color:var(--t3)">미지정</span></td>
+            <td>영어 번역 + 각도 분류 — A/B 검증(2026-05-08): 4.7 동등 품질, 7x 저렴</td>
+          </tr>
+          <tr>
+            <td>Stage C (목차)</td>
+            <td><span class="tag" style="background:var(--purple-dim);color:var(--purple)">glm-5.1</span></td>
+            <td>3,000</td>
+            <td>0.2</td>
+            <td><span class="tag" style="background:var(--bg3);color:var(--t3)">OFF</span></td>
+            <td>3섹션 구조 설계 — 품질 우선 (A/B 검증: 5.1이 4.7 대비 구조 완성도 우위)</td>
+          </tr>
+          <tr>
+            <td>Stage E/F (본문)</td>
+            <td><span class="tag" style="background:var(--blue-dim);color:var(--blue)">glm-4.7</span></td>
+            <td>6,000</td>
+            <td>0.3</td>
+            <td><span class="tag" style="background:var(--bg3);color:var(--t3)">OFF</span></td>
+            <td>섹션별 분석 × 3회 (속도 + 비용 균형)</td>
+          </tr>
+          <tr>
+            <td>Stage G (시사점)</td>
+            <td><span class="tag" style="background:var(--purple-dim);color:var(--purple)">glm-5.1</span></td>
+            <td>5,000</td>
+            <td>0.3</td>
+            <td><span class="tag" style="background:var(--bg3);color:var(--t3)">OFF</span></td>
+            <td>최고 품질 필요 — hallucination ↓56%, Omniscience ↑35pt</td>
+          </tr>
+          <tr>
+            <td>추출 / 태깅</td>
+            <td><span class="tag" style="background:var(--green-dim);color:var(--green)">glm-4.5-flash</span></td>
+            <td>2,000</td>
+            <td>0.1</td>
+            <td><span class="tag" style="background:var(--bg3);color:var(--t3)">OFF</span></td>
+            <td>대량 구조화 추출 — 무료 (FREE tier)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 비용 참고 -->
+  <div style="margin-top:24px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:18px 22px">
+    <div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:10px">비용 참고 (Z.AI USD pricing)</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px">
+      <div class="param"><span class="param-key">glm-4.7</span><span class="param-val">$0.6 / $2.2 per 1M tokens</span></div>
+      <div class="param"><span class="param-key">glm-4.7-flashx</span><span class="param-val">$0.07 / $0.4 per 1M tokens</span></div>
+      <div class="param"><span class="param-key">glm-5.1</span><span class="param-val">$1.4 / $4.4 per 1M tokens</span></div>
+      <div class="param"><span class="param-key">glm-4.5-flash</span><span class="param-val">FREE</span></div>
+    </div>
+    <div class="note" style="margin-top:10px">보고서 1건 기준 약 $0.03~0.05 (₩43~72) · 7건 배치 기준 $0.245 실측 (2026-05-07)</div>
+  </div>
+
+</div>
+</body>
+</html>

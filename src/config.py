@@ -102,7 +102,9 @@ RSS_SOURCES = [
 ]
 
 MODEL_CONFIG = {
-    "glm": {"analysis": "glm-4.7", "extraction": "glm-4-flash"},
+    # glm-4-flash 는 2026-05 기준 deprecated (API err 1211).
+    # 추출용으로는 glm-4.5-flash (무료) 사용.
+    "glm": {"analysis": "glm-4.7", "extraction": "glm-4.5-flash"},
 }
 
 LLM_BACKEND = os.getenv("LLM_BACKEND", "glm")

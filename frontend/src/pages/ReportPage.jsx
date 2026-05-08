@@ -168,6 +168,13 @@ function ViewToggle({ value, onChange, R }) {
 
 function ReferenceCard({ refItem, R }) {
   const accent = sourceAccent(refItem.source_name || refItem.source || "", R);
+  const sectionIndices = Array.isArray(refItem.section_indices) && refItem.section_indices.length > 0
+    ? refItem.section_indices
+    : refItem.section_index
+      ? [refItem.section_index]
+      : [];
+  const sectionLabel = sectionIndices.map((index) => `섹션${index}`).join(", ");
+
   return (
     <a
       href={refItem.url}
@@ -181,9 +188,9 @@ function ReferenceCard({ refItem, R }) {
     >
       <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8 }}>
         <SourceBadge R={R} accent={accent}>{refItem.source_name || "Source"}</SourceBadge>
-        {refItem.section_index && (
+        {sectionLabel && (
           <span style={{ fontSize: 10.5, color: accent.emD, fontWeight: 700 }}>
-            섹션 {refItem.section_index}
+            {sectionLabel}
           </span>
         )}
         {refItem.date && <span style={{ fontSize: 10.5, color: R.t4 }}>{refItem.date}</span>}

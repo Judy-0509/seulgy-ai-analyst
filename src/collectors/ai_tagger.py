@@ -130,7 +130,9 @@ def tag_article(title: str, description: str) -> dict:
     if not client:
         return dict(_DEFAULT)
 
-    model = "glm-4-flash"
+    # glm-4-flash 는 2026-05 기준 deprecated (Zhipu API err 1211).
+    # glm-4.5-flash 는 무료 + concurrency 2, 태깅에 충분.
+    model = "glm-4.5-flash"
     prompt = _PROMPT.format(
         title=title,
         description=(description or "")[:800],
@@ -140,22 +142,26 @@ def tag_article(title: str, description: str) -> dict:
         area_list=", ".join(AREA_CATEGORIES),
     )
 
+    # GLM-4.5-Flash 는 concurrency=2 — 대량 태깅 시 rate limit 위험. limiter 적용.
+    from src.services.glm_limiter import model_slot
     try:
         try:
-            resp = client.chat.completions.create(
-                model=model,
-                messages=[{"role": "user", "content": prompt}],
-                response_format={"type": "json_object"},
-                temperature=0.1,
-                max_tokens=2048,
-            )
+            with model_slot(model):
+                resp = client.chat.completions.create(
+                    model=model,
+                    messages=[{"role": "user", "content": prompt}],
+                    response_format={"type": "json_object"},
+                    temperature=0.1,
+                    max_tokens=2048,
+                )
         except Exception:
-            resp = client.chat.completions.create(
-                model=model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.1,
-                max_tokens=2048,
-            )
+            with model_slot(model):
+                resp = client.chat.completions.create(
+                    model=model,
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.1,
+                    max_tokens=2048,
+                )
 
         prompt_tokens, completion_tokens = usage_counts(getattr(resp, "usage", None))
         log_usage(model, prompt_tokens, completion_tokens, "ai_tagger.tag_article")

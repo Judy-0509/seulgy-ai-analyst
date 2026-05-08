@@ -6,14 +6,18 @@ from typing import Protocol, runtime_checkable
 from dotenv import load_dotenv
 from openai import APITimeoutError, AsyncOpenAI, RateLimitError
 
-from src.services.glm_limiter import async_glm47_slot
+from src.services.glm_limiter import async_glm47_slot, async_model_slot
 from src.services.token_logger import log_usage, usage_counts
 
 load_dotenv()
 
 GLM_API_BASE_URL = "https://open.bigmodel.cn/api/paas/v4/"
-GLM_ANALYSIS_MODEL = "glm-4.7"
-GLM_EXTRACTION_MODEL = "glm-4-flash"
+GLM_ANALYSIS_MODEL = os.getenv("GLM_ANALYSIS_MODEL", "glm-4.7")
+# glm-4-flash 는 2026-05 기준 deprecated (Zhipu API err 1211).
+# 무료·구조화 추출 용도는 glm-4.5-flash 로 교체.
+GLM_EXTRACTION_MODEL = os.getenv("GLM_EXTRACTION_MODEL", "glm-4.5-flash")
+# 시사점 / 결론 등 품질 우선 단계에서 override 시 사용.
+GLM_FINAL_MODEL = os.getenv("GLM_FINAL_MODEL", "glm-5.1")
 GLM_REQUEST_TIMEOUT_SECONDS = float(os.getenv("GLM_REQUEST_TIMEOUT_SECONDS", "600"))
 
 
@@ -49,8 +53,10 @@ class GLMBackend:
 
     async def complete(self, system: str, user: str, **kwargs) -> LLMResponse:
         max_tokens = kwargs.get("max_tokens", 2000)
+        # 호출자가 model 명시 시 override (e.g. 시사점 단계는 GLM-5.1 사용)
+        chosen_model = kwargs.get("model") or self.analysis_model
         params = {
-            "model": self.analysis_model,
+            "model": chosen_model,
             "messages": [
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
@@ -67,11 +73,11 @@ class GLMBackend:
         elif thinking is False or thinking == "disabled":
             params["extra_body"] = {"thinking": {"type": "disabled"}}
 
-        response = await self._create_with_retries(params, use_glm47_limit=True)
+        response = await self._create_with_retries(params, model=chosen_model)
         msg = response.choices[0].message
         reasoning = getattr(msg, "reasoning_content", None) or ""
         prompt_tokens, completion_tokens = usage_counts(getattr(response, "usage", None))
-        log_usage(self.analysis_model, prompt_tokens, completion_tokens, "llm.complete")
+        log_usage(chosen_model, prompt_tokens, completion_tokens, "llm.complete")
         return LLMResponse(
             content=msg.content or "",
             usage=TokenUsage(
@@ -90,6 +96,7 @@ class GLMBackend:
             "Return only a JSON object matching this schema:\n"
             f"{json.dumps(schema, ensure_ascii=False)}"
         )
+        # extract 도 모델별 limiter 적용 (glm-4.5-flash 는 concurrency=2)
         response = await self._create_with_retries({
             "model": self.extraction_model,
             "messages": [
@@ -99,13 +106,20 @@ class GLMBackend:
             "max_tokens": 2000,
             "temperature": 0.1,
             "response_format": {"type": "json_object"},
-        })
+        }, model=self.extraction_model)
         msg = response.choices[0].message
         prompt_tokens, completion_tokens = usage_counts(getattr(response, "usage", None))
         log_usage(self.extraction_model, prompt_tokens, completion_tokens, "llm.extract")
         return json.loads(msg.content or "{}")
 
-    async def _create_with_retries(self, params: dict, use_glm47_limit: bool = False):
+    async def _create_with_retries(self, params: dict, model: str = "", use_limit: bool = True,
+                                   use_glm47_limit: bool = False):
+        """모델별 limiter 자동 적용.
+
+        - `use_limit=True` (기본): glm_limiter 의 명시 mapping 으로 모델별 slot 획득.
+          알 수 없는 모델은 보수적 default (concurrency=1) slot.
+        - `use_glm47_limit`: legacy 호환 — 모델 인자 없이 4.7 slot 강제 시 사용.
+        """
         retry_delays = [30, 60, 120]
         last_err = None
         for attempt, delay in enumerate([0] + retry_delays):
@@ -113,8 +127,11 @@ class GLMBackend:
                 print(f"   [GLM retry] waiting {delay}s (attempt {attempt}/{len(retry_delays)})...")
                 await asyncio.sleep(delay)
             try:
-                if use_glm47_limit:
+                if use_glm47_limit and not model:
                     async with async_glm47_slot():
+                        return await self.client.chat.completions.create(**params)
+                if use_limit and model:
+                    async with async_model_slot(model):
                         return await self.client.chat.completions.create(**params)
                 return await self.client.chat.completions.create(**params)
             except (APITimeoutError, RateLimitError) as e:

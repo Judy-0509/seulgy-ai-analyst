@@ -1,6 +1,7 @@
 """FastAPI server: serves the React UI and bridges to AnalysisPipeline via SSE."""
 import asyncio
 import json
+import os
 import re
 import sys
 import uuid
@@ -48,6 +49,9 @@ ARCHIVE_REGISTRY = [
     ("Robotics & Automation News", "robotics_automation_news.json"),
     ("Humanoids Daily",            "humanoids_daily.json"),
     ("RoboticsTomorrow",           "robotics_tomorrow.json"),
+    ("IDTechEx",                   "idtechex_humanoid.json"),
+    ("ABI Research",               "abi_humanoid.json"),
+    ("Yano Research",              "yano_humanoid.json"),
     ("The Verge",                  "verge_robotics.json"),
     ("arXiv (cs.RO)",              "arxiv_robotics.json"),
     ("NVIDIA",                     "nvidia_news.json"),
@@ -58,6 +62,9 @@ ARCHIVE_REGISTRY = [
     ("Agility Robotics",           "agility_robotics.json"),
     ("1X Technologies",            "onex_technologies.json"),
     ("IFR",                        "ifr.json"),
+    ("Goldman Sachs Research",     "goldman_sachs.json"),
+    ("Morgan Stanley Research",    "morgan_stanley.json"),
+    ("Bank of America Institute",  "bofa_institute.json"),
     # Automotive sources
     ("WardsAuto",          "wardsauto.json"),
     ("Cox Automotive",     "cox_automotive.json"),
@@ -95,9 +102,10 @@ USER_ACTION_TIMEOUT_SECONDS = 600
 @app.on_event("startup")
 def _startup() -> None:
     from src.news_db import init_db
-    from src.news_scheduler import start_scheduler
     init_db()
-    start_scheduler()
+    if os.getenv("ENABLE_MI_NEWS_SCHEDULER", "").lower() in {"1", "true", "yes", "on"}:
+        from src.news_scheduler import start_scheduler
+        start_scheduler()
 
 
 app.add_middleware(
@@ -824,7 +832,8 @@ async def _run_report(sess: ReportSession):
 @app.get("/api/topics/suggested")
 async def api_topics_suggested(domain: str = "smartphone"):
     """도메인별 GLM 선정 주제 반환."""
-    p = ROOT / load_domain(domain)["suggested_path"]
+    domain_cfg = load_domain(domain)
+    p = ROOT / domain_cfg["suggested_path"]
     topics: list[dict] = []
     generated_at = None
     days = 30
@@ -837,13 +846,47 @@ async def api_topics_suggested(domain: str = "smartphone"):
         except Exception:
             pass
 
+    def _latest_article_date(t: dict, fallback: str = "") -> str:
+        dates = [a.get("date", "") for a in t.get("articles", []) if a.get("date")]
+        return max(dates) if dates else fallback
+
+    # Sort current topics by trend rank when available; older files fall back to recency.
+    cur_fallback = (generated_at or "")[:10]
+    if any((t.get("trend") or {}).get("rank") for t in topics if isinstance(t, dict)):
+        topics.sort(key=lambda t: (t.get("trend") or {}).get("rank") or 9999)
+    else:
+        topics.sort(key=lambda t: _latest_article_date(t, cur_fallback), reverse=True)
+
+    # Load history files: scripts/_history/{domain}_*.json (up to 8 previous weeks)
+    hist_dir = p.parent / "_history"
+    history_by_week: list[dict] = []
+    current_week = cur_fallback
+    if hist_dir.exists():
+        seen_weeks: set[str] = set()
+        for hf in sorted(hist_dir.glob(f"{domain}_*.json"), reverse=True):
+            try:
+                hdata = json.loads(hf.read_text(encoding="utf-8"))
+                week_of = (hdata.get("generated_at") or "")[:10]
+                if not week_of or week_of == current_week or week_of in seen_weeks:
+                    continue
+                seen_weeks.add(week_of)
+                week_topics = list(hdata.get("topics", []))
+                week_topics.sort(key=lambda t: _latest_article_date(t, week_of), reverse=True)
+                history_by_week.append({"week_of": week_of, "topics": week_topics})
+                if len(history_by_week) >= 8:
+                    break
+            except Exception:
+                pass
+        history_by_week.sort(key=lambda w: w["week_of"], reverse=True)
+
     # Merge emerging "Curiosity Pick" topics (weekly pass — smartphone, humanoid, automotive).
     # All emerging topics carry criteria="Criterion 3" so frontend's existing
     # Crit2/Crit3 split surfaces them in the "이번 주 새롭게 등장한 주제" section.
     EMERGING_PATHS = {
-        "smartphone": "scripts/_topic_suggestions_emerging.json",
-        "humanoid":   "scripts/_humanoid_topic_suggestions_emerging.json",
-        "automotive": "scripts/_automotive_topic_suggestions_emerging.json",
+        "smartphone":      "scripts/_topic_suggestions_emerging.json",
+        "humanoid":        "scripts/_humanoid_topic_suggestions_emerging.json",
+        "automotive":      "scripts/_automotive_topic_suggestions_emerging.json",
+        "space_datacenter": "scripts/_space_datacenter_topic_suggestions_emerging.json",
     }
     em_rel = EMERGING_PATHS.get(domain)
     if em_rel:
@@ -860,17 +903,24 @@ async def api_topics_suggested(domain: str = "smartphone"):
             except Exception:
                 pass
 
-    for topic in topics:
-        if not isinstance(topic, dict):
-            continue
-        title = str(topic.get("title") or "").strip()
-        slug = str(topic.get("report_slug") or "").strip() or _topic_to_report_slug(title)
-        if slug and (ROOT / "reports" / f"{slug}_report.md").exists():
-            topic["report_slug"] = slug
-        else:
-            topic.pop("report_slug", None)
+    def _apply_report_slug(topic_list: list[dict]) -> None:
+        for topic in topic_list:
+            if not isinstance(topic, dict):
+                continue
+            title = str(topic.get("title") or "").strip()
+            slug = str(topic.get("report_slug") or "").strip() or _topic_to_report_slug(title)
+            if slug and (ROOT / "reports" / f"{slug}_report.md").exists():
+                topic["report_slug"] = slug
+            else:
+                topic.pop("report_slug", None)
+
+    _apply_report_slug(topics)
+    for week in history_by_week:
+        _apply_report_slug(week["topics"])
+
     return {
         "topics": topics,
+        "history_by_week": history_by_week,
         "generated_at": generated_at,
         "days": days,
     }
@@ -878,17 +928,26 @@ async def api_topics_suggested(domain: str = "smartphone"):
 
 @app.get("/api/usage")
 async def api_usage():
-    """GLM 토큰 사용량 및 비용 집계."""
+    """GLM 토큰 사용량 및 비용 집계 (USD primary, CNY backward-compat)."""
     from collections import defaultdict
+    from src.services.token_logger import _price_for
     raw_entries = read_token_log()
     entries = []
     for e in raw_entries:
         try:
             prompt_tokens = int(e.get("prompt_tokens") or 0)
             completion_tokens = int(e.get("completion_tokens") or 0)
-            cost_cny = float(e.get("cost_cny") or 0)
         except (TypeError, ValueError):
             continue
+        # cost_usd 우선, 없으면 PRICING 으로 fallback 계산 (구 entry 호환)
+        cost_usd = e.get("cost_usd")
+        if cost_usd is None:
+            price = _price_for(str(e.get("model") or "unknown"))
+            cost_usd = (prompt_tokens * price["input"] + completion_tokens * price["output"]) / 1_000_000
+        try:
+            cost_usd = float(cost_usd)
+        except (TypeError, ValueError):
+            cost_usd = 0.0
         try:
             total_tokens = int(e.get("total_tokens") or prompt_tokens + completion_tokens)
         except (TypeError, ValueError):
@@ -899,7 +958,8 @@ async def api_usage():
             "prompt_tokens": prompt_tokens,
             "completion_tokens": completion_tokens,
             "total_tokens": total_tokens,
-            "cost_cny": cost_cny,
+            "cost_usd": cost_usd,
+            "cost_cny": 0.0,  # legacy field, deprecated (값 0)
             "caller": str(e.get("caller") or ""),
         })
     if not entries:
@@ -907,21 +967,21 @@ async def api_usage():
 
     total_prompt = sum(e["prompt_tokens"] for e in entries)
     total_completion = sum(e["completion_tokens"] for e in entries)
-    total_cost = sum(e["cost_cny"] for e in entries)
+    total_cost_usd = sum(e["cost_usd"] for e in entries)
 
-    by_model: dict = defaultdict(lambda: {"prompt_tokens": 0, "completion_tokens": 0, "cost_cny": 0.0, "calls": 0})
-    by_day:   dict = defaultdict(lambda: {"prompt_tokens": 0, "completion_tokens": 0, "cost_cny": 0.0, "calls": 0})
+    by_model: dict = defaultdict(lambda: {"prompt_tokens": 0, "completion_tokens": 0, "cost_usd": 0.0, "calls": 0})
+    by_day:   dict = defaultdict(lambda: {"prompt_tokens": 0, "completion_tokens": 0, "cost_usd": 0.0, "calls": 0})
     for e in entries:
         m = by_model[e["model"]]
         m["prompt_tokens"]     += e["prompt_tokens"]
         m["completion_tokens"] += e["completion_tokens"]
-        m["cost_cny"]          += e["cost_cny"]
+        m["cost_usd"]          += e["cost_usd"]
         m["calls"]             += 1
         day = e["ts"][:10] or "unknown"
         d = by_day[day]
         d["prompt_tokens"]     += e["prompt_tokens"]
         d["completion_tokens"] += e["completion_tokens"]
-        d["cost_cny"]          += e["cost_cny"]
+        d["cost_usd"]          += e["cost_usd"]
         d["calls"]             += 1
 
     return {
@@ -929,11 +989,12 @@ async def api_usage():
             "total_prompt_tokens":     total_prompt,
             "total_completion_tokens": total_completion,
             "total_tokens":            total_prompt + total_completion,
-            "total_cost_cny":          round(total_cost, 4),
+            "total_cost_usd":          round(total_cost_usd, 6),
+            "total_cost_cny":          0.0,  # legacy, deprecated
             "call_count":              len(entries),
         },
-        "by_model": [{"model": k, **v, "cost_cny": round(v["cost_cny"], 4)} for k, v in sorted(by_model.items())],
-        "by_day":   [{"day": k,   **v, "cost_cny": round(v["cost_cny"], 4)} for k, v in sorted(by_day.items(), reverse=True)],
+        "by_model": [{"model": k, **v, "cost_usd": round(v["cost_usd"], 6)} for k, v in sorted(by_model.items())],
+        "by_day":   [{"day": k,   **v, "cost_usd": round(v["cost_usd"], 6)} for k, v in sorted(by_day.items(), reverse=True)],
         "recent":   list(reversed(entries[-50:])),
     }
 
@@ -960,7 +1021,8 @@ _HUMANOID_SOURCES = {
     "Robotics & Automation News", "TechCrunch Robotics", "IEEE Spectrum Robotics",
     "IEEE Spectrum", "The Robot Report", "Boston Dynamics", "Figure AI",
     "arXiv (cs.RO)", "MIT Technology Review", "Unitree Robotics", "NVIDIA", "The Verge",
-    "Humanoids Daily", "RoboticsTomorrow", "Apptronik", "Agility Robotics",
+    "Humanoids Daily", "RoboticsTomorrow", "IDTechEx", "ABI Research", "Yano Research",
+    "Apptronik", "Agility Robotics", "Counterpoint Research", "TrendForce", "IDC",
     "1X Technologies", "IFR", "NVIDIA News", "Unitree",
 }
 
@@ -1104,10 +1166,35 @@ def _parse_report_markdown(md_text: str, process_data: dict | None = None) -> di
                     "metrics": _extract_metrics(result.get("title", "")),
                 })
 
-    references = []
+    references_by_key = {}
     for section in sections:
         for source in section.get("sources", []):
-            references.append({**source, "section": section["title"], "section_index": section["index"]})
+            key = (source.get("url") or "").strip()
+            if not key:
+                key = f"{source.get('source_name', '')}|{source.get('title', '')}"
+
+            if key not in references_by_key:
+                references_by_key[key] = {
+                    **source,
+                    "section": section["title"],
+                    "section_index": section["index"],
+                    "section_indices": [],
+                    "sections": [],
+                }
+
+            reference = references_by_key[key]
+            section_index = section["index"]
+            if section_index not in reference["section_indices"]:
+                reference["section_indices"].append(section_index)
+            if section["title"] not in reference["sections"]:
+                reference["sections"].append(section["title"])
+
+            existing_metrics = reference.setdefault("metrics", [])
+            for metric in source.get("metrics", []):
+                if metric not in existing_metrics:
+                    existing_metrics.append(metric)
+
+    references = list(references_by_key.values())
 
     research_background = ""
     if process_data:

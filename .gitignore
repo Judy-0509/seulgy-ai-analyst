@@ -27,7 +27,12 @@ scripts/_humanoid_topic_suggestions.json
 scripts/_humanoid_topic_suggestions_emerging.json
 scripts/_automotive_topic_suggestions.json
 scripts/_space_datacenter_topic_suggestions.json
+scripts/_*_topic_suggestions_emerging.json
+scripts/_*_PREV.json
 scripts/_history/
+reports/_ab_*.json
+reports/_ab_*.html
+reports/*_claude_analysis.html
 test_image/
 data/mi_news/
 

@@ -16,13 +16,33 @@ LOCK_FILE = ROOT / "data" / "token_usage.lock"
 
 _lock = Lock()
 
-# ── 단가 (CNY / 1K tokens) ── 지푸AI 공식 가격 기준, 변경 시 여기만 수정
-# https://open.bigmodel.cn/pricing
+# ──────────────────────────────────────────────────────────────────────────
+#  PRICING — Z.AI 공식 USD 단가 (USD per 1M tokens)
+# ──────────────────────────────────────────────────────────────────────────
+#  사용자가 z.ai 계정으로 결제 → USD 단가가 실제 청구 통화.
+#  공식 출처: https://docs.z.ai/guides/overview/pricing  (변경 시 여기만 수정)
+#
+#  cost_usd = (prompt_tokens * input + completion_tokens * output) / 1_000_000
+# ──────────────────────────────────────────────────────────────────────────
 PRICING: dict[str, dict] = {
-    "glm-4.7":       {"input": 0.007, "output": 0.028},
-    "glm-4-flash":   {"input": 0.0001, "output": 0.0001},
-    "glm-4-plus":    {"input": 0.01,  "output": 0.01},
-    "glm-4":         {"input": 0.01,  "output": 0.01},
+    # 4.x 계열                           USD per 1M tokens (input / output)
+    "glm-4.7":             {"input": 0.6,   "output": 2.2},
+    "glm-4.7-flashx":      {"input": 0.07,  "output": 0.4},
+    "glm-4.7-flash":       {"input": 0.0,   "output": 0.0},     # FREE
+    "glm-4.6":             {"input": 0.6,   "output": 2.2},
+    "glm-4.5":             {"input": 0.6,   "output": 2.2},
+    "glm-4.5-air":         {"input": 0.2,   "output": 1.1},
+    "glm-4.5-airx":        {"input": 1.1,   "output": 4.5},
+    "glm-4.5-flash":       {"input": 0.0,   "output": 0.0},     # FREE
+    # 5.x 계열
+    "glm-5":               {"input": 1.0,   "output": 3.2},
+    "glm-5-turbo":         {"input": 1.2,   "output": 4.0},
+    "glm-5.1":             {"input": 1.4,   "output": 4.4},
+    # 기타
+    "glm-4-32b-0414-128k": {"input": 0.1,   "output": 0.1},
+    "glm-4-flash":         {"input": 0.0,   "output": 0.0},     # deprecated (API err 1211)
+    "glm-4-plus":          {"input": 1.0,   "output": 1.0},     # 추정 (정확한 USD 단가 미공시)
+    "glm-4":               {"input": 1.0,   "output": 1.0},
 }
 
 
@@ -95,14 +115,18 @@ def log_usage(
     prompt_tokens = _as_int(prompt_tokens)
     completion_tokens = _as_int(completion_tokens)
     price = _price_for(model)
-    cost = (prompt_tokens * price["input"] + completion_tokens * price["output"]) / 1000
+    # USD per 1M tokens 단가 → 토큰 수를 1_000_000 으로 나눔
+    cost_usd = (prompt_tokens * price["input"] + completion_tokens * price["output"]) / 1_000_000
     entry = {
         "ts":                datetime.now().isoformat(),
         "model":             model,
         "prompt_tokens":     prompt_tokens,
         "completion_tokens": completion_tokens,
         "total_tokens":      prompt_tokens + completion_tokens,
-        "cost_cny":          round(cost, 6),
+        "cost_usd":          round(cost_usd, 6),
+        # backward compat: 기존 UsagePage / Usage API 가 cost_cny 를 읽을 경우 fallback.
+        # 신규 호출자는 cost_usd 사용 권장.
+        "cost_cny":          0.0,
         "caller":            caller,
     }
     with _process_file_lock():

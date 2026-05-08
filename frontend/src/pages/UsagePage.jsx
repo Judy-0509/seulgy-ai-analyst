@@ -1,8 +1,14 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { C } from "../theme";
 
 const fmt = n => (n ?? 0).toLocaleString();
-const fmtCny = n => `¥${(n ?? 0).toFixed(4)}`;
+const fmtUsd = n => `$${(n ?? 0).toFixed(4)}`;
+// USD → KRW 환율 (2026-05 기준 약 1달러 ≈ 1,430원). 변경 시 여기만 수정.
+const USD_TO_KRW = 1430;
+const fmtKrw = n => `₩${Math.round((n ?? 0) * USD_TO_KRW).toLocaleString()}`;
+// backward compat: 구 entry 가 cost_cny 만 가지고 있으면 0 처리 (마이그레이션 후 신규 entry 는 cost_usd 보유)
+const usdOf = obj => (obj?.cost_usd ?? 0);
 
 const card = {
   background: C.card,
@@ -20,17 +26,19 @@ const labelStyle = {
   marginBottom: 6,
 };
 
-function StatBox({ label, value, sub }) {
+function StatBox({ label, value, sub, krw }) {
   return (
     <div style={{ ...card, flex: 1, minWidth: 140 }}>
       <div style={labelStyle}>{label}</div>
       <div style={{ fontSize: 24, fontWeight: 700, color: C.t1, lineHeight: 1.2 }}>{value}</div>
+      {krw && <div style={{ fontSize: 13, color: C.t2, marginTop: 4, fontWeight: 600 }}>≈ {krw}</div>}
       {sub && <div style={{ fontSize: 12, color: C.t3, marginTop: 4 }}>{sub}</div>}
     </div>
   );
 }
 
 export default function UsagePage() {
+  const nav = useNavigate();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -71,15 +79,37 @@ export default function UsagePage() {
   return (
     <div style={{ background: C.bg, minHeight: "100vh", padding: "32px 24px" }}>
       <div style={{ maxWidth: 900, margin: "0 auto" }}>
-        <div style={{ marginBottom: 28 }}>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: C.t1, margin: 0 }}>API 사용량</h1>
-          <p style={{ fontSize: 13, color: C.t3, margin: "6px 0 0" }}>GLM 호출 토큰 수 및 예상 비용</p>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 28, gap: 12 }}>
+          <div>
+            <h1 style={{ fontSize: 22, fontWeight: 700, color: C.t1, margin: 0 }}>API 사용량</h1>
+            <p style={{ fontSize: 13, color: C.t3, margin: "6px 0 0" }}>GLM 호출 토큰 수 및 예상 비용 (Z.AI USD pricing) · 환율 1$ ≈ ₩{USD_TO_KRW}</p>
+          </div>
+          <button
+            onClick={() => nav("/")}
+            style={{
+              flexShrink: 0,
+              height: 36,
+              padding: "0 16px",
+              borderRadius: 8,
+              border: `1px solid ${C.border}`,
+              background: C.card,
+              color: C.t2,
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: "pointer",
+              transition: "background .15s, color .15s",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = C.subtle; e.currentTarget.style.color = C.t1; }}
+            onMouseLeave={e => { e.currentTarget.style.background = C.card; e.currentTarget.style.color = C.t2; }}
+          >
+            ← 홈으로
+          </button>
         </div>
 
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
           <StatBox label="총 호출 수" value={fmt(s.call_count)} />
           <StatBox label="총 토큰" value={fmt(s.total_tokens)} sub={`입력 ${fmt(s.total_prompt_tokens)} / 출력 ${fmt(s.total_completion_tokens)}`} />
-          <StatBox label="예상 비용" value={fmtCny(s.total_cost_cny)} sub="Zhipu AI 공식 단가 기준" />
+          <StatBox label="예상 비용" value={fmtUsd(s.total_cost_usd)} krw={fmtKrw(s.total_cost_usd)} sub="Zhipu AI 공식 단가 기준" />
         </div>
 
         {byModel.length > 0 && (
@@ -100,7 +130,10 @@ export default function UsagePage() {
                     <td style={{ padding: "8px 8px 8px 0", color: C.t2 }}>{fmt(m.calls)}</td>
                     <td style={{ padding: "8px 8px 8px 0", color: C.t2 }}>{fmt(m.prompt_tokens)}</td>
                     <td style={{ padding: "8px 8px 8px 0", color: C.t2 }}>{fmt(m.completion_tokens)}</td>
-                    <td style={{ padding: "8px 8px 8px 0", color: C.ind, fontWeight: 600 }}>{fmtCny(m.cost_cny)}</td>
+                    <td style={{ padding: "8px 8px 8px 0", color: C.ind, fontWeight: 600 }}>
+                      <div>{fmtUsd(usdOf(m))}</div>
+                      <div style={{ fontSize: 11, color: C.t3, fontWeight: 500 }}>≈ {fmtKrw(usdOf(m))}</div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -125,7 +158,10 @@ export default function UsagePage() {
                     <td style={{ padding: "8px 8px 8px 0", color: C.t2 }}>{d.day}</td>
                     <td style={{ padding: "8px 8px 8px 0", color: C.t2 }}>{fmt(d.calls)}</td>
                     <td style={{ padding: "8px 8px 8px 0", color: C.t2 }}>{fmt(d.prompt_tokens + d.completion_tokens)}</td>
-                    <td style={{ padding: "8px 8px 8px 0", color: C.ind, fontWeight: 600 }}>{fmtCny(d.cost_cny)}</td>
+                    <td style={{ padding: "8px 8px 8px 0", color: C.ind, fontWeight: 600 }}>
+                      <div>{fmtUsd(usdOf(d))}</div>
+                      <div style={{ fontSize: 11, color: C.t3, fontWeight: 500 }}>≈ {fmtKrw(usdOf(d))}</div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -151,7 +187,7 @@ export default function UsagePage() {
                     <td style={{ padding: "6px 8px 6px 0", color: C.t2, fontFamily: C.mono }}>{e.model}</td>
                     <td style={{ padding: "6px 8px 6px 0", color: C.t2 }}>{fmt(e.prompt_tokens)}</td>
                     <td style={{ padding: "6px 8px 6px 0", color: C.t2 }}>{fmt(e.completion_tokens)}</td>
-                    <td style={{ padding: "6px 8px 6px 0", color: C.ind }}>{fmtCny(e.cost_cny)}</td>
+                    <td style={{ padding: "6px 8px 6px 0", color: C.ind }}>{fmtUsd(usdOf(e))}</td>
                     <td style={{ padding: "6px 8px 6px 0", color: C.t4, fontFamily: C.mono }}>{e.caller}</td>
                   </tr>
                 ))}

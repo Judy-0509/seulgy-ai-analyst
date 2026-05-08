@@ -5,6 +5,7 @@ A→B→C→[USER GATE 1]→D→D'→[USER GATE 2]→E→F 워크플로우
 """
 import asyncio
 import json
+import os
 import re
 import time
 import sys
@@ -135,8 +136,10 @@ async def stage_a(llm: LLMService, topic: str, progress_cb=None) -> tuple[list[s
     t0 = time.time()
     await progress("topic_received", "한국어 분석 주제를 수신했습니다.", topic=topic)
     prompt = PRE_SEARCH_PROMPT.format(topic=topic, current_year=_year())
-    await progress("llm_request", "GLM에 영어 검색 쿼리 생성을 요청했습니다.", model="glm-4.7")
-    resp = await llm.complete(ANALYST_SYSTEM_PROMPT, prompt, max_tokens=2000, temperature=0.1)
+    _stage_a_model = os.getenv("GLM_ANALYSIS_MODEL", "glm-4.7-flashx")
+    await progress("llm_request", "GLM에 영어 검색 쿼리 생성을 요청했습니다.", model=_stage_a_model)
+    resp = await llm.complete(ANALYST_SYSTEM_PROMPT, prompt, max_tokens=2000, temperature=0.1,
+                              model=_stage_a_model)
     raw = _strip_fence((resp.content or resp.reasoning or "").strip())
     await progress(
         "llm_response",
@@ -163,7 +166,8 @@ async def stage_a(llm: LLMService, topic: str, progress_cb=None) -> tuple[list[s
             f'Topic: "{topic}"\nYear: {_year()}'
         )
         try:
-            resp2 = await llm.complete(ANALYST_SYSTEM_PROMPT, simple_prompt, max_tokens=2000, temperature=0.1)
+            resp2 = await llm.complete(ANALYST_SYSTEM_PROMPT, simple_prompt, max_tokens=2000, temperature=0.1,
+                                       model=_stage_a_model)
             raw2 = _strip_fence((resp2.content or resp2.reasoning or "").strip())
             retry_raw_queries = _extract_search_queries(raw2)
             queries = [q for q in retry_raw_queries if not _KOREAN_RE.search(q)]
@@ -281,7 +285,8 @@ async def stage_c(llm: LLMService, topic: str, archive_results: list) -> list[di
     t0 = time.time()
     archive_ctx = _format_archive_context(archive_results)
     prompt = TOC_PROMPT.format(topic=topic, current_year=_year(), archive_context=archive_ctx)
-    resp = await llm.complete(ANALYST_SYSTEM_PROMPT, prompt, max_tokens=3000, temperature=0.2)
+    resp = await llm.complete(ANALYST_SYSTEM_PROMPT, prompt, max_tokens=3000, temperature=0.2,
+                              model=os.getenv("GLM_TOC_MODEL", "glm-5.1"))
     raw = _strip_fence(resp.content.strip())
     data = _extract_json_block(raw)
     sections = []
@@ -595,13 +600,19 @@ def _format_report_summary(sections: list[dict]) -> str:
 
 
 async def stage_g(llm: LLMService, topic: str, sections: list[dict]) -> dict:
-    """Executive Summary + 시사점(Insights) 생성."""
-    print("\n[G] Executive Summary + 시사점 생성...")
+    """Executive Summary + 시사점(Insights) 생성.
+
+    품질이 가장 중요한 단계라 GLM-5.1 사용 (4.7 대비 hallucination -56%, AA-Omniscience +35pt).
+    A/B 테스트 결과: Investor Takeaway 라벨링·구체적 회사명·actionable 권고 우위.
+    추가 비용: 보고서당 +¥0.04~0.08 (~₩10).
+    """
+    print("\n[G] Executive Summary + 시사점 생성 (GLM-5.1)...")
     t0 = time.time()
     summary = _format_report_summary(sections)
     prompt = INSIGHTS_PROMPT.format(topic=topic, report_summary=summary, current_date=date.today().isoformat())
     resp = await llm.complete(
         ANALYST_SYSTEM_PROMPT, prompt,
+        model=os.getenv("GLM_FINAL_MODEL", "glm-5.1"),
         max_tokens=5000, temperature=0.3,
         response_format={"type": "json_object"},
         thinking="disabled",

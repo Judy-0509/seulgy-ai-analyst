@@ -377,7 +377,7 @@ Rules:
   * Market impact figures that are projections/forecasts (share gains, shipment forecasts, growth rates for the full year) have NOT been confirmed yet — always use ~전망됩니다/예상됩니다
 - No [Source, date] brackets anywhere in the output
 - Every claim must be traceable to the report's specific numbers or named companies
-- No investment angle (주가/밸류에이션 제외)
+- No investment angle whatsoever — do NOT write "Investor Takeaway", 투자자 관점, 선제적 투자 필수, 매수/매도/보유 권고, or any language framing conclusions as advice to investors. Focus ONLY on market structure, competitive dynamics, OEM strategy, and consumer outcomes.
 - All text in Korean
 - research_background must be specific to this report and must not contain boilerplate research-purpose wording
 """
