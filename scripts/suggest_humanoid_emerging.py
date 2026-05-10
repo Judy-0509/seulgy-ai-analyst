@@ -116,11 +116,15 @@ humanoid analyst would find personally interesting in the last {days} days.
 
 [SOURCE TAXONOMY — 휴머노이드 4 레이어]
 A. Independent media: R&AN, TechCrunch Robotics, IEEE Spectrum,
-   The Robot Report, MIT Technology Review, The Verge
+   The Robot Report, MIT Technology Review, Humanoids Daily,
+   RoboticsTomorrow, The Verge
 B. First-party OEM: Boston Dynamics, Figure AI, Unitree, NVIDIA,
    Apptronik, Agility Robotics, 1X Technologies
-C. Academic: arXiv (cs.RO)
-D. Industry association: IFR"""
+C. Technical Validation: arXiv (cs.RO)
+D. Market / Industry Intelligence:
+   IFR, Counterpoint Research, TrendForce, IDC, IDTechEx, ABI Research, Yano Research,
+   Goldman Sachs Research, Morgan Stanley Research, Barclays Research,
+   Bank of America Institute"""
 
 USER_PROMPT_TEMPLATE = """
 [MAJOR-PASS TOPICS ALREADY COVERED — REJECT any candidate signal that overlaps semantically]

@@ -30,6 +30,16 @@ ARCHIVE_REGISTRY = [
     ("MIT Technology Review",      "mit_tech_review.json"),
     ("Humanoids Daily",            "humanoids_daily.json"),
     ("RoboticsTomorrow",           "robotics_tomorrow.json"),
+    ("Counterpoint Research",      "counterpoint.json"),
+    ("TrendForce",                 "trendforce.json"),
+    ("IDC",                        "idc.json"),
+    ("IDTechEx",                   "idtechex_humanoid.json"),
+    ("ABI Research",               "abi_humanoid.json"),
+    ("Yano Research",              "yano_humanoid.json"),
+    ("Goldman Sachs Research",     "goldman_sachs.json"),
+    ("Morgan Stanley Research",    "morgan_stanley.json"),
+    ("Barclays Research",          "barclays.json"),
+    ("Bank of America Institute",  "bofa_institute.json"),
     ("The Verge",                  "verge_robotics.json"),
     # Tier B — first-party OEM / supplier announcements
     ("Boston Dynamics",            "boston_dynamics.json"),
@@ -48,6 +58,8 @@ ARCHIVE_REGISTRY = [
 SOURCE_LABEL = (
     "Robotics & Automation News, TechCrunch Robotics, IEEE Spectrum, "
     "The Robot Report, MIT Technology Review, Humanoids Daily, RoboticsTomorrow, The Verge, "
+    "Counterpoint Research, TrendForce, IDC, IDTechEx, ABI Research, Yano Research, "
+    "Goldman Sachs Research, Morgan Stanley Research, Barclays Research, Bank of America Institute, "
     "Boston Dynamics, Figure AI, Unitree, NVIDIA, Apptronik, Agility Robotics, 1X, "
     "arXiv, IFR"
 )
@@ -63,6 +75,16 @@ SOURCE_TAXONOMY = {
     "Humanoids Daily":            "A",
     "RoboticsTomorrow":           "A",
     "The Verge":                  "A",
+    "Counterpoint Research":      "D",
+    "TrendForce":                 "D",
+    "IDC":                        "D",
+    "IDTechEx":                   "D",
+    "ABI Research":               "D",
+    "Yano Research":              "D",
+    "Goldman Sachs Research":     "D",
+    "Morgan Stanley Research":    "D",
+    "Barclays Research":          "D",
+    "Bank of America Institute":  "D",
     "Boston Dynamics":            "B",  # First-party OEM
     "Figure AI":                  "B",
     "Unitree":                    "B",
@@ -70,7 +92,7 @@ SOURCE_TAXONOMY = {
     "Apptronik":                  "B",
     "Agility Robotics":           "B",
     "1X Technologies":            "B",
-    "arXiv (cs.RO)":              "C",  # Academic
+    "arXiv (cs.RO)":              "C",  # Technical validation
     "IFR":                        "D",  # Industry association
 }
 
@@ -97,12 +119,13 @@ def keyword_filter(entry: dict) -> bool:
     # 소스가 이미 로보틱스 특화인 경우 통과 (1차 OEM, 학술, 로보틱스 전문 매체)
     source = entry.get("source", "")
     if source in (
-        "arXiv (cs.RO)",
         "Boston Dynamics", "Figure AI", "Unitree", "Apptronik",
         "Agility Robotics", "1X Technologies",
         "TechCrunch Robotics", "IEEE Spectrum Robotics",
         "The Robot Report", "MIT Technology Review", "Humanoids Daily",
-        "RoboticsTomorrow", "IFR",
+        "RoboticsTomorrow", "IFR", "IDTechEx", "ABI Research", "Yano Research",
+        "Goldman Sachs Research", "Morgan Stanley Research", "Barclays Research",
+        "Bank of America Institute",
     ):
         return True
     # 일반 매체(R&AN, Verge, NVIDIA blog)는 키워드 필터 적용
@@ -142,7 +165,7 @@ Also flag:
 
 Do NOT flag:
 - Routine product demos or video releases with no strategic signal
-- Academic papers without clear near-term commercial application
+- Technical papers without clear near-term commercial application
 - Incremental hardware spec updates with no market significance
 - General automation or non-humanoid robotics topics
 - Single-source niche/contrarian signals (delegated to the emerging pass)
@@ -151,18 +174,26 @@ Do NOT flag:
 
 A. Independent media (저널리즘, 다중 합의로 신뢰):
    Robotics & Automation News, TechCrunch Robotics, IEEE Spectrum,
-   The Robot Report, MIT Technology Review, The Verge
+   The Robot Report, MIT Technology Review, Humanoids Daily,
+   RoboticsTomorrow, The Verge
 
 B. First-party OEM / supplier (1차 발표 — 기업 자체 announcement):
    Boston Dynamics, Figure AI, Unitree, NVIDIA News, Apptronik,
    Agility Robotics, 1X Technologies
    → Tier B 다수가 동일 시점 일제히 보도하면 "산업 전반 phase shift" 신호
 
-C. Academic (arXiv) — 모델/기술 fact 확정용:
-   arXiv (cs.RO)
+C. Technical Validation (papers / model benchmarks / robotics methods):
+   arXiv (cs.RO). Future additions can include peer-reviewed robotics metadata
+   from RA-L, ICRA, IROS, RSS, CoRL, Humanoids, or Science Robotics.
 
-D. Industry association — 산업 정량 지표 / 정책 동향:
-   IFR (International Federation of Robotics)"""
+D. Market / Industry Intelligence:
+   IFR (International Federation of Robotics), Counterpoint Research,
+   TrendForce, IDC, IDTechEx, ABI Research, Yano Research,
+   Goldman Sachs Research, Morgan Stanley Research, Barclays Research,
+   Bank of America Institute
+   Sub-types: market tracker (Counterpoint/ABI/IDTechEx/Yano), industry baseline
+   (IFR), IB/thematic research (Goldman Sachs/Morgan Stanley/Barclays/BofA),
+   and adjacent trackers used only when humanoid-filtered (TrendForce/IDC)."""
 
 USER_PROMPT_TEMPLATE = """
 [EXISTING REPORTS — exclude these topics from Criterion 3 ONLY]
@@ -188,15 +219,20 @@ Criterion 2 — Multi-Source Signal:
 
 Source independence tiers for humanoid robotics:
 - Tier A (independent media): Robotics & Automation News, TechCrunch Robotics,
-  IEEE Spectrum, The Robot Report, MIT Technology Review, The Verge
+  IEEE Spectrum, The Robot Report, MIT Technology Review, Humanoids Daily,
+  RoboticsTomorrow, The Verge
   — each Tier-A outlet counts as a distinct independent source
 - Tier B (first-party OEM/supplier): Boston Dynamics, Figure AI, Unitree, NVIDIA,
   Apptronik, Agility Robotics, 1X — each company is its own first-party source.
   Two distinct OEMs = TWO independent sources (different companies, different
   strategic positions). Same company multiple posts = ONE source.
-- Tier C (academic): arXiv papers — papers from different research groups count
-  as distinct sources; multiple papers from the same group = ONE source.
-- Tier D (industry association): IFR — counts as one source type.
+- Tier C (technical validation): arXiv papers / robotics method papers — papers
+  from different research groups count as distinct sources; multiple papers from
+  the same group = ONE source.
+- Tier D (market / industry intelligence): IFR,
+  Counterpoint Research, TrendForce, IDC, IDTechEx, ABI Research, Yano Research,
+  Goldman Sachs Research, Morgan Stanley Research, Barclays Research,
+  Bank of America Institute — each counts as one source type.
 
 Criterion 2 requires 2+ sources covering the same phenomenon, where:
 - 2+ Tier A outlets, OR
@@ -206,8 +242,8 @@ Criterion 2 requires 2+ sources covering the same phenomenon, where:
 
 CROSS-LAYER 보강이 strong signal:
 - Tier B (OEM 발표) + Tier A (독립 매체 검증) → 양면 확정
-- Tier C (arXiv 모델) + Tier B (OEM 적용 발표) → 학술→상용 전이 신호
-- Tier D (IFR 통계) + Tier A (사례 보도) → 산업 차원 vs 개별 사례 일치
+- Tier C (technical validation) + Tier B (OEM application announcement) validates technical feasibility
+- Tier D (market intelligence / industry baseline) + Tier A (case reporting) aligns industry scale with field evidence
 
 CRITICAL — Opposing-direction articles can be the SAME phenomenon:
 If one source reports what companies are building (technology roadmap) while another

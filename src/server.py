@@ -64,6 +64,7 @@ ARCHIVE_REGISTRY = [
     ("IFR",                        "ifr.json"),
     ("Goldman Sachs Research",     "goldman_sachs.json"),
     ("Morgan Stanley Research",    "morgan_stanley.json"),
+    ("Barclays Research",          "barclays.json"),
     ("Bank of America Institute",  "bofa_institute.json"),
     # Automotive sources
     ("WardsAuto",          "wardsauto.json"),
@@ -694,16 +695,23 @@ async def _run_report(sess: ReportSession):
         await sess.emit(type="report_step_b", by_source=by_source, total=len(archive_results))
         await sess.emit(type="report_log", text=f"Archive {len(archive_results)}건 수집")
 
-        # External search decision: terminate on 10-minute inactivity.
-        sess.ext_event.clear()
-        try:
-            await asyncio.wait_for(sess.ext_event.wait(), timeout=USER_ACTION_TIMEOUT_SECONDS)
-        except asyncio.TimeoutError:
-            await sess.emit(type="report_error", text="외부 검색 진행 여부를 10분 동안 선택하지 않아 프로세스를 종료했습니다.")
-            await sess.emit(type="done")
-            return
+        # Humanoid reports should always include current web context. The
+        # domain archive is intentionally broad, but source depth is uneven.
+        if sess.domain_id == "humanoid":
+            use_external = True
+            sess.ext_use_external = True
+            await sess.emit(type="report_log", text="Humanoid 도메인: 외부 검색을 자동으로 포함합니다.")
+        else:
+            # External search decision: terminate on 10-minute inactivity.
+            sess.ext_event.clear()
+            try:
+                await asyncio.wait_for(sess.ext_event.wait(), timeout=USER_ACTION_TIMEOUT_SECONDS)
+            except asyncio.TimeoutError:
+                await sess.emit(type="report_error", text="외부 검색 진행 여부를 10분 동안 선택하지 않아 프로세스를 종료했습니다.")
+                await sess.emit(type="done")
+                return
 
-        use_external = sess.ext_use_external
+            use_external = sess.ext_use_external
 
         if use_external:
             await sess.emit(type="report_log", text="외부 검색 실행 중...")
@@ -1024,6 +1032,8 @@ _HUMANOID_SOURCES = {
     "Humanoids Daily", "RoboticsTomorrow", "IDTechEx", "ABI Research", "Yano Research",
     "Apptronik", "Agility Robotics", "Counterpoint Research", "TrendForce", "IDC",
     "1X Technologies", "IFR", "NVIDIA News", "Unitree",
+    "Goldman Sachs Research", "Morgan Stanley Research", "Barclays Research",
+    "Bank of America Institute",
 }
 
 _AUTOMOTIVE_SOURCES = {
@@ -1197,8 +1207,17 @@ def _parse_report_markdown(md_text: str, process_data: dict | None = None) -> di
     references = list(references_by_key.values())
 
     research_background = ""
+    quick_brief: dict = {}
+    korea_impact: dict = {}
     if process_data:
-        research_background = (process_data.get("meta") or {}).get("research_background", "")
+        meta = process_data.get("meta") or {}
+        research_background = meta.get("research_background", "")
+        qb = meta.get("quick_brief") or {}
+        if isinstance(qb, dict):
+            quick_brief = qb
+        ki = meta.get("korea_impact") or {}
+        if isinstance(ki, dict):
+            korea_impact = ki
 
     return {
         "topic": topic,
@@ -1208,6 +1227,8 @@ def _parse_report_markdown(md_text: str, process_data: dict | None = None) -> di
         "sections": sections,
         "insights": insights,
         "references": references,
+        "quick_brief": quick_brief,
+        "korea_impact": korea_impact,
     }
 
 

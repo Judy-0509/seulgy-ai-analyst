@@ -135,7 +135,8 @@ async def stage_a(llm: LLMService, topic: str, progress_cb=None) -> tuple[list[s
     print("[A] 영문 쿼리 생성...")
     t0 = time.time()
     await progress("topic_received", "한국어 분석 주제를 수신했습니다.", topic=topic)
-    prompt = PRE_SEARCH_PROMPT.format(topic=topic, current_year=_year())
+    _analyst_type = os.getenv("GLM_ANALYST_TYPE", "senior smartphone market analyst")
+    prompt = PRE_SEARCH_PROMPT.format(topic=topic, current_year=_year(), analyst_type=_analyst_type)
     _stage_a_model = os.getenv("GLM_ANALYSIS_MODEL", "glm-4.7-flashx")
     await progress("llm_request", "GLM에 영어 검색 쿼리 생성을 요청했습니다.", model=_stage_a_model)
     resp = await llm.complete(ANALYST_SYSTEM_PROMPT, prompt, max_tokens=2000, temperature=0.1,
@@ -279,35 +280,75 @@ async def stage_b(search: SearchService, queries: list[str], eng_kw: str = "") -
 # Stage C — 목차 생성 (LLM)
 # ---------------------------------------------------------------------------
 
+STAGE_C_MIN_SECTIONS = 3            # TOC_PROMPT가 3-section 강제하므로 최소 3개
+STAGE_C_MAX_RETRY = 3               # LLM 응답이 비정상이면 재시도
+
+
 async def stage_c(llm: LLMService, topic: str, archive_results: list) -> list[dict]:
-    """반환: [{"title": str, "queries": [str, str, str], "included_queries": [bool, bool, bool]}, ...]"""
+    """반환: [{"title": str, "queries": [str, ...], "included": [bool, ...]}, ...]
+
+    가드레일: sections >= 3 AND 각 section의 queries non-empty 검증.
+    실패 시 최대 3회 retry. retry 모두 실패면 RuntimeError로 abort
+    (이전엔 smartphone hardcoded 폴백이 있었지만 도메인-agnostic하지 않아 제거).
+    """
     print("[C] 목차 + 검색어 생성...")
     t0 = time.time()
     archive_ctx = _format_archive_context(archive_results)
-    prompt = TOC_PROMPT.format(topic=topic, current_year=_year(), archive_context=archive_ctx)
-    resp = await llm.complete(ANALYST_SYSTEM_PROMPT, prompt, max_tokens=3000, temperature=0.2,
-                              model=os.getenv("GLM_TOC_MODEL", "glm-5.1"))
-    raw = _strip_fence(resp.content.strip())
-    data = _extract_json_block(raw)
-    sections = []
-    if data and "sections" in data:
-        for s in data["sections"][:5]:
-            queries = (s.get("queries") or [])[:5]
-            sections.append({
-                "title": s.get("title", ""),
-                "causal_role": s.get("causal_role", "analysis"),
-                "angle": s.get("angle", ""),
-                "queries": queries,
-                "included": [True] * len(queries),
-            })
-    if not sections:
-        # 폴백: 2개 기본 목차
-        sections = [
-            {"title": f"{topic} 현황 및 정책", "queries": [f"{topic} 2026 latest", f"{topic} policy regulation 2026", f"{topic} market impact 2026"], "included": [True, True, True]},
-            {"title": f"OEM 대응 전략", "queries": [f"{topic} Samsung Apple response 2026", f"{topic} smartphone OEM strategy 2026", f"{topic} market share impact 2026"], "included": [True, True, True]},
-        ]
-    print(f"   → 목차 {len(sections)}개 ({round(time.time()-t0,1)}s)")
-    return sections
+    analyst_type = os.getenv("GLM_ANALYST_TYPE", "senior smartphone market analyst")
+    prompt = TOC_PROMPT.format(
+        topic=topic, current_year=_year(), archive_context=archive_ctx, analyst_type=analyst_type,
+    )
+
+    sections: list[dict] = []
+    last_diagnostic = ""
+    for attempt in range(1, STAGE_C_MAX_RETRY + 1):
+        try:
+            resp = await llm.complete(
+                ANALYST_SYSTEM_PROMPT, prompt,
+                max_tokens=3000,
+                temperature=0.2 + (attempt - 1) * 0.1,  # 재시도마다 약간씩 다양성 ↑
+                model=os.getenv("GLM_TOC_MODEL", "glm-5.1"),
+            )
+        except Exception as e:
+            last_diagnostic = f"LLM 오류: {e}"
+            print(f"   ⚠ Stage C attempt {attempt}/{STAGE_C_MAX_RETRY} — {last_diagnostic}")
+            continue
+
+        raw = _strip_fence(resp.content.strip())
+        data = _extract_json_block(raw)
+        sections = []
+        if data and isinstance(data.get("sections"), list):
+            for s in data["sections"][:5]:
+                queries = [q for q in (s.get("queries") or []) if q and not _KOREAN_RE.search(q)][:5]
+                if not queries:
+                    continue
+                sections.append({
+                    "title": (s.get("title") or "")[:60],
+                    "causal_role": s.get("causal_role", "analysis"),
+                    "angle": s.get("angle", ""),
+                    "queries": queries,
+                    "included": [True] * len(queries),
+                })
+
+        # 가드레일 — 3개 미만 또는 빈 queries 섹션 있으면 retry
+        if len(sections) >= STAGE_C_MIN_SECTIONS and all(s.get("queries") for s in sections):
+            print(f"   → 목차 {len(sections)}개 ({round(time.time()-t0,1)}s, attempt {attempt})")
+            return sections
+
+        last_diagnostic = (
+            f"sections={len(sections)} (요구: >={STAGE_C_MIN_SECTIONS}), "
+            f"empty_queries={sum(1 for s in sections if not s.get('queries'))}"
+        )
+        print(f"   ⚠ Stage C attempt {attempt}/{STAGE_C_MAX_RETRY} — {last_diagnostic}, retry...")
+
+    # 모든 retry 실패 → abort
+    raise RuntimeError(
+        f"[Stage C 가드레일] {STAGE_C_MAX_RETRY}회 재시도 후에도 유효한 {STAGE_C_MIN_SECTIONS}+ 목차 생성 실패. "
+        f"마지막 진단: {last_diagnostic}. "
+        f"원인 가능성: (1) 토픽이 너무 narrow하여 3-section 분기가 불가능, "
+        f"(2) archive 결과가 한 출처에 몰려 다양성 부족, "
+        f"(3) LLM 응답 품질 문제. 토픽을 더 구체화 또는 archive 보강 필요."
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -404,10 +445,24 @@ async def user_gate_1(sections: list[dict], auto: bool = False, gate_cb=None) ->
 # Stage D — 검색 실행
 # ---------------------------------------------------------------------------
 
+STAGE_D_FALLBACK_THRESHOLD = 5  # 섹션당 archive 결과가 이보다 적으면 외부 검색 자동 보강
+
+
 async def stage_d(search: SearchService, sections: list[dict], use_external: bool, progress=None) -> list[dict]:
-    """각 섹션별 검색 실행. sections에 'results' 키 추가."""
-    print(f"\n[D] 검색 실행 (archive{'+ 외부' if use_external else ''})...")
+    """각 섹션별 검색 실행. sections에 'results' 키 추가.
+
+    use_external=True → 처음부터 archive + 외부(RSS/DDG) 통합 검색.
+    use_external=False → archive only로 검색 후, 섹션 결과가 STAGE_D_FALLBACK_THRESHOLD 미만인
+    섹션만 자동으로 외부 검색을 추가 호출 (안전망). 휴머노이드처럼 archive depth가 토픽별 편차가
+    큰 도메인에서 quality 보장.
+    """
+    if use_external:
+        mode_label = "archive + 외부"
+    else:
+        mode_label = f"archive only (희소 시 자동 fallback @ <{STAGE_D_FALLBACK_THRESHOLD}건)"
+    print(f"\n[D] 검색 실행 ({mode_label})...")
     t0 = time.time()
+    fallback_count = 0
 
     for i, sec in enumerate(sections):
         if progress:
@@ -425,10 +480,25 @@ async def stage_d(search: SearchService, sections: list[dict], use_external: boo
                 if r.source_url not in seen:
                     seen.add(r.source_url)
                     sec_results.append(r)
+
+        # 자동 fallback — archive only 모드에서 섹션 결과 희소 시 외부 검색 보강
+        if not use_external and len(sec_results) < STAGE_D_FALLBACK_THRESHOLD:
+            print(f"   ⚠ 섹션 {i+1} archive {len(sec_results)}건 — 외부 fallback 실행")
+            for q, inc in zip(sec["queries"], sec["included"]):
+                if not inc:
+                    continue
+                sr = await search.search(q, q.split())
+                for r in sr.results:
+                    if r.source_url not in seen:
+                        seen.add(r.source_url)
+                        sec_results.append(r)
+            fallback_count += 1
+
         sec["results"] = sec_results[:20]
 
     total = sum(len(s.get("results", [])) for s in sections)
-    print(f"   → 전체 {total}건 ({round(time.time()-t0,1)}s)")
+    fb_msg = f", auto-fallback {fallback_count}회" if fallback_count else ""
+    print(f"   → 전체 {total}건 ({round(time.time()-t0,1)}s){fb_msg}")
     return sections
 
 
@@ -524,6 +594,7 @@ async def stage_ef(llm: LLMService, topic: str, sections: list[dict], progress_c
 
     all_titles = [s["title"] for s in sections]
     cited_bullets: list[str] = []  # 이전 섹션에서 인용된 bullet 누적
+    analyst_type = os.getenv("GLM_ANALYST_TYPE", "senior smartphone market analyst")
 
     for si, sec in enumerate(sections, 1):
         print(f"   [{si}/{len(sections)}] {sec['title']}...")
@@ -542,6 +613,7 @@ async def stage_ef(llm: LLMService, topic: str, sections: list[dict], progress_c
             other_sections=other_sections,
             already_cited=already_cited,
             evidence_block=evidence,
+            analyst_type=analyst_type,
         )
         resp = await llm.complete(
             ANALYST_SYSTEM_PROMPT, prompt,
@@ -551,6 +623,15 @@ async def stage_ef(llm: LLMService, topic: str, sections: list[dict], progress_c
         )
         raw = _strip_fence(resp.content.strip())
         data = _extract_json_block(raw)
+
+        # 가드레일 #3 — SECTION_REPORT_PROMPT의 insufficient_evidence fail-safe 처리.
+        # LLM이 evidence 부족을 인식하고 자기 차단 응답을 보낸 경우, 그 섹션을 omit하고 다음 섹션으로.
+        # fabricate된 출처(예: 가짜 Reuters 인용) 차단의 마지막 안전망.
+        if data and data.get("insufficient_evidence"):
+            reason = (data.get("reason") or "")[:200]
+            print(f"      ⚠ 섹션 omit (insufficient_evidence): {reason}")
+            sec["report"] = {"insufficient_evidence": True, "reason": reason}
+            continue
 
         # 폴백: 최소 구조
         if not data:
@@ -577,6 +658,20 @@ async def stage_ef(llm: LLMService, topic: str, sections: list[dict], progress_c
 
         sec["report"] = data
         print(f"      → 완료 ({round(time.time()-t0,1)}s)")
+
+    # 가드레일 — valid 섹션 비율 체크 (insufficient_evidence omit이 너무 많으면 abort)
+    valid_sections = [s for s in sections if s.get("report") and not (s["report"] or {}).get("insufficient_evidence")]
+    omitted_sections = [s for s in sections if (s.get("report") or {}).get("insufficient_evidence")]
+    min_valid = max(2, (len(sections) + 1) // 2)  # 최소 2개 또는 절반 이상
+    if len(valid_sections) < min_valid:
+        omit_reasons = "; ".join((s["report"].get("reason") or "")[:80] for s in omitted_sections)
+        raise RuntimeError(
+            f"[Stage E/F 가드레일] {len(omitted_sections)}/{len(sections)} 섹션이 evidence 부족으로 omit됨. "
+            f"valid {len(valid_sections)}/{len(sections)}, 최소 {min_valid} 필요. "
+            f"omit 이유: {omit_reasons}. 보고서 생성 중단."
+        )
+    if omitted_sections:
+        print(f"\n  [!] {len(omitted_sections)}/{len(sections)} 섹션 omit (insufficient_evidence) — 나머지로 보고서 생성")
 
     return sections
 
@@ -606,14 +701,20 @@ async def stage_g(llm: LLMService, topic: str, sections: list[dict]) -> dict:
     A/B 테스트 결과: Investor Takeaway 라벨링·구체적 회사명·actionable 권고 우위.
     추가 비용: 보고서당 +¥0.04~0.08 (~₩10).
     """
-    print("\n[G] Executive Summary + 시사점 생성 (GLM-5.1)...")
+    print("\n[G] Executive Summary + 시사점 + 한국 시장 영향 생성 (GLM-5.1)...")
     t0 = time.time()
     summary = _format_report_summary(sections)
-    prompt = INSIGHTS_PROMPT.format(topic=topic, report_summary=summary, current_date=date.today().isoformat())
+    analyst_type = os.getenv("GLM_ANALYST_TYPE", "senior smartphone market analyst")
+    prompt = INSIGHTS_PROMPT.format(
+        topic=topic,
+        report_summary=summary,
+        current_date=date.today().isoformat(),
+        analyst_type=analyst_type,
+    )
     resp = await llm.complete(
         ANALYST_SYSTEM_PROMPT, prompt,
         model=os.getenv("GLM_FINAL_MODEL", "glm-5.1"),
-        max_tokens=5000, temperature=0.3,
+        max_tokens=6000, temperature=0.3,
         response_format={"type": "json_object"},
         thinking="disabled",
     )
@@ -622,11 +723,19 @@ async def stage_g(llm: LLMService, topic: str, sections: list[dict]) -> dict:
     insights = data.get("insights", [])
     exec_summary = data.get("executive_summary", "")
     research_background = data.get("research_background", "")
-    print(f"   → 시사점 {len(insights)}개 ({round(time.time()-t0,1)}s)")
+    quick_brief = data.get("quick_brief") or {}
+    if not isinstance(quick_brief, dict):
+        quick_brief = {}
+    korea_impact = data.get("korea_impact") or {}
+    if not isinstance(korea_impact, dict):
+        korea_impact = {}
+    print(f"   → 시사점 {len(insights)}개, quick_brief {'✓' if quick_brief.get('headline') else '×'}, korea_impact {'✓' if korea_impact.get('body') else '×'} ({round(time.time()-t0,1)}s)")
     return {
         "research_background": research_background,
         "executive_summary": exec_summary,
         "insights": insights,
+        "quick_brief": quick_brief,
+        "korea_impact": korea_impact,
     }
 
 
@@ -635,6 +744,7 @@ async def stage_g(llm: LLMService, topic: str, sections: list[dict]) -> dict:
 # ---------------------------------------------------------------------------
 
 def _build_markdown(topic: str, sections: list[dict], run_ts: str, meta: dict | None = None) -> str:
+    meta = meta or {}
     lines = [
         f"# {topic}",
         f"",
@@ -642,8 +752,26 @@ def _build_markdown(topic: str, sections: list[dict], run_ts: str, meta: dict | 
         f"",
     ]
 
+    # Quick Brief — 5분 요약 (보고서 최상단)
+    quick_brief = meta.get("quick_brief") or {}
+    qb_headline = (quick_brief.get("headline") or "").strip()
+    qb_bullets = quick_brief.get("bullets") or []
+    if qb_headline or qb_bullets:
+        lines.append("## ⚡ 5분 요약")
+        lines.append("")
+        if qb_headline:
+            lines.append(f"**{qb_headline}**")
+            lines.append("")
+        for b in qb_bullets:
+            b = str(b).strip()
+            if b:
+                lines.append(b if b.startswith(("-", "•", "*")) else f"- {b}")
+        lines.append("")
+        lines.append("---")
+        lines.append("")
+
     # Executive Summary
-    exec_summary = (meta or {}).get("executive_summary", "")
+    exec_summary = meta.get("executive_summary", "")
     if exec_summary:
         lines.append("## Executive Summary")
         lines.append(f"")
@@ -652,7 +780,9 @@ def _build_markdown(topic: str, sections: list[dict], run_ts: str, meta: dict | 
         lines.append("---")
         lines.append(f"")
 
-    for si, sec in enumerate(sections, 1):
+    # 가드레일 #3로 omit된 섹션은 markdown에서 제외
+    valid_sections = [s for s in sections if not (s.get("report") or {}).get("insufficient_evidence")]
+    for si, sec in enumerate(valid_sections, 1):
         rep = sec.get("report", {})
         headline = rep.get("headline", sec["title"])
         narrative = rep.get("narrative", "")
@@ -695,7 +825,7 @@ def _build_markdown(topic: str, sections: list[dict], run_ts: str, meta: dict | 
         lines.append(f"")
 
     # Insights
-    insights = (meta or {}).get("insights", [])
+    insights = meta.get("insights", [])
     if insights:
         lines.append("---")
         lines.append(f"")
@@ -706,6 +836,21 @@ def _build_markdown(topic: str, sections: list[dict], run_ts: str, meta: dict | 
             lines.append(f"")
             lines.append(ins.get("body", ""))
             lines.append(f"")
+
+    # Korea Market Impact — 한국 시장 영향 (보고서 끝)
+    korea_impact = meta.get("korea_impact") or {}
+    ki_title = (korea_impact.get("title") or "한국 시장 영향").strip()
+    ki_body = (korea_impact.get("body") or "").strip()
+    if ki_body:
+        lines.append("---")
+        lines.append(f"")
+        lines.append(f"## 🇰🇷 {ki_title}")
+        lines.append(f"")
+        for para in ki_body.split("\n\n"):
+            para = para.strip()
+            if para:
+                lines.append(para)
+                lines.append(f"")
 
     return "\n".join(lines)
 
@@ -943,14 +1088,23 @@ async def main(topic: str, auto: bool = False, gate1_cb=None, gate2_cb=None):
     archive_results = await stage_b(search, pre_queries, eng_kw=eng_topic)
 
     # B 결과 부족 시 외부 검색 제안
-    use_external = False
+    # 환경변수 STAGE_D_EXTERNAL_DEFAULT=true 면 default ON (휴머노이드처럼 archive depth 얕은 도메인용)
+    external_default = os.getenv("STAGE_D_EXTERNAL_DEFAULT", "").strip().lower() in {"1", "true", "yes", "on"}
+    use_external = external_default
     if len(archive_results) < 3:
         print(f"\n  [!] Archive 결과 {len(archive_results)}건 — 외부 검색(RSS/DDG)으로 보완할까요?")
         if auto:
-            print("  [AUTO] 외부 검색 건너뜀")
-            ans = "n"
+            if external_default:
+                print("  [AUTO] STAGE_D_EXTERNAL_DEFAULT=true → 외부 검색 활성화")
+                ans = "y"
+            else:
+                print("  [AUTO] 외부 검색 건너뜀")
+                ans = "n"
         else:
-            ans = (await _ainput("  외부 검색 허용? [y/N] > ")).strip().lower()
+            default_label = "Y/n" if external_default else "y/N"
+            ans = (await _ainput(f"  외부 검색 허용? [{default_label}] > ")).strip().lower()
+            if not ans:
+                ans = "y" if external_default else "n"
         use_external = ans == "y"
         if use_external:
             seen = {r.source_url for r in archive_results}
@@ -990,6 +1144,31 @@ async def main(topic: str, auto: bool = False, gate1_cb=None, gate2_cb=None):
         if proceed:
             break
         refine_round += 1
+
+    # 가드레일 — Stage D evidence threshold
+    # 전체 결과 너무 적거나 섹션당 평균 너무 낮으면 보고서 생성 abort.
+    # evidence 0건/극히 부족 상태에서 Stage E/F가 LLM 자체 지식으로 fabricate하는 path 차단.
+    STAGE_D_MIN_TOTAL = 10
+    STAGE_D_MIN_AVG_PER_SECTION = 3
+    total_evidence = sum(len(s.get("results", [])) for s in sections)
+    avg_per_section = total_evidence / len(sections) if sections else 0
+    if total_evidence < STAGE_D_MIN_TOTAL or avg_per_section < STAGE_D_MIN_AVG_PER_SECTION:
+        msg = (
+            f"\n  [⚠ Stage D 가드레일] Evidence 부족 — 전체 {total_evidence}건 (요구 ≥{STAGE_D_MIN_TOTAL}), "
+            f"섹션당 평균 {avg_per_section:.1f}건 (요구 ≥{STAGE_D_MIN_AVG_PER_SECTION})."
+        )
+        print(msg)
+        print(f"  evidence 부족 시 LLM이 자체 지식으로 fabricate하는 위험 → 보고서 생성 중단 권장.")
+        print(f"  대응: archive 보강 / STAGE_D_EXTERNAL_DEFAULT=true / 토픽 재정의.")
+        if auto:
+            raise RuntimeError(
+                f"[Stage D 가드레일] Evidence {total_evidence}건 — auto 모드에서 abort. "
+                f"보고서 신뢰도 보호."
+            )
+        else:
+            ans = (await _ainput("  그래도 진행하시겠습니까? [y/N] > ")).strip().lower()
+            if ans != "y":
+                raise RuntimeError("[Stage D 가드레일] 사용자가 evidence 부족으로 보고서 생성 중단을 선택.")
 
     # E+F: 목차별 분석 + 보고서 작성
     sections = await stage_ef(llm, topic, sections)

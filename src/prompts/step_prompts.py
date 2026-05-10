@@ -1,4 +1,4 @@
-﻿PRE_SEARCH_PROMPT = """You are a smartphone market analyst. Convert this topic to 6-8 English search queries that cover FOUR DIFFERENT RESEARCH ANGLES.
+PRE_SEARCH_PROMPT = """You are a {analyst_type}. Convert this topic to 6-8 English search queries that cover FOUR DIFFERENT RESEARCH ANGLES.
 
 CRITICAL: The topic may be written in Korean. You MUST translate it into English and generate ALL queries in English only. Zero Korean characters allowed in any query.
 
@@ -196,7 +196,7 @@ Query lens definitions (English queries only, include year {current_year}):
 """
 
 
-TOC_PROMPT = """You are a smartphone market analyst. Create a 3-section report outline for the topic below.
+TOC_PROMPT = """You are a {analyst_type}. Create a 3-section report outline for the topic below.
 
 Topic: "{topic}"
 Current year: {current_year}
@@ -273,7 +273,7 @@ Query rules:
 """
 
 
-SECTION_REPORT_PROMPT = """You are a smartphone market analyst. Write one report section based ONLY on the evidence below.
+SECTION_REPORT_PROMPT = """You are a {analyst_type}. Write one report section based ONLY on the evidence below.
 
 Topic: "{topic}"
 Section title: "{section_title}"
@@ -330,14 +330,22 @@ Component rules:
 - footnotes: every cited URL; numbered sequentially; full https:// URLs only; include article title in "title" field and publication date in "date" field (YYYY-MM-DD format)
 - Base ALL claims strictly on the evidence — do NOT invent quotes
 - Omit a bullet rather than fabricate a quote
+
+CRITICAL FAIL-SAFE — evidence emptiness check (MUST follow before producing section JSON):
+- Count distinct article citations (each with a verifiable URL/source/date) in the `evidence_block` above.
+- If evidence_block is empty, missing, or contains < 3 distinct articles with concrete facts (numbers, dates, named entities), respond with this JSON instead of the section body:
+  {{"insufficient_evidence": true, "reason": "<one Korean sentence — exactly what is missing>"}}
+- Do NOT synthesize from prior knowledge. Do NOT invent article titles, URLs, dates, quotes, or sources (e.g. fabricating a Reuters article that is not in evidence is forbidden).
+- Only produce the full headline/narrative/bullets/footnotes JSON when evidence_block has ≥ 3 distinct citable articles with concrete data.
+- This rule is CRITICAL — fabrication of sources is treated as a hard failure of the report.
 """
 
 
-INSIGHTS_PROMPT = """You are a smartphone market analyst. Based on the three-section causal chain report below, generate research background, market insights (시사점), and an executive summary.
+INSIGHTS_PROMPT = """You are a {analyst_type}. Based on the three-section causal chain report below, generate a quick brief, research background, executive summary, market insights (시사점), and a Korea market impact section.
 
 Topic: "{topic}"
 Current date: {current_date}
-Temporal accuracy rules — apply to EVERY sentence in executive_summary and all insight body fields:
+Temporal accuracy rules — apply to EVERY sentence in executive_summary, all insight body fields, and korea_impact body:
 - Events that occurred BEFORE {current_date}: past tense — ~했습니다, ~됐습니다, ~나타났습니다
 - Events confirmed/announced but NOT yet occurred (after {current_date}): future/expectation — ~예정입니다, ~전망됩니다, ~출시될 것으로 예상됩니다
 - Rumored or speculative events (source says "reportedly", "plans to", "expected to"): ~알려져 있습니다, ~보도됩니다, ~것으로 전해집니다
@@ -346,38 +354,69 @@ Report (3 sections — structural backdrop → derived analysis 1 → derived an
 {report_summary}
 ---
 
-Generate EXACTLY 3 insights. Each insight must answer: "이 이슈가 스마트폰 시장에 어떤 영향을 주는가?" Focus on market dynamics, competitive behavior, and consumer-facing outcomes — NOT supply chain internals.
+Generate FIVE OUTPUTS:
+1. quick_brief — 임원이 5초 안에 핵심을 잡도록 headline + 3 bullets
+2. research_background — 2-4 sentences explaining the concrete market change
+3. executive_summary — 600+ Korean characters, 6-8 sentences as ONE flowing paragraph
+4. insights — EXACTLY 3 insights (each 500+ Korean characters)
+5. korea_impact — 한국 시장 영향 분석 (500+ Korean characters, 3 perspectives integrated)
+
+Each insight must answer: "이 이슈가 시장에 어떤 영향을 주는가?" Focus on market dynamics, competitive behavior, and consumer-facing outcomes — NOT supply chain internals.
 
 Read the 3 report sections carefully. Section 1 establishes the structural backdrop; Sections 2 and 3 are derived analyses. Choose 3 insight angles that are the most important market-impact implications of THIS specific topic — derived from what the sections actually cover. The 3 angles must be:
 - Different from each other (no overlap)
 - Directly traceable to named companies and statistics in the report
-- Answering "so what does this mean for the smartphone market?" not "what happened?"
+- Answering "so what does this mean for the market?" not "what happened?"
 - NOT supply chain or manufacturing cost angles — focus on competitive dynamics, market structure, OEM strategy, consumer demand, or regional shifts
 
 Respond ONLY with a valid JSON object (no markdown, no code blocks):
 
 {{
+  "quick_brief": {{
+    "headline": "<one Korean sentence ≤80 chars — the report's single most important conclusion>",
+    "bullets": [
+      "<≤50 Korean chars — concrete fact #1 with a specific number, company, date, or product name from the report>",
+      "<≤50 Korean chars — fact #2 (different angle from #1)>",
+      "<≤50 Korean chars — fact #3 (different angle from #1 and #2)>"
+    ]
+  }},
   "research_background": "<Korean prose of 2-4 sentences. Explain the concrete market or industry change that made this topic important. Start directly with the market change, NOT with the act of researching. Do NOT use generic phrases like '이 주제를 조사했습니다', '확인할 필요가 있습니다', '최근 시장 변화와 기업 전략의 연결 관계'. Describe the concrete structural change, competitive shift, technology shift, demand shift, regulation shift, supply chain shift, or business model shift reflected in the report. Include the most important available numbers, dates, companies, or events only when supported by the report. No bullets, no markdown, no citations, no URLs.>",
-  "executive_summary": "<Korean prose of MINIMUM 600 Korean characters covering ONLY the 3-section causal chain: 구조적 원인 → 직접 영향 → 시장 결과. Write 6-8 sentences as ONE flowing paragraph — NOT a list of disconnected facts. Connect sentences naturally using transitional phrases such as 이로 인해, 이러한 흐름 속에서, 그 결과, 나아가, 한편 등. DO NOT use English terms or abbreviations — Korean only. Structure: [원인 파트] 첫 문장부터 '구조적 변화', '시장 확장' 같은 추상 표현 금지 — 반드시 구체적 수치와 현상을 직접 서술할 것 (예: '애플의 폴더블 출시 예정으로 2026년 시장이 20% 성장할 것으로 전망됩니다'). [메커니즘 파트] 그 원인이 어떤 경로로 시장에 전달됐는가 — 이전 문장과 이로 인해/이에 따라 등으로 자연스럽게 이어질 것. [결과 파트] 구체적 기업명과 수치로 승자·패자 서술 — 앞 흐름의 귀결로 연결할 것. 원인 재도입 금지 — 원인은 한 번만 언급하고 이후 문장은 그 흐름의 연속으로만 전개할 것. 인사이트·미래 전망 문장은 포함하지 말 것. TENSE: 애플 폴더블의 출시 자체와 그 시장 영향(점유율 확보, 판매량 잠식 등)은 {current_date} 기준 아직 발생하지 않은 미래 사건 — 반드시 ~전망됩니다/예상됩니다/예정입니다 사용. 출시 발표·부품 발주 증대처럼 이미 보도된 사실은 ~했습니다 가능. 합쇼체만: 했습니다/합니다/입니다/됩니다/있습니다. ~다 절대 금지.>",
+  "executive_summary": "<Korean prose of MINIMUM 600 Korean characters covering ONLY the 3-section causal chain: 구조적 원인 → 직접 영향 → 시장 결과. Write 6-8 sentences as ONE flowing paragraph — NOT a list of disconnected facts. Connect sentences naturally using transitional phrases such as 이로 인해, 이러한 흐름 속에서, 그 결과, 나아가, 한편 등. DO NOT use English terms or abbreviations — Korean only. Structure: [원인 파트] 첫 문장부터 '구조적 변화', '시장 확장' 같은 추상 표현 금지 — 반드시 구체적 수치와 현상을 직접 서술할 것. [메커니즘 파트] 그 원인이 어떤 경로로 시장에 전달됐는가 — 이전 문장과 이로 인해/이에 따라 등으로 자연스럽게 이어질 것. [결과 파트] 구체적 기업명과 수치로 승자·패자 서술 — 앞 흐름의 귀결로 연결할 것. 원인 재도입 금지. 인사이트·미래 전망 문장은 포함하지 말 것. TENSE: 미래 사건/전망치는 반드시 ~전망됩니다/예상됩니다/예정입니다. 이미 보도된 사실은 ~했습니다 가능. 합쇼체만: 했습니다/합니다/입니다/됩니다/있습니다. ~다 절대 금지.>",
   "insights": [
     {{
       "title": "<Korean noun phrase ≤20 chars>",
-      "body": "<Korean prose of MINIMUM 500 Korean characters — this is NOT 2-3 short sentences. Write a substantial multi-sentence paragraph using this exact structure: [문장1] 핵심 시사점을 인과 관계로 한 문장으로 제시. [문장2-4] 보고서의 구체적 수치·기업명을 자연스럽게 녹여 메커니즘 설명. [문장5-6] 영향 받는 OEM·시장 세그먼트·지역을 구체적으로 지목하고 왜 그러한지 설명. [문장7-8] 향후 6~18개월 전망 — 시장 재편, 경쟁 구도 변화, OEM 전략 수정 등 구체적 함의. 합쇼체만 사용: 했습니다/합니다/입니다/됩니다/있습니다. ~다 절대 금지. 인용 괄호 [출처] 금지.>"
+      "body": "<Korean prose of MINIMUM 500 Korean characters — substantial multi-sentence paragraph: [문장1] 핵심 시사점을 인과 관계로 한 문장으로 제시. [문장2-4] 보고서의 구체적 수치·기업명을 자연스럽게 녹여 메커니즘 설명. [문장5-6] 영향 받는 OEM·시장 세그먼트·지역을 구체적으로 지목하고 왜 그러한지 설명. [문장7-8] 향후 6~18개월 전망 — 시장 재편, 경쟁 구도 변화, OEM 전략 수정 등 구체적 함의. 합쇼체만 사용: 했습니다/합니다/입니다/됩니다/있습니다. ~다 절대 금지. 인용 괄호 [출처] 금지.>"
     }}
-  ]
+  ],
+  "korea_impact": {{
+    "title": "한국 시장 영향",
+    "body": "<Korean prose of MINIMUM 500 Korean characters covering THREE perspectives integrated into ONE flowing paragraph (구분 헤더 없이): (1) 한국 OEM·완제품 기업 영향 — 도메인에 적합한 한국 주요 기업이 어떤 영향을 받을지 구체적 회사명과 가능한 한 수치 포함. (2) 한국 부품·소재·공급망 — 한국 부품·소재 회사가 수혜 또는 피해를 입는 구체적 메커니즘. (3) 한국 산업 생태계 구조 변화 — 한국 산업 전체 차원의 구조적 변화·정책 시사·연구개발 방향 함의. Connect three perspectives naturally with 한편/나아가/이러한 흐름 속에서 등 transitional phrases. 보고서에 한국 관련 직접 근거가 부족한 경우, 글로벌 트렌드가 한국 산업에 미치는 함의를 inference 형태로 서술 (단 보고서의 사실 근거에 traceable해야 함). 합쇼체만: 했습니다/합니다/입니다/됩니다/있습니다. ~다 절대 금지. NO investment angle (주가/매수/매도/수익률/밸류에이션 추정 절대 금지). 정보형 + 시사점 톤만 허용. [Source, date] 브라켓 금지.>"
+  }}
 }}
+
+Quick brief rules:
+- headline: ≤80 Korean chars, single most important conclusion
+- bullets: EXACTLY 3 items, each ≤50 Korean chars, each MUST include at least one concrete number, company name, date, or product name from the report
+- bullets must capture the THREE most decision-relevant facts — specific data points, NOT high-level summary
+
+Korea impact rules:
+- 합쇼체 throughout
+- 3 perspectives 통합된 자연스러운 paragraph (분리 헤더·번호 매기기 금지)
+- 한국 회사명·수치 가능한 한 구체적
+- NO investment angle (주가/매수/매도/수익률/밸류에이션 절대 금지)
+- 정보형 + 시사점 톤만 — 어느 영역에 영향이 있는지까지만, 투자 추천 금지
 
 Rules:
 - EXACTLY 3 insights in the order specified above — do not reorder or replace
-- Each body MUST be approximately 500 Korean characters — substantially longer than 2-3 sentences
+- Each insight body MUST be approximately 500 Korean characters
+- korea_impact body MUST be approximately 500 Korean characters
 - 합쇼체 throughout — 했습니다, 합니다, 입니다, 됩니다, 있습니다. NEVER ~다 plain endings
-- TEMPORAL RULES (apply to every sentence in executive_summary AND all insight bodies):
-  * 2026 full-year market figures (성장률, 점유율 전망치 등) are forecasts not yet confirmed — MUST use ~전망됩니다/예상됩니다, NEVER ~했습니다/됐습니다
-  * Events confirmed as having occurred before {current_date} (announcements, shipment data, product launches already reported) MAY use past tense ~했습니다
-  * Market impact figures that are projections/forecasts (share gains, shipment forecasts, growth rates for the full year) have NOT been confirmed yet — always use ~전망됩니다/예상됩니다
+- TEMPORAL RULES (apply to every sentence in executive_summary, all insight bodies, AND korea_impact):
+  * Forecasts/projections — MUST use ~전망됩니다/예상됩니다, NEVER ~했습니다
+  * Confirmed past events — MAY use past tense ~했습니다
 - No [Source, date] brackets anywhere in the output
 - Every claim must be traceable to the report's specific numbers or named companies
-- No investment angle whatsoever — do NOT write "Investor Takeaway", 투자자 관점, 선제적 투자 필수, 매수/매도/보유 권고, or any language framing conclusions as advice to investors. Focus ONLY on market structure, competitive dynamics, OEM strategy, and consumer outcomes.
+- No investment angle whatsoever anywhere — do NOT write "Investor Takeaway", 투자자 관점, 선제적 투자 필수, 매수/매도/보유 권고, 수익률 전망. Focus ONLY on market structure, competitive dynamics, OEM strategy, and consumer outcomes.
 - All text in Korean
 - research_background must be specific to this report and must not contain boilerplate research-purpose wording
 """

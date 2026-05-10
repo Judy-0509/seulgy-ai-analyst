@@ -35,18 +35,38 @@ DEFAULT_MONTHS = 6
 BATCH_SIZE     = 200   # arXiv API 최대 권장
 CRAWL_DELAY    = 3.0   # arXiv robots.txt: 15s 권장, 3s는 배치 간 간격
 
-# 수집할 쿼리 목록 (각각 독립 수집 후 merge)
+# 수집할 쿼리 목록 (각각 독립 수집 후 merge).
+# Do not ingest all cat:cs.RO. The humanoid pipeline needs academic papers only
+# when they have a clear humanoid / embodied robot commercialization relevance.
 QUERIES = [
-    # cs.RO 전체 (로봇공학)
-    "cat:cs.RO",
-    # humanoid/embodied AI 관련 cs.AI/cs.LG 논문
     (
-        "cat:cs.AI AND ("
-        "ti:humanoid OR ti:bipedal OR ti:locomotion OR ti:legged "
-        "OR ti:manipulation OR ti:dexterous OR ti:embodied"
+        "(cat:cs.RO OR cat:cs.AI OR cat:cs.LG) AND ("
+        "ti:humanoid OR abs:humanoid OR "
+        "ti:bipedal OR abs:bipedal OR "
+        "ti:legged OR abs:\"legged robot\" OR "
+        "ti:\"whole-body\" OR abs:\"whole-body\" OR "
+        "ti:dexterous OR abs:\"dexterous hand\" OR "
+        "ti:\"vision-language-action\" OR abs:\"vision-language-action\" OR "
+        "ti:\"VLA\" OR abs:\"VLA\" OR "
+        "ti:\"embodied AI\" OR abs:\"embodied AI\" OR "
+        "ti:\"robot foundation model\" OR abs:\"robot foundation model\""
         ")"
     ),
 ]
+
+ARXIV_INCLUDE_TERMS = (
+    "humanoid", "bipedal", "legged robot", "legged locomotion", "whole-body",
+    "whole body", "dexterous hand", "dexterous manipulation", "robot hand",
+    "humanoid manipulation", "vision-language-action", "vla", "embodied ai",
+    "physical ai", "robot foundation model", "generalist robot", "sim-to-real",
+    "teleoperation", "imitation learning", "robot manipulation",
+)
+
+ARXIV_EXCLUDE_TERMS = (
+    "traffic", "autonomous driving", "driver-centric", "in-cabin", "drone",
+    "uav", "swarm", "marine", "underwater", "calibration", "ax=yb",
+    "reservoir lifting", "koopman", "occupancy grid", "bicycle robot",
+)
 
 
 def cutoff_date(months: int) -> str:
@@ -80,6 +100,16 @@ def parse_arxiv_date(entry) -> str:
 def strip_html(text: str) -> str:
     text = re.sub(r"<[^>]+>", " ", text)
     return re.sub(r"\s+", " ", text).strip()
+
+
+def is_humanoid_relevant(title: str, desc: str) -> bool:
+    text = f"{title} {desc}".lower()
+    if not any(term in text for term in ARXIV_INCLUDE_TERMS):
+        return False
+    if any(term in text for term in ARXIV_EXCLUDE_TERMS):
+        # Let explicit humanoid papers survive broad robotics exclusions.
+        return "humanoid" in text
+    return True
 
 
 def collect_query(query: str, cutoff: str, known_urls: set[str]) -> list[dict] | None:
@@ -124,6 +154,8 @@ def collect_query(query: str, cutoff: str, known_urls: set[str]) -> list[dict] |
             title = strip_html(entry.get("title", ""))
             # arXiv summary = abstract
             desc = strip_html(entry.get("summary", ""))[:800]
+            if not is_humanoid_relevant(title, desc):
+                continue
             known_urls.add(link)
             entries.append({
                 "url":         link,
@@ -169,16 +201,18 @@ def build(months: int) -> dict:
             time.sleep(CRAWL_DELAY)
 
     if rate_limited and not new_entries:
-        print("\n  ⚠ arXiv API rate limit으로 수집 중단. 기존 archive 유지.")
-        return {}
+        print("\n  ⚠ arXiv API rate limit으로 신규 수집은 중단. 기존 archive 필터 정리는 계속 진행.")
 
-    # Merge + dedup + 정렬
+    # Merge + dedup + 정렬. Existing broad cs.RO rows are filtered out here so
+    # one rebuild cleans the archive instead of only filtering future additions.
     all_entries = existing_entries + new_entries
     seen: set[str] = set()
     merged: list[dict] = []
     for e in all_entries:
         u = e.get("url")
         if not u or u in seen:
+            continue
+        if not is_humanoid_relevant(e.get("title", ""), e.get("description", "")):
             continue
         seen.add(u)
         merged.append(e)

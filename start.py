@@ -120,10 +120,16 @@ def main():
     free_port(8000, "BE")
     free_port(5173, "FE")
 
+    backend_env = os.environ.copy()
+    backend_env.setdefault("WATCHFILES_FORCE_POLLING", "true")
+
     backend = subprocess.Popen(
         [sys.executable, "-m", "uvicorn", "src.server:app",
-         "--host", "127.0.0.1", "--port", "8000", "--reload"],
+         "--host", "127.0.0.1", "--port", "8000",
+         "--reload", "--reload-dir", os.path.join(ROOT, "src"),
+         "--reload-delay", "0.75"],
         cwd=ROOT,
+        env=backend_env,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
     )

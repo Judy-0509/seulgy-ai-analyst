@@ -454,7 +454,7 @@ export default function ReportPage() {
   return (
     <main style={{
       height: "100vh", overflow: "auto", background: R.bg, color: R.t1,
-      fontFamily: '"Apple SD Gothic Neo", -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif',
+      fontFamily: '"Pretendard Variable", Pretendard, Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif',
     }}>
       <div style={{
         position: "sticky", top: 0, zIndex: 5, height: 58, display: "flex",
@@ -501,6 +501,39 @@ export default function ReportPage() {
               {report.run_ts && <p style={{ margin: 0, fontSize: 12, color: R.t4 }}>{report.run_ts}</p>}
             </div>
 
+            {(report.quick_brief?.headline || (report.quick_brief?.bullets || []).length > 0) && (
+              <section style={{
+                padding: "22px 24px", borderRadius: 14, background: R.panelStrong,
+                border: `2px solid ${R.emBr}`, marginBottom: 14,
+                boxShadow: "0 4px 12px rgba(0,0,0,.04)",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                  <span style={{ fontSize: 16 }}>⚡</span>
+                  <h2 style={{ margin: 0, fontSize: 13, fontWeight: 800, color: R.emD, letterSpacing: ".04em", textTransform: "uppercase" }}>
+                    5분 요약
+                  </h2>
+                </div>
+                {report.quick_brief?.headline && (
+                  <p style={{ margin: "0 0 14px", fontSize: 17, fontWeight: 700, color: R.t1, lineHeight: 1.45 }}>
+                    {report.quick_brief.headline}
+                  </p>
+                )}
+                {(report.quick_brief?.bullets || []).length > 0 && (
+                  <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 7 }}>
+                    {report.quick_brief.bullets.map((b, i) => (
+                      <li key={i} style={{
+                        display: "flex", alignItems: "flex-start", gap: 10,
+                        fontSize: 13.5, color: R.t2, lineHeight: 1.65,
+                      }}>
+                        <span style={{ color: R.emD, fontWeight: 800, flexShrink: 0, marginTop: 1 }}>•</span>
+                        <span style={{ minWidth: 0 }}>{String(b).replace(/^[-•*]\s*/, "")}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            )}
+
             {report.executive_summary && (
               <section style={{
                 padding: "20px 22px", borderRadius: 12, background: R.emBg,
@@ -534,6 +567,25 @@ export default function ReportPage() {
                       </p>
                     </div>
                   ))}
+                </div>
+              </section>
+            )}
+
+            {report.korea_impact?.body && (
+              <section style={{ paddingTop: 30, marginTop: 20, borderTop: `1px solid ${R.border}` }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 14 }}>
+                  <span style={{ fontSize: 18 }}>🇰🇷</span>
+                  <h2 style={{ margin: 0, fontSize: 20, color: R.t1 }}>
+                    {report.korea_impact.title || "한국 시장 영향"}
+                  </h2>
+                </div>
+                <div style={{
+                  padding: "18px 20px", borderRadius: 10,
+                  background: R.panelStrong, border: `1px solid ${R.border}`,
+                }}>
+                  <p style={{ margin: 0, fontSize: 13.8, color: R.t2, lineHeight: 1.85, whiteSpace: "pre-wrap" }}>
+                    {report.korea_impact.body}
+                  </p>
                 </div>
               </section>
             )}

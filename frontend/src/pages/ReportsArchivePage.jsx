@@ -194,7 +194,7 @@ export default function ReportsArchivePage() {
   return (
     <main style={{
       height: "100vh", overflow: "auto", background: A.bg, color: A.t1,
-      fontFamily: '"Apple SD Gothic Neo", -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif',
+      fontFamily: '"Pretendard Variable", Pretendard, Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif',
     }}>
       <div style={{
         position: "sticky", top: 0, zIndex: 5, height: 58, display: "flex",

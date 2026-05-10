@@ -1237,7 +1237,7 @@ export default function PipelineScreen({ topic, onBack, topicInfo = null }) {
         const res = await fetch(`${API}/api/report/start`, {
           method: "POST",
           headers: {"Content-Type": "application/json"},
-          body: JSON.stringify({ topic }),
+          body: JSON.stringify({ topic, domain: domain.id }),
         });
         if (!res.ok) throw new Error(`서버 오류 ${res.status}`);
         const { session_id } = await res.json();
@@ -1272,7 +1272,7 @@ export default function PipelineScreen({ topic, onBack, topicInfo = null }) {
         sessionRef.current = null;
       }
     };
-  }, [topic, started]);
+  }, [topic, started, domain.id]);
 
   const handleStartAnalysis = () => {
     setStarted(true);
@@ -1399,7 +1399,7 @@ export default function PipelineScreen({ topic, onBack, topicInfo = null }) {
 
   const detailOpen    = selectedSource !== null || referenceDetail !== null;
   const step2Done     = doneSources.length === srcNames.length && srcNames.length > 0;
-  const showExtToggle = step2Done;
+  const showExtToggle = step2Done && domain.id !== "humanoid";
   const showExtResults = extTotal > 0;
   const showStep2  = visibleSources.length > 0 || ["step_b","step_b_done","step_b_ext","gate1_pending","gate1_confirmed","step_d","gate2_pending","step_ef","step_g","done"].includes(phase);
   const showStep3  = ["step_c","step_d","gate2_pending","step_ef","step_g","done"].includes(phase) || gate1Sections !== null;

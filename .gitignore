@@ -32,6 +32,7 @@ scripts/_*_PREV.json
 scripts/_history/
 reports/_ab_*.json
 reports/_ab_*.html
+scripts/_ab_*.json
 reports/*_claude_analysis.html
 test_image/
 data/mi_news/

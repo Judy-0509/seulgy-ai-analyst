@@ -59,7 +59,7 @@ export default function LoginPage() {
       <div style={{
         height: "100%", display: "flex", alignItems: "center", justifyContent: "center",
         background: C.bg,
-        fontFamily: '"Apple SD Gothic Neo", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif',
+        fontFamily: '"Pretendard Variable", Pretendard, Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif',
       }}>
         <div style={{
           width: "100%", maxWidth: 360,
