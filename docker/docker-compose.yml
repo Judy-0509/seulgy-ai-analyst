@@ -12,6 +12,8 @@ services:
     volumes:
       - ../data:/app/data
       - ../data/mi_news:/app/data/mi_news
+      - ../reports:/app/reports
+      - ../scripts:/app/scripts
     env_file:
       - ../.env
     restart: unless-stopped

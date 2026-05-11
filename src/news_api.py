@@ -194,7 +194,7 @@ def list_news(
         articles = [a for a in articles if area_set & set(a.get("area_tags", []))]
 
     if tier3_only:
-        articles = [a for a in articles if a.get("source_tier") == 3]
+        articles = [a for a in articles if a.get("source_tier") == 1]
 
     if lang:
         articles = [a for a in articles if a.get("language") == lang]

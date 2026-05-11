@@ -35,6 +35,7 @@ class SearchResult(BaseModel):
     tier: int
     source_name: str
     article_title: str = ""
+    pub_date: str = ""
     fetch_date: str = Field(default_factory=lambda: date.today().isoformat())
 
 

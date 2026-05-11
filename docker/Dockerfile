@@ -25,6 +25,7 @@ RUN pip install --no-cache-dir .
 COPY src/      ./src/
 COPY scripts/  ./scripts/
 COPY data/     ./data/
+COPY run_report.py ./
 
 # Built frontend (from Stage 1)
 COPY --from=frontend-builder /build/dist ./frontend/dist

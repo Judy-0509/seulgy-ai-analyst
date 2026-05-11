@@ -25,7 +25,7 @@ const THEMES = {
     rowBg: "rgba(52,211,153,.06)",
     rowBgStrong: "rgba(16,185,129,.22)",
     vignette: "radial-gradient(circle at center, rgba(12,58,36,.1) 0%, rgba(4,17,9,.42) 42%, rgba(2,8,4,.88) 100%)",
-    image: "url('/smartphone-bg.png')",
+    image: "url('/smartphone-bg-v2.png')",
     bgPos: "30% 70%",
   },
   humanoid: {
@@ -199,6 +199,8 @@ function toRow(t) {
     rationale: t.rationale || "",
     key_data: t.key_data || [],
     trend: t.trend || null,
+    rank: t.rank ?? null,
+    rank_change: t.rank_change !== undefined ? t.rank_change : undefined,
     articles: (t.articles || []).map(a => ({
       date: a.date, source: a.source, title: a.title, url: a.url || "",
     })),
@@ -302,14 +304,30 @@ function TopicRow({ item, right, onStart, index, theme, isAuthenticated }) {
       >
         <div style={{ display: "flex", alignItems: "center", gap: 14, overflow: "hidden", flex: 1, minWidth: 0 }}>
           {index !== undefined ? (
-            <span style={{
-              fontSize: 40, fontWeight: 900, lineHeight: 1, flexShrink: 0,
-              letterSpacing: "-0.05em", width: 28, textAlign: "right",
-              color: expanded ? E.emLL : hov ? E.emLL : "rgba(255,255,255,.18)",
-              transition: "color .15s",
-            }}>
-              {index + 1}
-            </span>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, width: 28 }}>
+              <span style={{
+                fontSize: 40, fontWeight: 900, lineHeight: 1,
+                letterSpacing: "-0.05em", textAlign: "right", width: "100%",
+                color: expanded ? E.emLL : hov ? E.emLL : "rgba(255,255,255,.18)",
+                transition: "color .15s",
+              }}>
+                {item.rank ?? index + 1}
+              </span>
+              {item.rank_change != null && item.rank_change !== 0 && (
+                <span style={{
+                  fontSize: 9, fontWeight: 800, lineHeight: 1, marginTop: 2,
+                  color: item.rank_change > 0 ? "#4ade80" : "#fb923c",
+                }}>
+                  {item.rank_change > 0 ? `▲${item.rank_change}` : `▼${Math.abs(item.rank_change)}`}
+                </span>
+              )}
+              {item.rank_change === 0 && (
+                <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, marginTop: 2, color: "rgba(255,255,255,.3)" }}>—</span>
+              )}
+              {item.rank_change === null && (
+                <span style={{ fontSize: 8, fontWeight: 800, lineHeight: 1, marginTop: 2, color: E.emLL, opacity: 0.7 }}>NEW</span>
+              )}
+            </div>
           ) : (
             <div style={{ width: 5, height: 34, borderRadius: 99, flexShrink: 0,
               background: expanded ? E.emLL : hov ? E.emLL : "rgba(255,255,255,.22)",
@@ -342,11 +360,7 @@ function TopicRow({ item, right, onStart, index, theme, isAuthenticated }) {
             </span>
           )}
           {right && (
-            <>
-              <span style={{ fontSize: 9, fontWeight: 700, color: E.emLL, background: E.emBg,
-                borderRadius: 99, padding: "3px 10px", border: `1px solid ${E.emBr}` }}>NEW</span>
-              <span style={{ fontSize: 10, color: E.t5, whiteSpace: "nowrap" }}>{item.days}</span>
-            </>
+            <span style={{ fontSize: 10, color: E.t5, whiteSpace: "nowrap" }}>{item.days}</span>
           )}
           <span style={{
             fontSize: 12, color: expanded ? E.emLL : E.t5,
@@ -414,9 +428,11 @@ function WeekGroup({ weekOf, topics, onStart, theme, isAuthenticated }) {
       </button>
       {open && (
         <div style={{ paddingBottom: 8 }}>
-          {topics.map((item, i) => (
-            <TopicRow key={item.title || i} item={item} onStart={onStart} index={i} theme={E} isAuthenticated={isAuthenticated} />
-          ))}
+          {[...topics]
+            .sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999))
+            .map((item, i) => (
+              <TopicRow key={item.title || i} item={item} onStart={onStart} index={i} theme={E} isAuthenticated={isAuthenticated} />
+            ))}
         </div>
       )}
     </div>

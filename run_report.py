@@ -84,10 +84,12 @@ def _format_evidence_block(results, bodies: dict | None = None) -> str:
         body = bodies.get(r.source_url, "")
         snippet = (r.content or "")[:1500].replace("\n", " ")
         text = (body[:2000] if body else snippet)
+        date_str = f"    Date: {r.pub_date}\n" if r.pub_date else ""
         lines.append(
             f"[{i}] {title}\n"
             f"    URL: {r.source_url}\n"
             f"    Source: {r.source_name}\n"
+            f"{date_str}"
             f"    {text}"
         )
     return "\n\n".join(lines) if lines else "(검색 결과 없음)"
@@ -752,24 +754,6 @@ def _build_markdown(topic: str, sections: list[dict], run_ts: str, meta: dict | 
         f"",
     ]
 
-    # Quick Brief — 5분 요약 (보고서 최상단)
-    quick_brief = meta.get("quick_brief") or {}
-    qb_headline = (quick_brief.get("headline") or "").strip()
-    qb_bullets = quick_brief.get("bullets") or []
-    if qb_headline or qb_bullets:
-        lines.append("## ⚡ 5분 요약")
-        lines.append("")
-        if qb_headline:
-            lines.append(f"**{qb_headline}**")
-            lines.append("")
-        for b in qb_bullets:
-            b = str(b).strip()
-            if b:
-                lines.append(b if b.startswith(("-", "•", "*")) else f"- {b}")
-        lines.append("")
-        lines.append("---")
-        lines.append("")
-
     # Executive Summary
     exec_summary = meta.get("executive_summary", "")
     if exec_summary:
@@ -836,21 +820,6 @@ def _build_markdown(topic: str, sections: list[dict], run_ts: str, meta: dict | 
             lines.append(f"")
             lines.append(ins.get("body", ""))
             lines.append(f"")
-
-    # Korea Market Impact — 한국 시장 영향 (보고서 끝)
-    korea_impact = meta.get("korea_impact") or {}
-    ki_title = (korea_impact.get("title") or "한국 시장 영향").strip()
-    ki_body = (korea_impact.get("body") or "").strip()
-    if ki_body:
-        lines.append("---")
-        lines.append(f"")
-        lines.append(f"## 🇰🇷 {ki_title}")
-        lines.append(f"")
-        for para in ki_body.split("\n\n"):
-            para = para.strip()
-            if para:
-                lines.append(para)
-                lines.append(f"")
 
     return "\n".join(lines)
 
@@ -1031,6 +1000,7 @@ def _save_report(
     # 프로세스 데이터 저장 (HTML 재생성용)
     process_data = {
         "topic": topic,
+        "domain": domain,
         "run_ts": run_ts,
         "pre_queries": pre_queries or [],
         "meta": meta or {},
@@ -1069,7 +1039,7 @@ def _save_report(
 # Main
 # ---------------------------------------------------------------------------
 
-async def main(topic: str, auto: bool = False, gate1_cb=None, gate2_cb=None):
+async def main(topic: str, auto: bool = False, gate1_cb=None, gate2_cb=None, domain: str = "smartphone"):
     llm = LLMService()
     search = SearchService()
     run_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -1256,21 +1226,22 @@ def rebuild_html_from_process(process_json_path: str):
 
 
 if __name__ == "__main__":
-    args = sys.argv[1:]
-    auto_mode = "--auto" in args
-    args = [a for a in args if a != "--auto"]
+    import argparse as _ap
+    _parser = _ap.ArgumentParser(add_help=False)
+    _parser.add_argument("--auto", action="store_true")
+    _parser.add_argument("--domain", default="smartphone")
+    _parser.add_argument("--rebuild", default=None)
+    _known, _rest = _parser.parse_known_args()
 
-    if not args:
+    if _known.rebuild:
+        rebuild_html_from_process(_known.rebuild)
+    elif not _rest:
         print("사용법:")
         print("  python run_report.py \"분석 토픽\"")
         print("  python run_report.py --auto \"분석 토픽\"   # 게이트 자동 통과")
+        print("  python run_report.py --domain humanoid \"분석 토픽\"")
         print("  python run_report.py --rebuild reports/{slug}_process.json")
         sys.exit(1)
-    if args[0] == "--rebuild":
-        if len(args) < 2:
-            print("[!] --rebuild 뒤에 _process.json 경로를 지정하세요.")
-            sys.exit(1)
-        rebuild_html_from_process(args[1])
     else:
-        topic_arg = " ".join(args)
-        asyncio.run(main(topic_arg, auto=auto_mode))
+        topic_arg = " ".join(_rest)
+        asyncio.run(main(topic_arg, auto=_known.auto, domain=_known.domain))

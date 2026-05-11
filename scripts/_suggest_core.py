@@ -641,10 +641,7 @@ def run_pipeline(
 
     # Step 4 — Pass 2 enrichment
     print("[4/5] Pass 2 — full archive search & enrichment...")
-    # Use the same domain filter in enrichment. Loading the whole registry here
-    # lets adjacent trackers add unrelated event or market articles that merely
-    # share generic terms with the topic.
-    all_articles = load_articles(registry, days, keyword_filter=keyword_filter)
+    all_articles = articles
     pass1_titles = {a["title"] for a in articles}
 
     enriched_topics: list[dict] = []

@@ -177,6 +177,7 @@ class SearchService:
                 tier=entry.get("tier", 1),
                 source_name=entry.get("source", "Archive"),
                 article_title=entry["title"],
+                pub_date=(entry.get("lastmod") or "")[:10],
             )
             scored.append((score, sr))
         # 점수 순 정렬 후 합리적 cap (RSS·httpx와 경쟁 가능하도록)

@@ -327,7 +327,7 @@ Component rules:
 - if a sentence is very long, truncate with "..." at a natural phrase boundary — keep it as ONE bullet, never split into sub-bullets
 - include the article document title after the quote, then [Source name, YYYY-MM-DD]
 - bullets: PREFER different sources from already-cited list; if re-using an already-cited source, must cite a clearly different quote or angle relevant to THIS section's causal role
-- footnotes: every cited URL; numbered sequentially; full https:// URLs only; include article title in "title" field and publication date in "date" field (YYYY-MM-DD format)
+- footnotes: every cited URL; numbered sequentially; full https:// URLs only; include article title in "title" field and the article's publication date in "date" field (YYYY-MM-DD) — use the "Date:" field from the evidence block entry; if no Date is shown, leave "date" as ""
 - Base ALL claims strictly on the evidence — do NOT invent quotes
 - Omit a bullet rather than fabricate a quote
 
@@ -354,12 +354,11 @@ Report (3 sections — structural backdrop → derived analysis 1 → derived an
 {report_summary}
 ---
 
-Generate FIVE OUTPUTS:
+Generate FOUR OUTPUTS:
 1. quick_brief — 임원이 5초 안에 핵심을 잡도록 headline + 3 bullets
 2. research_background — 2-4 sentences explaining the concrete market change
 3. executive_summary — 600+ Korean characters, 6-8 sentences as ONE flowing paragraph
 4. insights — EXACTLY 3 insights (each 500+ Korean characters)
-5. korea_impact — 한국 시장 영향 분석 (500+ Korean characters, 3 perspectives integrated)
 
 Each insight must answer: "이 이슈가 시장에 어떤 영향을 주는가?" Focus on market dynamics, competitive behavior, and consumer-facing outcomes — NOT supply chain internals.
 
@@ -388,10 +387,6 @@ Respond ONLY with a valid JSON object (no markdown, no code blocks):
       "body": "<Korean prose of MINIMUM 500 Korean characters — substantial multi-sentence paragraph: [문장1] 핵심 시사점을 인과 관계로 한 문장으로 제시. [문장2-4] 보고서의 구체적 수치·기업명을 자연스럽게 녹여 메커니즘 설명. [문장5-6] 영향 받는 OEM·시장 세그먼트·지역을 구체적으로 지목하고 왜 그러한지 설명. [문장7-8] 향후 6~18개월 전망 — 시장 재편, 경쟁 구도 변화, OEM 전략 수정 등 구체적 함의. 합쇼체만 사용: 했습니다/합니다/입니다/됩니다/있습니다. ~다 절대 금지. 인용 괄호 [출처] 금지.>"
     }}
   ],
-  "korea_impact": {{
-    "title": "한국 시장 영향",
-    "body": "<Korean prose of MINIMUM 500 Korean characters covering THREE perspectives integrated into ONE flowing paragraph (구분 헤더 없이): (1) 한국 OEM·완제품 기업 영향 — 도메인에 적합한 한국 주요 기업이 어떤 영향을 받을지 구체적 회사명과 가능한 한 수치 포함. (2) 한국 부품·소재·공급망 — 한국 부품·소재 회사가 수혜 또는 피해를 입는 구체적 메커니즘. (3) 한국 산업 생태계 구조 변화 — 한국 산업 전체 차원의 구조적 변화·정책 시사·연구개발 방향 함의. Connect three perspectives naturally with 한편/나아가/이러한 흐름 속에서 등 transitional phrases. 보고서에 한국 관련 직접 근거가 부족한 경우, 글로벌 트렌드가 한국 산업에 미치는 함의를 inference 형태로 서술 (단 보고서의 사실 근거에 traceable해야 함). 합쇼체만: 했습니다/합니다/입니다/됩니다/있습니다. ~다 절대 금지. NO investment angle (주가/매수/매도/수익률/밸류에이션 추정 절대 금지). 정보형 + 시사점 톤만 허용. [Source, date] 브라켓 금지.>"
-  }}
 }}
 
 Quick brief rules:
@@ -399,19 +394,11 @@ Quick brief rules:
 - bullets: EXACTLY 3 items, each ≤50 Korean chars, each MUST include at least one concrete number, company name, date, or product name from the report
 - bullets must capture the THREE most decision-relevant facts — specific data points, NOT high-level summary
 
-Korea impact rules:
-- 합쇼체 throughout
-- 3 perspectives 통합된 자연스러운 paragraph (분리 헤더·번호 매기기 금지)
-- 한국 회사명·수치 가능한 한 구체적
-- NO investment angle (주가/매수/매도/수익률/밸류에이션 절대 금지)
-- 정보형 + 시사점 톤만 — 어느 영역에 영향이 있는지까지만, 투자 추천 금지
-
 Rules:
 - EXACTLY 3 insights in the order specified above — do not reorder or replace
 - Each insight body MUST be approximately 500 Korean characters
-- korea_impact body MUST be approximately 500 Korean characters
 - 합쇼체 throughout — 했습니다, 합니다, 입니다, 됩니다, 있습니다. NEVER ~다 plain endings
-- TEMPORAL RULES (apply to every sentence in executive_summary, all insight bodies, AND korea_impact):
+- TEMPORAL RULES (apply to every sentence in executive_summary and all insight bodies):
   * Forecasts/projections — MUST use ~전망됩니다/예상됩니다, NEVER ~했습니다
   * Confirmed past events — MAY use past tense ~했습니다
 - No [Source, date] brackets anywhere in the output

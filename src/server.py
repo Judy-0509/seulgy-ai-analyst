@@ -840,6 +840,8 @@ async def _run_report(sess: ReportSession):
 @app.get("/api/topics/suggested")
 async def api_topics_suggested(domain: str = "smartphone"):
     """도메인별 GLM 선정 주제 반환."""
+    if not (ROOT / "data" / "domains" / f"{domain}.json").exists():
+        return {"topics": [], "generated_at": None, "days": 30, "history_by_week": []}
     domain_cfg = load_domain(domain)
     p = ROOT / domain_cfg["suggested_path"]
     topics: list[dict] = []
@@ -848,7 +850,10 @@ async def api_topics_suggested(domain: str = "smartphone"):
     if p.exists():
         try:
             data = json.loads(p.read_text(encoding="utf-8"))
-            topics = list(data.get("topics", []))
+            # Only keep Criterion 2 topics from the main (30-day) file.
+            # Criterion 3 from the main pass can span the full 30-day window and
+            # are not genuinely "new this week" — those come from the emerging file only.
+            topics = [t for t in data.get("topics", []) if isinstance(t, dict) and t.get("criteria") != "Criterion 3"]
             generated_at = data.get("generated_at")
             days = data.get("days", 30)
         except Exception:
@@ -879,8 +884,10 @@ async def api_topics_suggested(domain: str = "smartphone"):
                     continue
                 seen_weeks.add(week_of)
                 week_topics = list(hdata.get("topics", []))
+                # orig_crit2: original rank order from the file (before UI re-sort)
+                orig_crit2 = [t for t in week_topics if isinstance(t, dict) and t.get("criteria") != "Criterion 3"]
                 week_topics.sort(key=lambda t: _latest_article_date(t, week_of), reverse=True)
-                history_by_week.append({"week_of": week_of, "topics": week_topics})
+                history_by_week.append({"week_of": week_of, "topics": week_topics, "orig_crit2": orig_crit2})
                 if len(history_by_week) >= 8:
                     break
             except Exception:
@@ -925,6 +932,86 @@ async def api_topics_suggested(domain: str = "smartphone"):
     _apply_report_slug(topics)
     for week in history_by_week:
         _apply_report_slug(week["topics"])
+
+    # Assign rank + rank_change to Crit 2 topics.
+    # rank_change = prev_rank - cur_rank  (positive → moved up, negative → dropped)
+    # rank_change = None → topic is new (no prior history match)
+    crit2 = [t for t in topics if isinstance(t, dict) and t.get("criteria") != "Criterion 3"]
+    for i, t in enumerate(crit2):
+        t["rank"] = i + 1
+
+    def _title_tokens(title: str) -> set[str]:
+        """핵심 키워드 추출 — 영한 회사명 정규화 + 조사 제거."""
+        import re as _re
+        _EN_KO = {
+            "huawei": "화웨이", "samsung": "삼성", "apple": "애플",
+            "tsmc": "tsmc", "nvidia": "엔비디아", "qualcomm": "퀄컴",
+            "mediatek": "미디어텍", "arm": "arm",
+        }
+        _JOSA = re.compile(r"(을|를|이|가|은|는|에|의|와|과|도|로|으로|에서|까지|부터|만|들)$")
+        normalized = title.lower()
+        for en, ko in _EN_KO.items():
+            normalized = normalized.replace(en, ko)
+        words = _re.split(r"[\s\(\)·/,·\-\·\.'\"]+", normalized)
+        tokens = set()
+        for w in words:
+            w = _JOSA.sub("", w)
+            if len(w) >= 2:
+                tokens.add(w)
+        return tokens
+
+    def _best_prev_rank(title: str, prev_list: list[dict]) -> int | None:
+        cur_tokens = _title_tokens(title)
+        if not cur_tokens:
+            return None
+        best_score, best_rank = 0.0, None
+        for i, pt in enumerate(prev_list):
+            pt_tokens = _title_tokens(str(pt.get("title") or ""))
+            if not pt_tokens:
+                continue
+            overlap = len(cur_tokens & pt_tokens) / len(cur_tokens | pt_tokens)
+            if overlap > best_score:
+                best_score, best_rank = overlap, i + 1
+        # 20% 이상 겹치면 같은 주제로 판단
+        return best_rank if best_score >= 0.2 else None
+
+    prev_crit2: list[dict] = []
+    if history_by_week:
+        # Use orig_crit2 (pre-sort order = original rank order from the file)
+        prev_crit2 = history_by_week[0].get("orig_crit2", [])
+        if not prev_crit2:
+            prev_crit2 = [
+                t for t in history_by_week[0].get("topics", [])
+                if isinstance(t, dict) and t.get("criteria") != "Criterion 3"
+            ]
+
+    for t in crit2:
+        title = str(t.get("title") or "").strip()
+        prev = _best_prev_rank(title, prev_crit2)
+        t["rank_change"] = (prev - t["rank"]) if prev is not None else None
+
+    # Assign rank + rank_change to each history week's Crit 2 topics
+    for week_idx, week in enumerate(history_by_week):
+        week_orig = week.get("orig_crit2", [])
+        # Build a fast title→rank map from original order
+        orig_rank_map = {str(t.get("title") or "").strip(): i + 1 for i, t in enumerate(week_orig)}
+        # The week before this one (for rank_change)
+        older_crit2: list[dict] = []
+        if week_idx + 1 < len(history_by_week):
+            older_crit2 = history_by_week[week_idx + 1].get("orig_crit2", [])
+        for t in week.get("topics", []):
+            if not isinstance(t, dict) or t.get("criteria") == "Criterion 3":
+                continue
+            title = str(t.get("title") or "").strip()
+            # rank: original position in this week's file
+            t["rank"] = orig_rank_map.get(title, None)
+            # rank_change: vs the week before this one
+            if older_crit2:
+                prev_r = _best_prev_rank(title, older_crit2)
+                cur_r = t["rank"]
+                t["rank_change"] = (prev_r - cur_r) if (prev_r is not None and cur_r is not None) else None
+            else:
+                t["rank_change"] = None
 
     return {
         "topics": topics,
@@ -1030,7 +1117,7 @@ _HUMANOID_SOURCES = {
     "IEEE Spectrum", "The Robot Report", "Boston Dynamics", "Figure AI",
     "arXiv (cs.RO)", "MIT Technology Review", "Unitree Robotics", "NVIDIA", "The Verge",
     "Humanoids Daily", "RoboticsTomorrow", "IDTechEx", "ABI Research", "Yano Research",
-    "Apptronik", "Agility Robotics", "Counterpoint Research", "TrendForce", "IDC",
+    "Apptronik", "Agility Robotics",
     "1X Technologies", "IFR", "NVIDIA News", "Unitree",
     "Goldman Sachs Research", "Morgan Stanley Research", "Barclays Research",
     "Bank of America Institute",
@@ -1051,14 +1138,14 @@ _SMARTPHONE_SOURCES = {
 }
 
 def _detect_domain(process_data: dict | None) -> str:
-    """Majority-vote 기반 도메인 판정.
-
-    한 보고서가 여러 도메인 출처를 섞어 인용할 수 있으므로 (예: D2D 위성통신 토픽이
-    스마트폰 + 자동차 출처를 모두 인용), 단일 매칭 대신 가장 많이 인용된 도메인을 채택.
-    동률·미매칭이거나 smartphone이 최다이면 smartphone fallback.
+    """도메인 판정: process.json에 domain 필드가 있으면 그것을 우선 사용.
+    없으면 archive_sources majority-vote fallback.
     """
     if not process_data:
         return "smartphone"
+    stored = process_data.get("domain", "")
+    if stored in ("smartphone", "humanoid", "automotive", "space_datacenter"):
+        return stored
     counts = {"smartphone": 0, "humanoid": 0, "automotive": 0}
     for src in process_data.get("archive_sources", []):
         name = src.get("source_name")
@@ -1396,9 +1483,14 @@ async def api_report_gate2(req: Request):
     return {"ok": True}
 
 
-# SPA fallback — must be registered LAST so API routes take priority
+# SPA fallback — serves static files if they exist, otherwise index.html for React Router
 if FRONTEND_DIST.exists():
-    app.mount("/", StaticFiles(directory=str(FRONTEND_DIST), html=True), name="spa")
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def spa_fallback(full_path: str):
+        candidate = FRONTEND_DIST / full_path
+        if candidate.is_file():
+            return FileResponse(str(candidate))
+        return FileResponse(str(FRONTEND_DIST / "index.html"))
 
 if __name__ == "__main__":
     import uvicorn
