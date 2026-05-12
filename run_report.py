@@ -24,7 +24,12 @@ import markdown as md_lib
 from src.services.llm import LLMService
 from src.services.search import SearchService
 from src.services.body_fetcher import fetch_or_cached, FETCHABLE_SOURCES
-from src.prompts.system import ANALYST_SYSTEM_PROMPT
+from src.prompts.system import ANALYST_SYSTEM_PROMPT, DOMAIN_SYSTEM_PROMPTS, DOMAIN_ANALYST_TYPES
+
+_active_system_prompt = ANALYST_SYSTEM_PROMPT
+
+def _get_system_prompt():
+    return _active_system_prompt
 from src.prompts.step_prompts import PRE_SEARCH_PROMPT, TOC_PROMPT, SECTION_REPORT_PROMPT, INSIGHTS_PROMPT
 from src.state_machine import _extract_json_block, _extract_json_array
 
@@ -141,7 +146,7 @@ async def stage_a(llm: LLMService, topic: str, progress_cb=None) -> tuple[list[s
     prompt = PRE_SEARCH_PROMPT.format(topic=topic, current_year=_year(), analyst_type=_analyst_type)
     _stage_a_model = os.getenv("GLM_ANALYSIS_MODEL", "glm-4.7-flashx")
     await progress("llm_request", "GLM에 영어 검색 쿼리 생성을 요청했습니다.", model=_stage_a_model)
-    resp = await llm.complete(ANALYST_SYSTEM_PROMPT, prompt, max_tokens=2000, temperature=0.1,
+    resp = await llm.complete(_get_system_prompt(), prompt, max_tokens=2000, temperature=0.1,
                               model=_stage_a_model)
     raw = _strip_fence((resp.content or resp.reasoning or "").strip())
     await progress(
@@ -169,7 +174,7 @@ async def stage_a(llm: LLMService, topic: str, progress_cb=None) -> tuple[list[s
             f'Topic: "{topic}"\nYear: {_year()}'
         )
         try:
-            resp2 = await llm.complete(ANALYST_SYSTEM_PROMPT, simple_prompt, max_tokens=2000, temperature=0.1,
+            resp2 = await llm.complete(_get_system_prompt(), simple_prompt, max_tokens=2000, temperature=0.1,
                                        model=_stage_a_model)
             raw2 = _strip_fence((resp2.content or resp2.reasoning or "").strip())
             retry_raw_queries = _extract_search_queries(raw2)
@@ -1040,6 +1045,10 @@ def _save_report(
 # ---------------------------------------------------------------------------
 
 async def main(topic: str, auto: bool = False, gate1_cb=None, gate2_cb=None, domain: str = "smartphone"):
+    global _active_system_prompt
+    _active_system_prompt = DOMAIN_SYSTEM_PROMPTS.get(domain, ANALYST_SYSTEM_PROMPT)
+    os.environ["GLM_ANALYST_TYPE"] = DOMAIN_ANALYST_TYPES.get(domain, "senior smartphone market analyst")
+
     llm = LLMService()
     search = SearchService()
     run_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -1047,6 +1056,7 @@ async def main(topic: str, auto: bool = False, gate1_cb=None, gate2_cb=None, dom
     print("\n" + "=" * 60)
     print("  목차 기반 보고서 생성")
     print(f"  주제: {topic}")
+    print(f"  도메인: {domain}")
     print(f"  시각: {run_ts}")
     print("=" * 60)
 
