@@ -994,6 +994,7 @@ def _save_report(
     archive_results: list | None = None,
     pre_queries: list[str] | None = None,
     meta: dict | None = None,
+    domain: str = "smartphone",
 ):
     slug = _slug(topic)
     md_text = _build_markdown(topic, sections, run_ts, meta)
@@ -1158,7 +1159,7 @@ async def main(topic: str, auto: bool = False, gate1_cb=None, gate2_cb=None, dom
 
     # 저장
     print("\n[저장 중...]")
-    md_path, html_path = _save_report(topic, sections, run_ts, archive_results, pre_queries, meta)
+    md_path, html_path = _save_report(topic, sections, run_ts, archive_results, pre_queries, meta, domain=domain)
 
     print("\n" + "=" * 60)
     print("  보고서 생성 완료")
