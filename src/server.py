@@ -909,11 +909,29 @@ async def api_topics_suggested(domain: str = "smartphone"):
         if emerging_path.exists():
             try:
                 em_data = json.loads(emerging_path.read_text(encoding="utf-8"))
+                em_generated = (em_data.get("generated_at") or "")[:10]
+                em_days = em_data.get("days", 7)
+                # clamp article dates: LLM sometimes hallucinates old pub dates.
+                # Any supporting article older than em_days*2 from generated_at
+                # gets its date replaced with generated_at to avoid stale "N일 전" display.
+                from datetime import date as _date
+                try:
+                    _gen_date = _date.fromisoformat(em_generated) if em_generated else _date.today()
+                except ValueError:
+                    _gen_date = _date.today()
+                _max_age = timedelta(days=em_days * 2)
                 for t in em_data.get("topics", []):
                     if not isinstance(t, dict):
                         continue
-                    t["criteria"] = "Criterion 3"  # force, regardless of LLM output
+                    t["criteria"] = "Criterion 3"
                     t.setdefault("source", "emerging")
+                    for art in t.get("articles", []):
+                        try:
+                            art_date = _date.fromisoformat(art.get("date", "")[:10])
+                            if (_gen_date - art_date) > _max_age:
+                                art["date"] = em_generated
+                        except (ValueError, TypeError):
+                            pass
                     topics.append(t)
             except Exception:
                 pass
