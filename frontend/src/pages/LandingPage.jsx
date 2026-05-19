@@ -179,7 +179,13 @@ function uniqueSourceCount(t) {
 }
 
 function isCoreTopic(t) {
-  return critKey(t.criteria) !== "new" && uniqueSourceCount(t) >= 2;
+  const key = critKey(t.criteria);
+  // Explicit Criterion 2 → always core regardless of source count
+  if (key === "hot") return true;
+  // Criterion 3 → always emerging
+  if (key === "new") return false;
+  // "both" criteria → require 2+ sources
+  return uniqueSourceCount(t) >= 2;
 }
 
 function toRow(t) {
