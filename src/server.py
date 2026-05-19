@@ -5,7 +5,7 @@ import os
 import re
 import sys
 import uuid
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
@@ -470,7 +470,6 @@ async def api_keywords_put(req: Request, domain: str = "smartphone"):
 async def api_topics_mine(days: int = 30, domain: str = "smartphone"):
     """최근 N일 Tier-1 소스의 도메인 관련 기사를 소스별로 묶어 반환."""
     import re as _re
-    from datetime import timedelta
 
     cutoff = datetime.now(tz=__import__("datetime").timezone.utc) - timedelta(days=days)
     all_entries: list[dict] = []
@@ -914,11 +913,10 @@ async def api_topics_suggested(domain: str = "smartphone"):
                 # clamp article dates: LLM sometimes hallucinates old pub dates.
                 # Any supporting article older than em_days*2 from generated_at
                 # gets its date replaced with generated_at to avoid stale "N일 전" display.
-                from datetime import date as _date
                 try:
-                    _gen_date = _date.fromisoformat(em_generated) if em_generated else _date.today()
+                    _gen_date = date.fromisoformat(em_generated) if em_generated else date.today()
                 except ValueError:
-                    _gen_date = _date.today()
+                    _gen_date = date.today()
                 _max_age = timedelta(days=em_days * 2)
                 for t in em_data.get("topics", []):
                     if not isinstance(t, dict):
@@ -927,7 +925,7 @@ async def api_topics_suggested(domain: str = "smartphone"):
                     t.setdefault("source", "emerging")
                     for art in t.get("articles", []):
                         try:
-                            art_date = _date.fromisoformat(art.get("date", "")[:10])
+                            art_date = date.fromisoformat(art.get("date", "")[:10])
                             if (_gen_date - art_date) > _max_age:
                                 art["date"] = em_generated
                         except (ValueError, TypeError):
