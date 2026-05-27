@@ -45,9 +45,13 @@ cd "$ROOT"
 
 log "=== 주간 주제 선정 시작 ==="
 
+# ── 0. Archive build ─────────────────────────────────────────────────
+log "[0/4] 전체 아카이브 빌드"
+uv run python scripts/build_all_archives.py >> "$LOG" 2>&1
+
 # ── 1. Core 30-day pass ──────────────────────────────────────────────
 log "[1/4] 스마트폰 핵심 주제 (30일)"
-uv run python scripts/suggest_smartphone_topics.py --days 30 >> "$LOG" 2>&1
+uv run python scripts/suggest_smartphone_topics.py --days 14 >> "$LOG" 2>&1
 log "[2/4] 휴머노이드 핵심 주제 (30일)"
 uv run python scripts/suggest_humanoid_topics.py --days 30 >> "$LOG" 2>&1
 

@@ -93,14 +93,20 @@ def _parse_dt(lm: str):
 
 def load_articles(registry: list[tuple[str, str]], days: int,
                   keyword_filter=None,
-                  per_source_cap: int | None = 35) -> list[dict]:
+                  per_source_cap: int | None = 35,
+                  end_date: str | None = None) -> list[dict]:
     """레지스트리 소스에서 기사 로드. keyword_filter(entry)->bool, None이면 전체.
 
     per_source_cap: 소스당 최근 N개로 제한 (default 35). LLM 컨텍스트 보호 +
     mass-publisher(예: Cox 133, Omdia 260)가 prompt를 잠식하는 것 방지.
     None이면 무제한.
+    end_date: ISO date string (e.g. "2026-05-21") — 과거 주차 백필용 상한 날짜.
     """
-    cutoff = datetime.now(tz=timezone.utc) - timedelta(days=days)
+    end_dt = (
+        datetime.fromisoformat(end_date).replace(tzinfo=timezone.utc)
+        if end_date else datetime.now(tz=timezone.utc)
+    )
+    cutoff = end_dt - timedelta(days=days)
     articles = []
     for source, fname in registry:
         p = ARCHIVES_DIR / fname
@@ -109,7 +115,7 @@ def load_articles(registry: list[tuple[str, str]], days: int,
         per_source: list[tuple[datetime, dict]] = []
         for e in json.loads(p.read_text(encoding="utf-8")).get("entries", []):
             dt = _parse_dt(e.get("lastmod", ""))
-            if dt is None or dt < cutoff:
+            if dt is None or dt < cutoff or dt > end_dt:
                 continue
             if keyword_filter and not keyword_filter(e):
                 continue
@@ -174,12 +180,59 @@ def format_articles(articles: list[dict]) -> str:
     return "\n".join(lines)
 
 
+def _extract_complete_objects(text: str) -> list[dict]:
+    """Depth-track braces to extract complete JSON objects from truncated output."""
+    objects, depth, start = [], 0, None
+    in_string = escape_next = False
+    for i, c in enumerate(text):
+        if escape_next:
+            escape_next = False
+        elif c == '\\' and in_string:
+            escape_next = True
+        elif c == '"':
+            in_string = not in_string
+        elif not in_string:
+            if c == '{':
+                if depth == 0:
+                    start = i
+                depth += 1
+            elif c == '}':
+                depth -= 1
+                if depth == 0 and start is not None:
+                    try:
+                        obj = json.loads(text[start:i + 1])
+                        if isinstance(obj, dict):
+                            objects.append(obj)
+                    except json.JSONDecodeError:
+                        pass
+                    start = None
+    return objects
+
+
 def parse_json_response(raw: str) -> list[dict]:
     raw = re.sub(r"```(?:json)?\s*", "", raw).strip().rstrip("`").strip()
     m = re.search(r"\[.*\]", raw, re.DOTALL)
-    if m:
-        return json.loads(m.group())
-    return json.loads(raw)
+    candidate = m.group() if m else raw
+    try:
+        return json.loads(candidate)
+    except json.JSONDecodeError:
+        pass
+    # Repair 1: LLM omits { } around array items → [ "key": val ] instead of [{"key": val}]
+    inner_m = re.search(r"\[(.*)\]", raw, re.DOTALL)
+    if inner_m:
+        inner = inner_m.group(1)
+        parts = re.split(r'(?<=\])\s*,\s*(?=\s*"criteria"\s*:)', inner)
+        if len(parts) > 1:
+            items = ['{' + p.strip().lstrip(',').strip() + '}' for p in parts if p.strip()]
+            try:
+                return json.loads('[' + ', '.join(items) + ']')
+            except json.JSONDecodeError:
+                pass
+    # Repair 2: response truncated mid-stream — extract all complete objects
+    objects = _extract_complete_objects(raw)
+    if objects:
+        return objects
+    raise ValueError("Cannot parse LLM JSON response")
 
 
 def _topic_terms(topic: dict) -> set[str]:
@@ -228,7 +281,13 @@ def _load_topic_history(out: Path, domain_label: str, max_snapshots: int = 8) ->
     snapshots = []
     if not hist_dir.exists():
         return snapshots
-    for path in sorted(hist_dir.glob(f"{domain_label}_*.json"), key=lambda p: p.stat().st_mtime, reverse=True):
+    def _hist_sort_key(p):
+        try:
+            d = json.loads(p.read_text(encoding="utf-8"))
+            return d.get("generated_at", "") or ""
+        except Exception:
+            return ""
+    for path in sorted(hist_dir.glob(f"{domain_label}_*.json"), key=_hist_sort_key, reverse=True):
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
         except Exception:
@@ -571,11 +630,13 @@ def run_pipeline(
     with_existing: bool = False,
     source_taxonomy: dict[str, str] | None = None,  # {source_name: layer_code} — 제공 시 source_layers 자동 채움
     extra_existing: list[str] | None = None,        # existing_reports에 추가로 주입할 토픽 list (예: 메이저 패스 결과)
+    end_date: str | None = None,     # ISO date — 과거 주차 백필 시 상한 날짜 (e.g. "2026-05-21")
+    backfill: bool = False,          # True이면 trend ranking 생략, generated_at을 end_date로 고정
 ):
     """5-step 공통 파이프라인."""
     # Step 1 — 기사 로드
     print(f"[1/5] Loading articles (last {days} days, domain={domain_label})...")
-    articles = load_articles(registry, days, keyword_filter)
+    articles = load_articles(registry, days, keyword_filter, end_date=end_date)
     print(f"      → {len(articles)} articles")
 
     existing = get_existing_reports() if with_existing else []
@@ -600,42 +661,48 @@ def run_pipeline(
     # Step 3 — Pass 1 LLM
     client, model, thinking_body = make_client()
     print(f"[3/5] Pass 1 — {model} thinking ({domain_label})...")
-    for _attempt in range(5):
+    topics = None
+    for _parse_attempt in range(3):
+        for _attempt in range(5):
+            try:
+                with glm47_slot():
+                    response = client.chat.completions.create(
+                        model=model,
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user",   "content": user_prompt},
+                        ],
+                        max_tokens=30000,
+                        temperature=0.1,
+                        extra_body=thinking_body,
+                    )
+                break
+            except Exception as _e:
+                if "429" in str(_e) or "1302" in str(_e) or "rate" in str(_e).lower():
+                    wait = 60 * (2 ** _attempt)
+                    print(f"      Rate limit, waiting {wait}s (attempt {_attempt+1}/5)...")
+                    _time.sleep(wait)
+                else:
+                    raise
+        else:
+            print("[!] Rate limit not resolved after 5 attempts")
+            sys.exit(1)
+        msg       = response.choices[0].message
+        reasoning = getattr(msg, "reasoning_content", "") or ""
+        content   = msg.content or ""
+        prompt_tokens, completion_tokens = usage_counts(getattr(response, "usage", None))
+        log_usage(model, prompt_tokens, completion_tokens, "suggest.pass1")
+        print(f"      thinking: {len(reasoning):,} chars")
         try:
-            with glm47_slot():
-                response = client.chat.completions.create(
-                    model=model,
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user",   "content": user_prompt},
-                    ],
-                    max_tokens=30000,
-                    temperature=0.1,
-                    extra_body=thinking_body,
-                )
+            topics = parse_json_response(content)
             break
-        except Exception as _e:
-            if "429" in str(_e) or "1302" in str(_e) or "rate" in str(_e).lower():
-                wait = 60 * (2 ** _attempt)
-                print(f"      Rate limit, waiting {wait}s (attempt {_attempt+1}/5)...")
-                _time.sleep(wait)
-            else:
-                raise
-    else:
-        print("[!] Rate limit not resolved after 5 attempts")
-        sys.exit(1)
-    msg       = response.choices[0].message
-    reasoning = getattr(msg, "reasoning_content", "") or ""
-    content   = msg.content or ""
-    prompt_tokens, completion_tokens = usage_counts(getattr(response, "usage", None))
-    log_usage(model, prompt_tokens, completion_tokens, "suggest.pass1")
-    print(f"      thinking: {len(reasoning):,} chars")
-
-    try:
-        topics = parse_json_response(content)
-    except Exception as e:
-        print(f"[!] JSON parse failed: {e}")
-        print("Raw (first 500):\n", content[:500])
+        except Exception as e:
+            print(f"[!] JSON parse failed (attempt {_parse_attempt+1}/3): {e}")
+            print("Raw (first 500):\n", content[:500])
+            if _parse_attempt < 2:
+                print("      Retrying LLM call...")
+    if topics is None:
+        print("[!] JSON parse failed after 3 attempts")
         sys.exit(1)
     print(f"      → {len(topics)} topics identified")
 
@@ -725,13 +792,14 @@ def run_pipeline(
     # Step 5 — 저장
     out = ROOT / out_path
     out.parent.mkdir(parents=True, exist_ok=True)
-    generated_at = datetime.now().isoformat()
-    enriched_topics = apply_trend_ranking(
-        enriched_topics,
-        out_path=out_path,
-        domain_label=domain_label,
-        generated_at=generated_at,
-    )
+    generated_at = (end_date or datetime.now().isoformat())
+    if not backfill:
+        enriched_topics = apply_trend_ranking(
+            enriched_topics,
+            out_path=out_path,
+            domain_label=domain_label,
+            generated_at=generated_at,
+        )
 
     # 기존 파일이 있으면 히스토리 폴더에 보관
     if out.exists():

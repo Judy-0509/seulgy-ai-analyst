@@ -239,9 +239,11 @@ Rules:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--days",          type=int, default=30)
+    parser.add_argument("--days",          type=int, default=14)
     parser.add_argument("--out",           default="scripts/_topic_suggestions.json")
     parser.add_argument("--with-existing", action="store_true")
+    parser.add_argument("--end-date",      default=None, help="ISO date upper bound (e.g. 2026-05-21) for backfill")
+    parser.add_argument("--backfill",      action="store_true", help="Skip trend ranking; save directly to --out as history snapshot")
     args = parser.parse_args()
 
     run_pipeline(
@@ -257,6 +259,8 @@ def main():
         days=args.days,
         with_existing=args.with_existing,
         source_taxonomy=SOURCE_TAXONOMY,
+        end_date=args.end_date,
+        backfill=args.backfill,
     )
 
 
