@@ -460,7 +460,7 @@ export default function LandingPage() {
       })
       .then(data => {
         const topics = data.topics || [];
-        const hot = topics.filter(isCoreTopic).map(toRow);
+        const hot = topics.filter(isCoreTopic).map(toRow).sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999));
         const newT = topics.filter(t => !isCoreTopic(t)).map(toRow);
         setMonthlyHot(hot);
         setMonthlyNew(newT);

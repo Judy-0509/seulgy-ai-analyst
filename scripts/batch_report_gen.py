@@ -85,7 +85,7 @@ def main():
         topics = [
             t.get("title", "").strip()
             for t in data.get("topics", [])
-            if t.get("title") and t.get("criteria") != "Criterion 3"
+            if t.get("title")
         ]
 
     if not topics:
