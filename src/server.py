@@ -849,10 +849,7 @@ async def api_topics_suggested(domain: str = "smartphone"):
     if p.exists():
         try:
             data = json.loads(p.read_text(encoding="utf-8"))
-            # Only keep Criterion 2 topics from the main (30-day) file.
-            # Criterion 3 from the main pass can span the full 30-day window and
-            # are not genuinely "new this week" — those come from the emerging file only.
-            topics = [t for t in data.get("topics", []) if isinstance(t, dict) and t.get("criteria") != "Criterion 3"]
+            topics = [t for t in data.get("topics", []) if isinstance(t, dict)]
             generated_at = data.get("generated_at")
             days = data.get("days", 30)
         except Exception:
