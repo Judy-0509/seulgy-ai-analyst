@@ -179,13 +179,8 @@ function uniqueSourceCount(t) {
 }
 
 function isCoreTopic(t) {
-  const key = critKey(t.criteria);
-  // Explicit Criterion 2 → always core regardless of source count
-  if (key === "hot") return true;
-  // Criterion 3 → always emerging
-  if (key === "new") return false;
-  // "both" criteria → require 2+ sources
-  return uniqueSourceCount(t) >= 2;
+  // Topics from the 7-day emerging file are tagged source="emerging" by the server
+  return t.source !== "emerging";
 }
 
 function toRow(t) {
@@ -319,18 +314,16 @@ function TopicRow({ item, right, onStart, index, theme, isAuthenticated }) {
               }}>
                 {item.rank ?? index + 1}
               </span>
-              {item.rank_change != null && item.rank_change !== 0 && (
-                <span style={{
-                  fontSize: 9, fontWeight: 800, lineHeight: 1, marginTop: 2,
-                  color: item.rank_change > 0 ? "#4ade80" : "#fb923c",
-                }}>
-                  {item.rank_change > 0 ? `▲${item.rank_change}` : `▼${Math.abs(item.rank_change)}`}
-                </span>
+              {item.trend?.status === "Rising" && (
+                <span style={{ fontSize: 9, fontWeight: 800, lineHeight: 1, marginTop: 2, color: "#4ade80" }}>▲</span>
               )}
-              {item.rank_change === 0 && (
+              {item.trend?.status === "Cooling" && (
+                <span style={{ fontSize: 9, fontWeight: 800, lineHeight: 1, marginTop: 2, color: "#fb923c" }}>▼</span>
+              )}
+              {(item.trend?.status === "Stable" || item.trend?.status === "Sustained") && (
                 <span style={{ fontSize: 9, fontWeight: 700, lineHeight: 1, marginTop: 2, color: "rgba(255,255,255,.3)" }}>—</span>
               )}
-              {item.rank_change === null && (
+              {(item.trend?.status === "New" || !item.trend?.status) && (
                 <span style={{ fontSize: 8, fontWeight: 800, lineHeight: 1, marginTop: 2, color: E.emLL, opacity: 0.7 }}>NEW</span>
               )}
             </div>
