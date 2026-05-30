@@ -1,4 +1,5 @@
 ﻿import { useState, useEffect, useRef } from "react";
+import Wordmark from "./Wordmark";
 import { PIPELINE_STEPS } from "../data/mock";
 import { useDomain } from "../contexts/DomainContext";
 
@@ -682,7 +683,7 @@ function Header({ topic, onBack, completedSteps, totalSteps, isRunning }) {
           <BackIcon/> 홈
         </button>
         <div style={{ width:1, height:22, background:E.div }}/>
-        <img src="/logo-mark.png" alt="Canopy" style={{ width:52, height:38, display:"block", objectFit:"contain", flexShrink:0 }} />
+        <Wordmark size={22} color={E.emD} style={{ flexShrink:0 }} />
         <div>
           <h1 style={{ fontSize:14, fontWeight:700, color:E.t1, margin:0, letterSpacing:"-.02em",
             maxWidth:480, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{topic}</h1>

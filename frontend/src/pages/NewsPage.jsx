@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Wordmark from "../components/Wordmark";
 import "./NewsPage.css";
 
 const DAY_OPTIONS = [
@@ -260,7 +261,7 @@ export default function NewsPage() {
       <header className="news-topbar">
         <div className="news-topbar__left">
           <button type="button" className="news-brand" onClick={() => nav("/")} aria-label="Home">
-            <img src="/logo-mark.png" alt="" />
+            <Wordmark size={20} />
             <div>
               <h1>News</h1>
               <p>마켓 인텔리전스 뉴스 스트림</p>

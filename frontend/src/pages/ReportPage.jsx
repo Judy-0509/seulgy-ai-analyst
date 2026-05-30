@@ -1,18 +1,33 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import Wordmark from "../components/Wordmark";
 
 const API = "";
 
+// ── Editorial type system ──────────────────────────────────────────────
+// 헤드라인: Noto Serif KR (명조) · 본문: Pretendard · 라벨: Cabinet Grotesk(브랜드 연결)
+const SERIF = '"Gowun Batang", "Nanum Myeongjo", Georgia, "Times New Roman", serif';
+const LABEL = '"Cabinet Grotesk", "Pretendard Variable", Pretendard, sans-serif';
+
+const DOMAIN_LABEL = {
+  smartphone: "Smartphone",
+  humanoid: "Humanoid",
+  automotive: "Automotive",
+  space_datacenter: "Space Datacenter",
+};
+
 const BASE_R = {
-  bg: "#f7f6f3",
+  bg: "#f6f4ef",
+  paper: "#fffefb",
   panel: "rgba(255,255,255,.72)",
   panelStrong: "rgba(255,255,255,.9)",
-  border: "rgba(42,40,38,.09)",
-  t1: "#2a2826",
-  t2: "#4a4744",
-  t3: "#716f6c",
-  t4: "#9a9896",
-  shadow: "0 12px 34px rgba(31,41,55,.08), inset 0 1px 0 rgba(255,255,255,.76)",
+  border: "rgba(42,40,38,.10)",
+  hair: "rgba(42,40,38,.13)",
+  t1: "#211f1d",
+  t2: "#46433f",
+  t3: "#6f6c68",
+  t4: "#9a9793",
+  shadow: "0 18px 48px rgba(31,41,55,.07), inset 0 1px 0 rgba(255,255,255,.8)",
 };
 
 function makeR(domain) {
@@ -20,42 +35,30 @@ function makeR(domain) {
     ...BASE_R,
     em:   "#ef4444",
     emD:  "#b91c1c",
-    emBg: "rgba(239,68,68,.09)",
-    emBr: "rgba(239,68,68,.24)",
+    emBg: "rgba(239,68,68,.07)",
+    emBr: "rgba(239,68,68,.22)",
   };
   if (domain === "automotive") return {
     ...BASE_R,
     em:   "#2563eb",
     emD:  "#1d4ed8",
-    emBg: "rgba(37,99,235,.09)",
-    emBr: "rgba(37,99,235,.24)",
+    emBg: "rgba(37,99,235,.07)",
+    emBr: "rgba(37,99,235,.22)",
   };
-  // smartphone — light bg에서 LandingPage 의 forest 톤과 일관성 있게 어둡고 차분한 forest green
+  // smartphone — 차분한 forest green
   return {
     ...BASE_R,
-    em:   "#047857",                  // 진한 forest (LandingPage emD)
-    emD:  "#065f46",                  // 더 진한 톤 (h2, link)
-    emBg: "rgba(6,95,70,.06)",        // 매우 옅은 forest 틴트
-    emBr: "rgba(6,95,70,.18)",        // 차분한 border
+    em:   "#047857",
+    emD:  "#065f46",
+    emBg: "rgba(6,95,70,.06)",
+    emBr: "rgba(6,95,70,.18)",
   };
 }
 
 const SOURCE_DOMAIN_ACCENTS = {
-  smartphone: {
-    emD: "#065f46",
-    emBg: "rgba(6,95,70,.06)",
-    emBr: "rgba(6,95,70,.18)",
-  },
-  humanoid: {
-    emD: "#b91c1c",
-    emBg: "rgba(239,68,68,.09)",
-    emBr: "rgba(239,68,68,.24)",
-  },
-  automotive: {
-    emD: "#1d4ed8",
-    emBg: "rgba(37,99,235,.09)",
-    emBr: "rgba(37,99,235,.24)",
-  },
+  smartphone: { emD: "#065f46", emBg: "rgba(6,95,70,.06)",  emBr: "rgba(6,95,70,.18)"  },
+  humanoid:   { emD: "#b91c1c", emBg: "rgba(239,68,68,.08)", emBr: "rgba(239,68,68,.22)" },
+  automotive: { emD: "#1d4ed8", emBg: "rgba(37,99,235,.08)", emBr: "rgba(37,99,235,.22)" },
 };
 
 const SOURCE_DOMAIN_BY_NAME = {
@@ -123,21 +126,28 @@ const SOURCE_DOMAIN_BY_NAME = {
 
 function sourceAccent(sourceName, R) {
   const domain = SOURCE_DOMAIN_BY_NAME[sourceName];
-  return SOURCE_DOMAIN_ACCENTS[domain] || {
-    emD: R.emD,
-    emBg: R.emBg,
-    emBr: R.emBr,
-  };
+  return SOURCE_DOMAIN_ACCENTS[domain] || { emD: R.emD, emBg: R.emBg, emBr: R.emBr };
 }
 
-function SourceBadge({ children, R, accent }) {
-  const A = accent || R;
+// ── Editorial primitives ───────────────────────────────────────────────
+function Kicker({ children, color, style }) {
   return (
     <span style={{
-      display: "inline-flex", alignItems: "center", height: 20,
-      padding: "0 7px", borderRadius: 6, background: A.emBg,
-      color: A.emD, border: `1px solid ${A.emBr}`,
-      fontSize: 10.5, fontWeight: 700, whiteSpace: "nowrap",
+      fontFamily: LABEL, fontSize: 11, fontWeight: 700,
+      letterSpacing: ".16em", textTransform: "uppercase",
+      color, lineHeight: 1, ...style,
+    }}>
+      {children}
+    </span>
+  );
+}
+
+function SourceLabel({ children, accent }) {
+  return (
+    <span style={{
+      fontFamily: LABEL, fontSize: 10, fontWeight: 700,
+      letterSpacing: ".08em", textTransform: "uppercase",
+      color: accent.emD, whiteSpace: "nowrap",
     }}>
       {children}
     </span>
@@ -148,10 +158,10 @@ function MetricPill({ value, R, accent }) {
   const A = accent || R;
   return (
     <span style={{
-      display: "inline-flex", alignItems: "center", height: 22,
-      padding: "0 8px", borderRadius: 99, background: A.emBg,
+      display: "inline-flex", alignItems: "center", height: 21,
+      padding: "0 9px", borderRadius: 99, background: A.emBg,
       color: A.emD, border: `1px solid ${A.emBr}`,
-      fontSize: 11, fontWeight: 700,
+      fontSize: 11, fontWeight: 600, fontVariantNumeric: "tabular-nums",
     }}>
       {value}
     </span>
@@ -166,7 +176,7 @@ function ViewToggle({ value, onChange, R }) {
   return (
     <div style={{
       display: "inline-flex", alignItems: "center", gap: 3, padding: 3,
-      borderRadius: 999, background: "rgba(42,40,38,.055)",
+      borderRadius: 999, background: "rgba(42,40,38,.05)",
       border: `1px solid ${R.border}`,
     }}>
       {items.map((item) => {
@@ -177,10 +187,11 @@ function ViewToggle({ value, onChange, R }) {
             type="button"
             onClick={() => onChange(item.id)}
             style={{
-              border: 0, borderRadius: 999, padding: "6px 13px",
+              border: 0, borderRadius: 999, padding: "6px 14px",
               background: active ? R.em : "transparent",
               color: active ? "#fff" : R.t3,
-              fontSize: 12, fontWeight: 800, cursor: "pointer",
+              fontFamily: LABEL, fontSize: 11.5, fontWeight: 700,
+              letterSpacing: ".04em", cursor: "pointer",
               transition: "background .15s, color .15s",
             }}
           >
@@ -199,34 +210,37 @@ function ReferenceCard({ refItem, R }) {
     : refItem.section_index
       ? [refItem.section_index]
       : [];
-  const sectionLabel = sectionIndices.map((index) => `섹션${index}`).join(", ");
+  const sectionLabel = sectionIndices.map((index) => `S${index}`).join(" · ");
 
   return (
     <a
       href={refItem.url}
       target="_blank"
       rel="noopener noreferrer"
+      className="rpt-ref"
       style={{
-        display: "block", padding: "13px 14px", borderRadius: 8,
-        background: R.panelStrong, border: `1px solid ${R.border}`,
-        boxShadow: "0 1px 3px rgba(0,0,0,.03)", textDecoration: "none",
+        display: "block", padding: "15px 4px 16px",
+        borderTop: `1px solid ${R.hair}`, textDecoration: "none",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8 }}>
-        <SourceBadge R={R} accent={accent}>{refItem.source_name || "Source"}</SourceBadge>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
+        <SourceLabel accent={accent}>{refItem.source_name || refItem.source || "Source"}</SourceLabel>
+        <span style={{ flex: 1 }} />
         {sectionLabel && (
-          <span style={{ fontSize: 10.5, color: accent.emD, fontWeight: 700 }}>
+          <span style={{ fontFamily: LABEL, fontSize: 9.5, fontWeight: 700, letterSpacing: ".06em", color: accent.emD }}>
             {sectionLabel}
           </span>
         )}
         {refItem.date && <span style={{ fontSize: 10.5, color: R.t4 }}>{refItem.date}</span>}
       </div>
-      <p style={{ margin: "0 0 7px", fontSize: 12.5, fontWeight: 700, color: R.t1, lineHeight: 1.45 }}>
+      <p style={{ margin: "0 0 6px", fontFamily: SERIF, fontSize: 13.5, fontWeight: 700, color: R.t1, lineHeight: 1.5 }}>
         {refItem.title || refItem.source_name}
       </p>
-      <p style={{ margin: 0, fontSize: 11.5, color: R.t3, lineHeight: 1.55 }}>
-        {refItem.detail}
-      </p>
+      {refItem.detail && (
+        <p style={{ margin: 0, fontSize: 12, color: R.t3, lineHeight: 1.6 }}>
+          {refItem.detail}
+        </p>
+      )}
       {refItem.metrics?.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 10 }}>
           {refItem.metrics.map((metric) => <MetricPill key={metric} value={metric} R={R} accent={accent} />)}
@@ -264,27 +278,31 @@ function buildInsightSummary(insights = []) {
 function SectionBlock({ section, R }) {
   const [open, setOpen] = useState(false);
   const bullets = section.bullets || [];
+  const num = String(section.index).padStart(2, "0");
   return (
-    <section style={{ padding: "28px 0", borderTop: `1px solid ${R.border}` }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-        <span style={{
-          display: "inline-flex", alignItems: "center", justifyContent: "center",
-          width: 28, height: 28, borderRadius: 8, color: R.emD, background: R.emBg,
-          border: `1px solid ${R.emBr}`, fontSize: 12, fontWeight: 800,
-        }}>
-          {section.index}
-        </span>
-        <h2 style={{ margin: 0, fontSize: 20, color: R.t1, letterSpacing: 0, lineHeight: 1.35 }}>
-          {section.title}
-        </h2>
-      </div>
+    <section style={{ padding: "40px 0 8px", borderTop: `1px solid ${R.hair}` }}>
+      <Kicker color={R.emD} style={{ display: "block", marginBottom: 14 }}>
+        Section&nbsp;{num}
+      </Kicker>
+      <h2 style={{
+        margin: 0, fontFamily: SERIF, fontSize: 25, fontWeight: 700,
+        color: R.t1, letterSpacing: "-.01em", lineHeight: 1.4,
+      }}>
+        {section.title}
+      </h2>
       {section.headline && (
-        <p style={{ margin: "0 0 14px", fontSize: 15, fontWeight: 500, color: R.emD, lineHeight: 1.55 }}>
+        <p style={{
+          margin: "14px 0 0", fontFamily: SERIF, fontSize: 17, fontWeight: 500,
+          color: R.emD, lineHeight: 1.65,
+        }}>
           {section.headline}
         </p>
       )}
       {section.narrative && (
-        <p style={{ margin: "0 0 16px", fontSize: 14.5, color: R.t2, lineHeight: 1.85, whiteSpace: "pre-wrap" }}>
+        <p style={{
+          margin: "18px 0 0", fontSize: 14.5, color: R.t2, lineHeight: 1.95,
+          whiteSpace: "pre-wrap", maxWidth: "68ch",
+        }}>
           {section.narrative}
         </p>
       )}
@@ -294,13 +312,13 @@ function SectionBlock({ section, R }) {
             onClick={() => setOpen(o => !o)}
             aria-expanded={open}
             style={{
-              display: "flex", alignItems: "center", gap: 8,
-              margin: 0, padding: "6px 0", border: 0, background: "none",
+              display: "flex", alignItems: "center", gap: 9,
+              margin: "22px 0 0", padding: "8px 0", border: 0, background: "none",
               cursor: "pointer", color: R.t1,
             }}
           >
-            <span style={{ fontSize: 13, fontWeight: 700, color: R.t1 }}>상세 수치</span>
-            <span style={{ fontSize: 11, color: R.t4, fontWeight: 500 }}>{bullets.length}건</span>
+            <Kicker color={R.t3}>상세 수치</Kicker>
+            <span style={{ fontSize: 11, color: R.t4, fontWeight: 500, fontVariantNumeric: "tabular-nums" }}>{bullets.length}</span>
             <span style={{
               fontSize: 13, color: R.emD, fontWeight: 700,
               transition: "transform 0.25s ease",
@@ -315,18 +333,18 @@ function SectionBlock({ section, R }) {
             transition: "max-height 0.35s ease, opacity 0.2s ease",
           }}>
             <ul style={{
-              margin: "8px 0 0", padding: "0 0 0 4px", listStyle: "none",
-              display: "grid", gap: 8,
+              margin: "6px 0 0", padding: 0, listStyle: "none",
+              display: "grid", gap: 11,
             }}>
               {bullets.map((bullet, index) => (
                 <li key={index} style={{
-                  display: "flex", alignItems: "flex-start", gap: 10,
+                  display: "flex", alignItems: "flex-start", gap: 13,
                   fontSize: 13.5, color: R.t1, lineHeight: 1.7,
                 }}>
                   <span style={{
-                    color: R.emD, fontSize: 16, lineHeight: 1.4, flexShrink: 0,
-                    marginTop: -1,
-                  }}>•</span>
+                    fontFamily: SERIF, color: R.emD, fontSize: 14, lineHeight: 1.6,
+                    flexShrink: 0, fontWeight: 700,
+                  }}>—</span>
                   <span style={{ minWidth: 0 }}>{bullet}</span>
                 </li>
               ))}
@@ -343,85 +361,77 @@ function CustomSlideView({ report, R }) {
   const insightLines = buildInsightSummary(report.insights || []);
   const sections = report.sections || [];
   return (
-    <article style={{
-      minWidth: 0, padding: "0", background: "transparent",
-      border: 0, boxShadow: "none",
-    }}>
+    <article style={{ minWidth: 0 }}>
       <div style={{
         display: "grid", gridTemplateRows: "auto auto auto 1fr",
-        minHeight: "calc(100vh - 168px)", gap: 12,
+        minHeight: "calc(100vh - 168px)", gap: 14,
       }}>
         <section style={{
-          padding: "18px 22px", borderRadius: 12, background: R.panelStrong,
-          border: `1px solid ${R.border}`,
+          padding: "22px 26px", borderRadius: 14, background: R.paper,
+          border: `1px solid ${R.border}`, boxShadow: R.shadow,
         }}>
-          <SourceBadge R={R}>Custom Brief</SourceBadge>
-          <h1 style={{ margin: "12px 0 0", fontSize: 26, lineHeight: 1.28, letterSpacing: 0, color: R.t1 }}>
+          <Kicker color={R.emD}>Custom Brief</Kicker>
+          <h1 style={{ margin: "14px 0 0", fontFamily: SERIF, fontSize: 27, fontWeight: 700, lineHeight: 1.32, letterSpacing: "-.01em", color: R.t1 }}>
             {report.topic}
           </h1>
         </section>
 
-        <section style={{
-          padding: "18px 22px", borderRadius: 12, background: R.emBg,
-          border: `1px solid ${R.emBr}`,
-        }}>
-          <h2 style={{ margin: "0 0 8px", fontSize: 15, color: R.emD }}>조사 배경</h2>
-          <p style={{ margin: 0, fontSize: 14, color: R.t2, lineHeight: 1.7 }}>{background}</p>
+        <section style={{ padding: "2px 4px 0", borderLeft: `2px solid ${R.emBr}`, paddingLeft: 20 }}>
+          <Kicker color={R.emD} style={{ display: "block", marginBottom: 9 }}>조사 배경</Kicker>
+          <p style={{ margin: 0, fontFamily: SERIF, fontSize: 15.5, color: R.t2, lineHeight: 1.8 }}>{background}</p>
         </section>
 
-        <section style={{ padding: "4px 0 0" }}>
-          <h2 style={{ margin: "0 0 8px", fontSize: 14, color: R.emD }}>시사점</h2>
-          <div style={{ display: "grid", gap: 10 }}>
+        <section style={{ padding: "6px 0 0" }}>
+          <Kicker color={R.emD} style={{ display: "block", marginBottom: 12 }}>시사점</Kicker>
+          <div style={{ display: "grid", gap: 12 }}>
             {(insightLines.length
               ? insightLines
               : [{ title: "시장 분석", summary: "분석 결과를 바탕으로 시장 변화와 기업 대응 방향을 요약합니다." }]
             ).map((item, index) => (
-              <div key={index} style={{
-                padding: "12px 14px", borderRadius: 8,
-                background: R.emBg, border: `1px solid ${R.emBr}`,
-              }}>
-                <p style={{ margin: "0 0 5px", fontSize: 12.5, fontWeight: 800, color: R.emD, letterSpacing: "-.01em" }}>
-                  {index + 1}. {item.title}
-                </p>
-                <p style={{ margin: 0, fontSize: 13, color: R.t2, lineHeight: 1.6 }}>
-                  {item.summary}
-                </p>
+              <div key={index} style={{ display: "flex", gap: 13, alignItems: "flex-start" }}>
+                <span style={{ fontFamily: SERIF, fontSize: 14, fontWeight: 700, color: R.emD, lineHeight: 1.5, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ margin: "0 0 4px", fontFamily: SERIF, fontSize: 14, fontWeight: 700, color: R.t1, lineHeight: 1.45 }}>
+                    {item.title}
+                  </p>
+                  <p style={{ margin: 0, fontSize: 13, color: R.t2, lineHeight: 1.6 }}>
+                    {item.summary}
+                  </p>
+                </div>
               </div>
             ))}
           </div>
         </section>
 
         <section style={{
-          padding: "18px 22px", borderRadius: 12, background: R.panelStrong,
-          border: `1px solid ${R.border}`, minHeight: 0,
+          padding: "22px 26px", borderRadius: 14, background: R.paper,
+          border: `1px solid ${R.border}`, boxShadow: R.shadow, minHeight: 0,
         }}>
-          <h2 style={{ margin: "0 0 14px", fontSize: 15, color: R.emD }}>핵심 분석</h2>
-          <div style={{ display: "grid", gap: 10 }}>
-            {sections.map((section) => (
+          <Kicker color={R.emD} style={{ display: "block", marginBottom: 16 }}>핵심 분석</Kicker>
+          <div style={{ display: "grid", gap: 0 }}>
+            {sections.map((section, i) => (
               <div key={section.index} style={{
-                padding: "15px 16px", borderRadius: 10, background: R.emBg,
-                border: `1px solid ${R.emBr}`, minWidth: 0,
+                padding: i === 0 ? "0 0 16px" : "16px 0",
+                borderTop: i === 0 ? "none" : `1px solid ${R.hair}`,
+                minWidth: 0,
               }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                  <span style={{
-                    display: "inline-flex", alignItems: "center", justifyContent: "center",
-                    width: 24, height: 24, borderRadius: 7, background: R.emBg,
-                    border: `1px solid ${R.emBr}`, color: R.emD, fontSize: 11, fontWeight: 800,
-                    flexShrink: 0,
-                  }}>
-                    {section.index}
+                <div style={{ display: "flex", alignItems: "baseline", gap: 11, marginBottom: 7 }}>
+                  <span style={{ fontFamily: SERIF, fontSize: 13, fontWeight: 700, color: R.emD, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>
+                    {String(section.index).padStart(2, "0")}
                   </span>
-                  <h3 style={{ margin: 0, fontSize: 14.5, lineHeight: 1.35, color: R.t1 }}>
+                  <h3 style={{ margin: 0, fontFamily: SERIF, fontSize: 15.5, fontWeight: 700, lineHeight: 1.4, color: R.t1 }}>
                     {section.title}
                   </h3>
                 </div>
                 {section.headline && (
-                  <p style={{ margin: "0 0 9px", fontSize: 13, fontWeight: 500, color: R.emD, lineHeight: 1.5 }}>
+                  <p style={{ margin: "0 0 8px 24px", fontFamily: SERIF, fontSize: 13, fontWeight: 500, color: R.emD, lineHeight: 1.55 }}>
                     {section.headline}
                   </p>
                 )}
                 {section.narrative && (
-                  <p style={{ margin: "0 0 10px", fontSize: 12.6, color: R.t2, lineHeight: 1.65 }}>
+                  <p style={{ margin: "0 0 0 24px", fontSize: 12.6, color: R.t2, lineHeight: 1.7 }}>
                     {section.narrative}
                   </p>
                 )}
@@ -463,7 +473,7 @@ export default function ReportPage() {
 
   if (error) {
     return (
-      <main style={{ minHeight: "100vh", background: BASE_R.bg, display: "grid", placeItems: "center", color: BASE_R.t2 }}>
+      <main style={{ minHeight: "100vh", background: BASE_R.bg, display: "grid", placeItems: "center", color: BASE_R.t2, fontFamily: SERIF }}>
         {error}
       </main>
     );
@@ -471,105 +481,145 @@ export default function ReportPage() {
 
   if (!report) {
     return (
-      <main style={{ minHeight: "100vh", background: BASE_R.bg, display: "grid", placeItems: "center", color: BASE_R.t3 }}>
-        리포트 로딩 중...
+      <main style={{ minHeight: "100vh", background: BASE_R.bg, display: "grid", placeItems: "center", color: BASE_R.t3, fontFamily: SERIF }}>
+        리포트 로딩 중…
       </main>
     );
   }
+
+  const domainLabel = DOMAIN_LABEL[report.domain] || "Research";
+  const sectionCount = (report.sections || []).length;
 
   return (
     <main style={{
       height: "100vh", overflow: "auto", background: R.bg, color: R.t1,
       fontFamily: '"Pretendard Variable", Pretendard, Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif',
     }}>
+      <style>{`
+        .rpt-ref { transition: background .15s ease; }
+        .rpt-ref:hover { background: rgba(42,40,38,.025); }
+        .rpt-navlink { transition: color .15s ease, opacity .15s ease; }
+        .rpt-navlink:hover { opacity: .62; }
+      `}</style>
+
       <div style={{
-        position: "sticky", top: 0, zIndex: 5, height: 58, display: "flex",
-        alignItems: "center", justifyContent: "space-between", padding: "0 28px",
-        background: "rgba(247,246,243,.86)", backdropFilter: "blur(28px) saturate(180%)",
+        position: "sticky", top: 0, zIndex: 5, height: 60, display: "flex",
+        alignItems: "center", justifyContent: "space-between", padding: "0 30px",
+        background: "rgba(246,244,239,.82)", backdropFilter: "blur(28px) saturate(180%)",
         WebkitBackdropFilter: "blur(28px) saturate(180%)", borderBottom: `1px solid ${R.border}`,
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-          <button onClick={() => nav("/")} style={{
-            border: 0, background: "none", color: R.t3, fontSize: 13,
-            fontWeight: 700, cursor: "pointer", padding: 0,
+        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+          <button onClick={() => nav("/")} className="rpt-navlink" style={{
+            border: 0, background: "none", color: R.t3, fontFamily: LABEL, fontSize: 11.5,
+            fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", cursor: "pointer", padding: 0,
           }}>
             홈
           </button>
-          <button onClick={() => nav("/archive")} style={{
-            border: 0, background: "none", color: R.emD, fontSize: 13,
-            fontWeight: 700, cursor: "pointer", padding: 0,
+          <button onClick={() => nav("/archive")} className="rpt-navlink" style={{
+            border: 0, background: "none", color: R.emD, fontFamily: LABEL, fontSize: 11.5,
+            fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", cursor: "pointer", padding: 0,
           }}>
-            리포트 아카이브
+            Archive
           </button>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <ViewToggle value={viewMode} onChange={setViewMode} R={R} />
-          <img src="/logo-mark.png" alt="Canopy" style={{ width: 50, height: 36, objectFit: "contain" }} />
+          <button onClick={() => nav("/")} style={{ border: 0, background: "none", padding: 0, cursor: "pointer", display: "inline-flex", alignItems: "center" }} aria-label="Seulgy 홈">
+            <Wordmark size={22} color={R.emD} />
+          </button>
         </div>
       </div>
 
       <div style={{
-        maxWidth: 1440, margin: "0 auto", padding: "34px 18px 54px",
-        display: "grid", gridTemplateColumns: "minmax(0, 1fr) 380px", gap: 22,
+        maxWidth: 1240, margin: "0 auto", padding: "44px 22px 64px",
+        display: "grid", gridTemplateColumns: "minmax(0, 1fr) 332px", gap: 46,
       }}>
         {viewMode === "custom" ? (
           <CustomSlideView report={report} R={R} />
         ) : (
           <article style={{
-            minWidth: 0, padding: "36px 44px", borderRadius: 16, background: R.panel,
+            minWidth: 0, padding: "52px 60px 48px", borderRadius: 18, background: R.paper,
             border: `1px solid ${R.border}`, boxShadow: R.shadow,
           }}>
-            <div style={{ marginBottom: 28 }}>
-              <SourceBadge R={R}>Executive Report</SourceBadge>
-              <h1 style={{ margin: "14px 0 10px", fontSize: 30, lineHeight: 1.28, letterSpacing: 0, color: R.t1 }}>
-                {report.topic}
-              </h1>
-              {report.run_ts && <p style={{ margin: 0, fontSize: 12, color: R.t4 }}>{report.run_ts}</p>}
+            {/* ── Masthead ── */}
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 22 }}>
+              <span style={{ width: 26, height: 2, background: R.em, borderRadius: 2 }} />
+              <Kicker color={R.emD}>Executive Report · {domainLabel}</Kicker>
+            </div>
+            <h1 style={{
+              margin: "0 0 18px", fontFamily: SERIF, fontSize: 38, fontWeight: 700,
+              lineHeight: 1.34, letterSpacing: "-.015em", color: R.t1, maxWidth: "20ch",
+            }}>
+              {report.topic}
+            </h1>
+            <div style={{
+              display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap",
+              paddingBottom: 30, borderBottom: `1px solid ${R.hair}`,
+              fontSize: 12, color: R.t4,
+            }}>
+              {report.run_ts && <span style={{ fontVariantNumeric: "tabular-nums" }}>{report.run_ts}</span>}
+              {report.run_ts && sectionCount > 0 && <span style={{ color: R.hair }}>·</span>}
+              {sectionCount > 0 && <span>{sectionCount}개 섹션</span>}
+              {references.length > 0 && <span style={{ color: R.hair }}>·</span>}
+              {references.length > 0 && <span>참고 {references.length}건</span>}
             </div>
 
+            {/* ── Executive summary (standfirst) ── */}
             {report.executive_summary && (
-              <section style={{
-                padding: "20px 22px", borderRadius: 12, background: R.emBg,
-                border: `1px solid ${R.emBr}`, marginBottom: 10,
-              }}>
-                <h2 style={{ margin: "0 0 10px", fontSize: 16, color: R.emD }}>Executive Summary</h2>
-                <p style={{ margin: 0, fontSize: 14.5, color: R.t2, lineHeight: 1.85 }}>
+              <section style={{ padding: "30px 0 6px", borderLeft: `2px solid ${R.em}`, paddingLeft: 24, marginLeft: -2 }}>
+                <Kicker color={R.emD} style={{ display: "block", marginBottom: 12 }}>핵심 요약</Kicker>
+                <p style={{ margin: 0, fontFamily: SERIF, fontSize: 18.5, fontWeight: 500, color: R.t2, lineHeight: 1.85 }}>
                   {report.executive_summary}
                 </p>
               </section>
             )}
 
-            {report.sections.map((section) => (
-              <SectionBlock key={section.index} section={section} R={R} />
-            ))}
+            {/* ── Sections ── */}
+            <div style={{ marginTop: 18 }}>
+              {(report.sections || []).map((section) => (
+                <SectionBlock key={section.index} section={section} R={R} />
+              ))}
+            </div>
 
+            {/* ── Market insights ── */}
             {report.insights?.length > 0 && (
-              <section style={{ paddingTop: 30, borderTop: `1px solid ${R.border}` }}>
-                <h2 style={{ margin: "0 0 16px", fontSize: 20, color: R.t1 }}>Market Insights</h2>
-                <div style={{ display: "grid", gap: 14 }}>
+              <section style={{ marginTop: 44, paddingTop: 40, borderTop: `2px solid ${R.hair}` }}>
+                <Kicker color={R.emD} style={{ display: "block", marginBottom: 6 }}>Market Insights</Kicker>
+                <h2 style={{ margin: "0 0 8px", fontFamily: SERIF, fontSize: 24, fontWeight: 700, color: R.t1, letterSpacing: "-.01em" }}>
+                  시사점
+                </h2>
+                <div style={{ display: "grid", gap: 0 }}>
                   {report.insights.map((insight, index) => (
                     <div key={index} style={{
-                      padding: "17px 18px", borderRadius: 10,
-                      background: R.panelStrong, border: `1px solid ${R.border}`,
+                      display: "flex", gap: 18, alignItems: "flex-start",
+                      padding: "22px 0", borderTop: `1px solid ${R.hair}`,
                     }}>
-                      <h3 style={{ margin: "0 0 8px", fontSize: 15, color: R.emD }}>
-                        {index + 1}. {insight.title}
-                      </h3>
-                      <p style={{ margin: 0, fontSize: 13.5, color: R.t2, lineHeight: 1.75 }}>
-                        {insight.body}
-                      </p>
+                      <span style={{
+                        fontFamily: SERIF, fontSize: 22, fontWeight: 700, color: R.emD,
+                        lineHeight: 1.1, fontVariantNumeric: "tabular-nums", flexShrink: 0, opacity: .85,
+                      }}>
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      <div style={{ minWidth: 0 }}>
+                        <h3 style={{ margin: "2px 0 9px", fontFamily: SERIF, fontSize: 17, fontWeight: 700, color: R.t1, lineHeight: 1.45 }}>
+                          {insight.title}
+                        </h3>
+                        <p style={{ margin: 0, fontSize: 14, color: R.t2, lineHeight: 1.85, maxWidth: "66ch" }}>
+                          {insight.body}
+                        </p>
+                      </div>
                     </div>
                   ))}
                 </div>
               </section>
             )}
-
           </article>
         )}
 
-        <aside style={{ position: "sticky", top: 78, alignSelf: "start", maxHeight: "calc(100vh - 98px)", overflow: "auto" }}>
+        {/* ── Sidebar: references ── */}
+        <aside style={{ position: "sticky", top: 82, alignSelf: "start", maxHeight: "calc(100vh - 104px)", overflow: "auto" }}>
           <div style={{
-            padding: "18px", borderRadius: 14, background: R.panel,
+            padding: "20px 22px 8px", borderRadius: 16, background: R.panel,
             border: `1px solid ${R.border}`, boxShadow: R.shadow,
           }}>
             <button
@@ -577,16 +627,14 @@ export default function ReportPage() {
               aria-expanded={refsOpen}
               style={{
                 display: "flex", alignItems: "center", justifyContent: "space-between",
-                width: "100%", margin: 0, padding: 0, border: 0, background: "none",
+                width: "100%", margin: 0, padding: "0 0 4px", border: 0, background: "none",
                 textAlign: "left", cursor: "pointer", color: R.t1,
               }}
             >
-              <span style={{
-                display: "flex", alignItems: "baseline", gap: 8, minWidth: 0,
-              }}>
-                <span style={{ fontSize: 15, fontWeight: 700, color: R.t1 }}>참고 수치</span>
-                <span style={{ fontSize: 11, color: R.t4, fontWeight: 500 }}>
-                  {references.length}건
+              <span style={{ display: "flex", alignItems: "baseline", gap: 9, minWidth: 0 }}>
+                <Kicker color={R.t1}>참고 수치</Kicker>
+                <span style={{ fontSize: 11, color: R.t4, fontWeight: 500, fontVariantNumeric: "tabular-nums" }}>
+                  {references.length}
                 </span>
               </span>
               <span style={{
@@ -598,17 +646,16 @@ export default function ReportPage() {
                 ›
               </span>
             </button>
-            {/* 펼침 영역 — max-height 슬라이딩 */}
             <div style={{
               maxHeight: refsOpen ? "5000px" : "0px",
               opacity: refsOpen ? 1 : 0,
               overflow: "hidden",
               transition: "max-height 0.35s ease, opacity 0.2s ease",
             }}>
-              <p style={{ margin: "8px 0 14px", fontSize: 11.5, color: R.t4 }}>
-                본문에 사용된 링크와 해당 근거
+              <p style={{ margin: "10px 0 6px", fontSize: 11.5, color: R.t4, lineHeight: 1.5 }}>
+                본문에 사용된 링크와 근거
               </p>
-              <div style={{ display: "grid", gap: 10 }}>
+              <div>
                 {references.map((refItem, index) => (
                   <ReferenceCard key={`${refItem.url}-${index}`} refItem={refItem} R={R} />
                 ))}

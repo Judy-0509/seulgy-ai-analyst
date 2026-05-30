@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { C } from "../theme";
 import { useAuth } from "../contexts/AuthContext";
+import Wordmark from "../components/Wordmark";
 
 export default function LoginPage() {
   const nav = useNavigate();
@@ -67,11 +68,7 @@ export default function LoginPage() {
         }}>
           {/* Logo */}
           <div style={{ display: "flex", justifyContent: "center", marginBottom: 36 }}>
-            <img
-              src="/logo-mark.png"
-              alt="Canopy"
-              style={{ width: 88, height: 64, objectFit: "contain", opacity: 0.92 }}
-            />
+            <Wordmark size={42} />
           </div>
 
           {/* Card */}

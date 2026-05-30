@@ -55,12 +55,6 @@
   cursor: pointer;
 }
 
-.news-brand img {
-  width: 42px;
-  height: 42px;
-  object-fit: contain;
-}
-
 .news-brand h1 {
   margin: 0;
   font-size: 17px;

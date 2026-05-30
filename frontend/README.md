@@ -1,4 +1,4 @@
-# Canopy Frontend
+# Seulgy Frontend
 
 React + Vite frontend for Research Helper.
 
@@ -11,7 +11,8 @@ Key files:
 - [src/theme.js](./src/theme.js): shared color and typography tokens for app/DB surfaces.
 - [src/components/micro](./src/components/micro): reusable badges, tags, progress, spinner, and small UI atoms.
 - [src/components/PipelineScreen.jsx](./src/components/PipelineScreen.jsx): pipeline-specific glass UI tokens and helpers.
-- [public/logo-mark.png](./public/logo-mark.png): Canopy brand mark and favicon source.
+- [src/components/Wordmark.jsx](./src/components/Wordmark.jsx): Seulgy brand wordmark (Cabinet Grotesk). Use instead of an image logo.
+- [public/favicon.svg](./public/favicon.svg): Seulgy "S" favicon (Cabinet Grotesk). `public/logo-mark.png` is the retired legacy tree mark.
 
 ## Development
 

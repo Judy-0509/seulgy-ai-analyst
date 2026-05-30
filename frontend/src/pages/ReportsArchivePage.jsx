@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Wordmark from "../components/Wordmark";
 
 const API = "";
 
@@ -208,7 +209,9 @@ export default function ReportsArchivePage() {
         }}>
           홈
         </button>
-        <img src="/logo-mark.png" alt="Canopy" style={{ width: 50, height: 36, objectFit: "contain" }} />
+        <button onClick={() => nav("/")} style={{ border: 0, background: "none", padding: 0, cursor: "pointer", display: "inline-flex", alignItems: "center" }} aria-label="Seulgy 홈">
+          <Wordmark size={22} />
+        </button>
       </div>
 
       <div style={{ maxWidth: 1080, margin: "0 auto", padding: "38px 20px 60px" }}>

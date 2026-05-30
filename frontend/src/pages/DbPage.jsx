@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { C, SRC_COLORS, SRC_COLOR_MAP } from "../theme";
+import Wordmark from "../components/Wordmark";
 import { useAuth } from "../contexts/AuthContext";
 import { useDomain } from "../contexts/DomainContext";
 
@@ -104,7 +105,7 @@ export default function DbPage() {
       {/* Top bar */}
       <div style={{ height: 64, padding: "0 24px", borderBottom: `1px solid ${C.border}`, background: C.card, display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
         <button onClick={() => nav("/")} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center" }}>
-          <img src="/logo-mark.png" alt="Canopy" style={{ height: 36, objectFit: "contain" }} />
+          <Wordmark size={22} />
         </button>
         <div style={{ width: 1, height: 20, background: C.border }} />
         <span style={{ fontSize: 13, fontWeight: 600, color: C.t1, letterSpacing: "-.01em" }}>아카이브 DB</span>

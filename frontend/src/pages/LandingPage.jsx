@@ -536,7 +536,8 @@ export default function LandingPage() {
               style={{ pointerEvents: "auto", height: 34, borderRadius: 99,
                 border: `1px solid ${E.border}`, background: E.navBg,
                 color: label === "DB" ? E.t3 : E.emLL,
-                padding: "0 14px", fontSize: 12, fontWeight: 700, cursor: "pointer",
+                padding: "0 14px", fontFamily: '"Cabinet Grotesk", "Pretendard Variable", Pretendard, sans-serif',
+                fontSize: 12, fontWeight: 700, letterSpacing: "0.02em", cursor: "pointer",
                 backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
                 boxShadow: "0 4px 18px rgba(0,0,0,.18)", transition: "background .15s, color .15s" }}
               onMouseEnter={e => {
@@ -558,7 +559,8 @@ export default function LandingPage() {
           alignItems: "center", padding: "18px 32px 18px", textAlign: "center" }}>
 
           {/* Headline */}
-          <h1 style={{ fontSize: 80, fontWeight: 900, color: E.t1, letterSpacing: "-0.06em",
+          <h1 style={{ fontFamily: '"Cabinet Grotesk", "Pretendard Variable", Pretendard, sans-serif',
+            fontSize: 80, fontWeight: 800, color: E.t1, letterSpacing: "-0.045em",
             lineHeight: 0.98, margin: "16px 0 0", textShadow: "0 4px 32px rgba(0,0,0,.5)",
             animation: "fadeUp .5s ease .06s both" }}>
             Deep research.<br/>
