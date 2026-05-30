@@ -28,6 +28,7 @@ from src.domains import load_domain
 ROOT = Path(__file__).parent.parent
 FRONTEND_DIST  = ROOT / "frontend" / "dist"
 DASHBOARD_HTML = ROOT / "web" / "dashboard.html"
+ONBOARDING_HTML = ROOT / "onboarding.html"
 ARCHIVES_DIR   = ROOT / "data" / "archives"
 ALL_ARCHIVES_SCRIPT = ROOT / "scripts" / "build_all_archives.py"
 
@@ -347,6 +348,13 @@ async def dashboard():
     if not DASHBOARD_HTML.exists():
         raise HTTPException(404, "dashboard.html not found")
     return FileResponse(DASHBOARD_HTML)
+
+
+@app.get("/onboarding")
+async def onboarding():
+    if not ONBOARDING_HTML.exists():
+        raise HTTPException(404, "onboarding.html not found")
+    return FileResponse(ONBOARDING_HTML)
 
 
 @app.get("/api/archives/status")

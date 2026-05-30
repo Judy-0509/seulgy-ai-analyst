@@ -28,8 +28,10 @@ scripts/_humanoid_topic_suggestions_emerging.json
 scripts/_automotive_topic_suggestions.json
 scripts/_space_datacenter_topic_suggestions.json
 scripts/_*_topic_suggestions_emerging.json
+scripts/_topic_suggestions_*d.json
 scripts/_*_PREV.json
 scripts/_history/
+data/topics/
 reports/_ab_*.json
 reports/_ab_*.html
 scripts/_ab_*.json
@@ -47,6 +49,7 @@ server-*.log
 
 # ── 개인 작업 메모 ────────────────────────────
 todo.md
+HANDOFF.md
 
 # ── 프론트엔드 ────────────────────────────────
 frontend/node_modules/

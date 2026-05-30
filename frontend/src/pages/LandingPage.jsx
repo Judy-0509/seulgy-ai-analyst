@@ -517,17 +517,22 @@ export default function LandingPage() {
         <nav style={{ position: "sticky", top: 0, zIndex: 10, display: "flex", justifyContent: "flex-end",
           gap: 8, padding: "18px clamp(16px, 4vw, 48px) 0", pointerEvents: "none" }}>
           {(isAuthenticated ? [
+            ["Onboarding", "/onboarding"],
             ["Archive", "/archive"],
             ["News", "/news"],
             ["DB", "/db"],
             ["Keywords", "/keywords"],
             ["Usage", "/usage"],
           ] : [
+            ["Onboarding", "/onboarding"],
             ["Login", "/login"],
           ]).map(([label, path]) => (
             <button
               key={path}
-              onClick={() => nav(path)}
+              onClick={() => {
+                if (path === "/onboarding") { window.location.href = path; return; }
+                nav(path);
+              }}
               style={{ pointerEvents: "auto", height: 34, borderRadius: 99,
                 border: `1px solid ${E.border}`, background: E.navBg,
                 color: label === "DB" ? E.t3 : E.emLL,

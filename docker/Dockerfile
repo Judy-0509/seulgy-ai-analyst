@@ -26,6 +26,7 @@ COPY src/      ./src/
 COPY scripts/  ./scripts/
 COPY data/     ./data/
 COPY run_report.py ./
+COPY onboarding.html ./
 
 # Built frontend (from Stage 1)
 COPY --from=frontend-builder /build/dist ./frontend/dist

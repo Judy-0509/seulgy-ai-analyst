@@ -3,6 +3,7 @@ import { createContext, useContext, useState } from "react";
 
 const PIN = import.meta.env.VITE_PIN_KEY || "";
 const AUTH_KEY = "canopy_auth";
+const AUTH_TTL_MS = 24 * 60 * 60 * 1000;
 
 const AuthCtx = createContext(null);
 
@@ -10,7 +11,13 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     try {
       const saved = localStorage.getItem(AUTH_KEY);
-      return saved ? JSON.parse(saved) : null;
+      if (!saved) return null;
+      const u = JSON.parse(saved);
+      if (!u?.loginAt || Date.now() - u.loginAt > AUTH_TTL_MS) {
+        localStorage.removeItem(AUTH_KEY);
+        return null;
+      }
+      return u;
     } catch {
       return null;
     }

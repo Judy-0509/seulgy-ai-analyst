@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>seulgy — 개발자 OJT</title>
+<title>seulgy.v2 — 리서치 파이프라인</title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -29,6 +29,8 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   overflow-x: hidden;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 /* PROGRESS */
@@ -277,12 +279,13 @@ code { font-family: var(--mono); font-size: .875em; background: rgba(255,255,255
 
 <!-- NAV -->
 <nav class="nav">
-  <span class="nav-logo">seulgy</span>
+  <span class="nav-logo">seulgy.v2</span>
   <span class="nav-item" data-id="cover">개요</span>
   <span class="nav-item" data-id="s1">데이터 수집</span>
   <span class="nav-item" data-id="s2">주제 선정</span>
   <span class="nav-item" data-id="s3">보고서 생성</span>
   <span class="nav-item" data-id="s4">자동화</span>
+  <span class="nav-item" data-id="s5">로드맵</span>
 </nav>
 
 <!-- hidden SVG defs -->
@@ -293,45 +296,23 @@ code { font-family: var(--mono); font-size: .875em; background: rgba(255,255,255
 <!-- ═══ COVER ═══ -->
 <section class="s" id="cover">
   <div class="cover-glow"></div>
-  <div class="s-page">1 / 5</div>
+  <div class="s-page">1 / 6</div>
 
-  <div class="eyebrow r">개발자 OJT — 리서치 파이프라인</div>
-  <h1 class="r d1">데이터 수집부터<br>보고서까지, 자동으로.</h1>
-  <p class="sub r d2">매주 50개 이상의 Tier-1 리서치 기관 콘텐츠를 수집하고, AI가 핵심 주제를 선정해 분석 보고서를 자동 생성합니다.</p>
+  <div class="eyebrow r">리서치 파이프라인</div>
+  <h1 class="r d1">데이터 수집부터<br>보고서까지.</h1>
+  <p class="sub r d2">매주 50개 이상의 Tier-1 리서치 기관 콘텐츠를 수집하고,<br>AI가 핵심 주제를 선정해 분석 초안을 생성합니다.</p>
 
-  <div class="stats">
-    <div class="r d2">
-      <div class="stat-v ph">50<span style="font-size:28px;color:var(--text3)">+</span></div>
-      <div class="stat-l">데이터 소스</div>
-    </div>
-    <div class="r d3">
-      <div class="stat-v" style="color:var(--text)">2</div>
-      <div class="stat-l">도메인</div>
-    </div>
-    <div class="r d3">
-      <div class="stat-v" style="color:var(--text)">7<span style="font-size:28px;color:var(--text3)">분</span></div>
-      <div class="stat-l">편당 생성 시간</div>
-    </div>
-    <div class="r d4">
-      <div class="stat-v hm">주 1회</div>
-      <div class="stat-l">완전 자동 실행</div>
-    </div>
-  </div>
-
-  <div class="note r d5">
-    <svg viewBox="0 0 24 24"><use href="#ic-user"/></svg>
-    <p>매주 50개 이상의 리포트를 직접 읽는 게 불가능해서 만들었습니다. 처음엔 단순 스크레이퍼였는데, 주제 선정과 보고서 생성을 붙이면서 지금 구조가 됐습니다.</p>
-  </div>
 </section>
 
 <!-- ═══ STEP 1 — 데이터 수집 ═══ -->
 <section class="s" id="s1">
   <div class="s-num">01</div>
-  <div class="s-page">2 / 5</div>
+  <div class="s-page">2 / 6</div>
 
   <div class="eyebrow r">Step 01</div>
   <h2 class="r d1">데이터 수집</h2>
-  <p class="sub r d2">일반 뉴스·소셜 없음. 리서치 기관·전문 매체·투자은행·제조사 1차 발표만 사용합니다.</p>
+  <p class="sub r d2" style="max-width:none">일반 뉴스·소셜 없음. 리서치 기관·전문 매체·투자은행·제조사 1차 발표만 사용합니다.</p>
+  <p class="r d2" style="font-size:14px;color:var(--text3);line-height:1.65;margin-top:14px;max-width:680px">소스 개수가 항상 정확성과 비례하는 것은 아니기 때문에 A/B 테스트 등을 거쳐 최적의 소스 개수를 확정했습니다.</p>
 
   <!-- legend -->
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:28px;" class="r d2">
@@ -342,6 +323,33 @@ code { font-family: var(--mono); font-size: .875em; background: rgba(255,255,255
     <span class="chip ac">학술·협회</span>
     <span class="chip">전문 매체</span>
   </div>
+
+  <!-- LAYER ROLE GRID -->
+  <div class="r d3" style="display:grid;grid-template-columns:repeat(5,1fr);gap:1px;margin-top:18px;background:rgba(255,255,255,0.07);border-radius:14px;overflow:hidden;">
+    <div style="padding:18px 18px;background:var(--bg3);">
+      <div style="font-size:11px;font-weight:600;letter-spacing:.04em;color:#5ac8fa;margin-bottom:7px;">리서치 트래커</div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.55;">출하·점유율 정량 데이터. 복수 트래커 합의 시 시장 트렌드 확정.</div>
+    </div>
+    <div style="padding:18px 18px;background:var(--bg3);">
+      <div style="font-size:11px;font-weight:600;letter-spacing:.04em;color:#ffd60a;margin-bottom:7px;">투자은행 (IB)</div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.55;">TAM·forecast·자본 흐름 시각. 장기 시나리오 가설 보강.</div>
+    </div>
+    <div style="padding:18px 18px;background:var(--bg3);">
+      <div style="font-size:11px;font-weight:600;letter-spacing:.04em;color:#da8fff;margin-bottom:7px;">OEM 1차 발표</div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.55;">기업 자체 announcement. 제품 로드맵·전략의 ground truth.</div>
+    </div>
+    <div style="padding:18px 18px;background:var(--bg3);">
+      <div style="font-size:11px;font-weight:600;letter-spacing:.04em;color:#32d74b;margin-bottom:7px;">학술·협회</div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.55;">기술 가능성·산업 표준. arXiv·IFR 등 — 선행 신호와 baseline.</div>
+    </div>
+    <div style="padding:18px 18px;background:var(--bg3);">
+      <div style="font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--text2);margin-bottom:7px;">전문 매체</div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.55;">속보·단독 leak. 단독 출처라 보강 증거가 추가로 필요.</div>
+    </div>
+  </div>
+  <p class="r d3" style="font-size:13px;color:var(--text3);line-height:1.6;margin-top:14px;max-width:780px;">
+    하나의 현상이 <strong style="color:var(--text2)">서로 다른 레이어</strong>에서 동시에 보도될 때 신뢰도가 가장 높습니다. 주제 선정 단계의 cross-layer corroboration이 이 구조를 활용합니다.
+  </p>
 
   <div class="split">
     <!-- SMARTPHONE -->
@@ -368,7 +376,7 @@ code { font-family: var(--mono); font-size: .875em; background: rgba(255,255,255
       <div class="col-hdr" style="margin-bottom:20px;">
         <div class="col-dot" style="background:var(--hm)"></div>
         <span class="col-ttl">휴머노이드</span>
-        <span class="col-sub">28개 소스 · 데이터 희소형</span>
+        <span class="col-sub">23개 소스 · 데이터 희소형</span>
       </div>
       <p class="dcol-desc">전담 트래커 없음. IB 리포트·OEM 발표·논문까지 소스에 포함해야 합니다. 소스 수로 밀도 부족을 보완합니다.</p>
       <div class="chips">
@@ -398,27 +406,25 @@ code { font-family: var(--mono); font-size: .875em; background: rgba(255,255,255
     </div>
   </div>
 
-  <div class="note r d5">
-    <svg viewBox="0 0 24 24"><use href="#ic-user"/></svg>
-    <p>소스 선정에서 제일 오래 걸렸습니다. 처음엔 30개 이상 넣었다가 노이즈가 너무 많아서 손으로 하나씩 검증하며 줄였습니다. 지금 목록은 최소 몇 주치 데이터를 실제로 읽어보고 결정한 것들입니다.</p>
-  </div>
+
 </section>
 
 <!-- ═══ STEP 2 — 주제 선정 ═══ -->
 <section class="s" id="s2">
   <div class="s-num">02</div>
-  <div class="s-page">3 / 5</div>
+  <div class="s-page">3 / 6</div>
 
   <div class="eyebrow r">Step 02</div>
   <h2 class="r d1">주제 선정</h2>
-  <p class="sub r d2">키워드 빈도가 아닌 현상(Phenomenon) 단위로 클러스터링합니다. 스마트폰·휴머노이드 동일 로직, 다른 신호 밀도.</p>
+  <p class="sub r d2" style="max-width:none">키워드 빈도가 아닌 현상(Phenomenon) 단위로 클러스터링합니다.<br>스마트폰·휴머노이드 동일 로직, 다른 신호 밀도.</p>
+  <p class="r d2" style="font-size:14px;color:var(--text3);line-height:1.65;margin-top:14px;max-width:680px">단순 키워드 빈도 집계는 노이즈와 편향을 유발하기 때문에, 다중 출처가 동시에 보도한 현상 단위로 묶어 핵심 주제를 도출하고 교차검증 여부에 따라 Crit 2 / Crit 3로 분류합니다.</p>
 
   <div class="crits">
     <div class="crit c2 r d2">
       <div class="crit-wm">2</div>
       <div class="crit-tag">Criterion 2 — 핵심 주제</div>
       <div class="crit-t">독립 소스 2개 이상이 같은 현상을 보도</div>
-      <div class="crit-d">서로 다른 기관이 같은 사건을 각자 취재·발간한 경우. 단순 재인용은 해당 없음. <strong style="color:var(--text)">30일 윈도우.</strong></div>
+      <div class="crit-d">서로 다른 기관이 같은 사건을 각자 취재·발간한 경우. 단순 재인용은 해당 없음. <strong style="color:var(--ph)">스마트폰 14일</strong> · <strong style="color:var(--hm)">휴머노이드 30일</strong> 윈도우.</div>
       <div class="crit-ex">
         <strong style="color:var(--ph)">스마트폰</strong> TrendForce DRAM 분석 + Counterpoint OEM 마진 리포트<br>
         → "Chipflation에 따른 OEM 수익성 양극화" 핵심 주제<br><br>
@@ -440,20 +446,18 @@ code { font-family: var(--mono); font-size: .875em; background: rgba(255,255,255
     </div>
   </div>
 
-  <div class="note r d4">
-    <svg viewBox="0 0 24 24"><use href="#ic-user"/></svg>
-    <p>키워드 빈도로 주제를 잡으면 편향이 심했습니다. 'DRAM'이 많이 나온다고 해서 그게 보고서 주제가 되면 안 되잖아요. '현상'으로 묶는 방식으로 바꾸고 나서야 의미 있는 주제가 나왔습니다.</p>
-  </div>
+
 </section>
 
 <!-- ═══ STEP 3 — 보고서 생성 ═══ -->
 <section class="s" id="s3">
   <div class="s-num">03</div>
-  <div class="s-page">4 / 5</div>
+  <div class="s-page">4 / 6</div>
 
   <div class="eyebrow r">Step 03</div>
   <h2 class="r d1">보고서 생성</h2>
-  <p class="sub r d2">스마트폰과 휴머노이드 모두 동일한 5단계 파이프라인으로 생성합니다. 평균 7분.</p>
+  <p class="sub r d2" style="max-width:none">스마트폰과 휴머노이드 모두 동일한 5단계 파이프라인으로 보고서 초안을 생성합니다. 평균 7분.</p>
+  <p class="r d2" style="font-size:14px;color:var(--text3);line-height:1.65;margin-top:14px;max-width:680px">분석 차원은 정형 프레임을 강제하지 않고, 수집된 기사 기반으로 주제별 3–5개 각도를 LLM이 자체 도출합니다. 산출물은 <code>reports/{slug}_report.md / .html</code>과 <code>process.json</code> 형태로 저장됩니다.</p>
 
   <div class="rsteps r d2">
     <div class="rs">
@@ -490,28 +494,28 @@ code { font-family: var(--mono); font-size: .875em; background: rgba(255,255,255
     </div>
     <div class="llm-card">
       <div class="llm-label">주제 보강 Pass 2</div>
-      <code>GLM-4.7-flashx</code>
+      <code>glm-4.5-flash</code>
     </div>
     <div class="llm-card">
       <div class="llm-label">보고서 작성</div>
       <code>GLM-4.7</code>
     </div>
-  </div>
-
-  <div class="note r d4">
-    <svg viewBox="0 0 24 24"><use href="#ic-user"/></svg>
-    <p>분석 차원을 AI가 스스로 정하게 했더니 매번 다른 각도로 분석합니다. 정해진 프레임에 억지로 맞추지 않아요. 처음엔 예측이 안 돼서 불안했는데, 오히려 이게 강점이라는 걸 나중에 알았습니다.</p>
+    <div class="llm-card">
+      <div class="llm-label">시사점 종합</div>
+      <code>GLM-5.1</code>
+    </div>
   </div>
 </section>
 
 <!-- ═══ STEP 4 — 자동화 ═══ -->
 <section class="s" id="s4">
   <div class="s-num">04</div>
-  <div class="s-page">5 / 5</div>
+  <div class="s-page">5 / 6</div>
 
   <div class="eyebrow r">Step 04</div>
   <h2 class="r d1">자동화</h2>
-  <p class="sub r d2">매주 월요일 밤 cron이 실행됩니다. 스마트폰과 휴머노이드를 순서대로 처리합니다.</p>
+  <p class="sub r d2" style="max-width:none">매주 월요일 밤 cron이 실행됩니다.<br>스마트폰과 휴머노이드를 순서대로 처리해 화요일 아침까지 결과가 반영됩니다.</p>
+  <p class="r d2" style="font-size:14px;color:var(--text3);line-height:1.65;margin-top:14px;max-width:680px">아카이브 빌드부터 보고서 저장까지 전체 파이프라인이 수동 개입 없이 운영됩니다. 데이터 신선도가 핵심이기 때문에 주제 선정 직전에 항상 아카이브를 최신으로 갱신합니다.</p>
 
   <div class="two">
     <!-- timeline -->
@@ -531,7 +535,7 @@ code { font-family: var(--mono); font-size: .875em; background: rgba(255,255,255
           <div class="tli-b">
             <div class="tl-t">23:00 → 23:30</div>
             <div class="tl-h">핵심 주제 선정</div>
-            <div class="tl-d">스마트폰 + 휴머노이드 — 30일 윈도우</div>
+            <div class="tl-d">스마트폰 14일 · 휴머노이드 30일 윈도우</div>
           </div>
         </div>
         <div class="tli r d3">
@@ -547,7 +551,7 @@ code { font-family: var(--mono); font-size: .875em; background: rgba(255,255,255
           <div class="tli-b">
             <div class="tl-t">23:50 → 02:00+</div>
             <div class="tl-h">배치 보고서 생성</div>
-            <div class="tl-d">14–20편 순차 생성 · 기존 주제 자동 스킵</div>
+            <div class="tl-d">최대 24편 순차 생성 · 기존 주제 자동 스킵</div>
           </div>
         </div>
         <div class="tli r d4">
@@ -589,9 +593,90 @@ code { font-family: var(--mono); font-size: .875em; background: rgba(255,255,255
     </div>
   </div>
 
-  <div class="note r d5">
-    <svg viewBox="0 0 24 24"><use href="#ic-user"/></svg>
-    <p>자동화가 안정화되는 데 가장 오래 걸렸습니다. 월요일 밤에 돌아가고 화요일 아침에 결과를 확인하는 루틴이 생겼을 때 처음으로 "이게 실제로 쓸 만하다"고 느꼈습니다.</p>
+
+</section>
+
+<!-- ═══ STEP 5 — 로드맵 ═══ -->
+<section class="s" id="s5">
+  <div class="s-num">05</div>
+  <div class="s-page">6 / 6</div>
+
+  <div class="eyebrow r">Roadmap</div>
+  <h2 class="r d1">앞으로의 로드맵</h2>
+  <p class="sub r d2" style="max-width:none">현재 3개 도메인을 운영·구축 중입니다.<br>각 v1에서 검증한 모델을 v2 도메인에 맞게 조정하며 확장하고, 다음 단계는 담당자들과 협의해 만들어갑니다.</p>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:36px;margin-top:52px;" class="r d2">
+
+    <!-- TRACK A — 데이터 풍부형 -->
+    <div>
+      <div style="padding:18px 22px;border-radius:14px 14px 0 0;background:rgba(10,132,255,.08);border:1px solid rgba(10,132,255,.18);border-bottom:none;">
+        <div style="font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ph);margin-bottom:4px;">Track A — 데이터 풍부형</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.55;">전담 트래커가 같은 시장을 각자 집계 → 교차검증 수월</div>
+      </div>
+      <div style="padding:28px 22px;border-radius:0 0 14px 14px;background:var(--bg3);border:1px solid var(--border);border-top:none;">
+        <div class="tl">
+          <div class="tli">
+            <div class="tli-l"><div class="tl-dot" style="background:var(--ph);border-color:var(--ph)"></div><div class="tl-line"></div></div>
+            <div class="tli-b">
+              <div class="tl-t" style="color:var(--ph)">V1 · LIVE</div>
+              <div class="tl-h">스마트폰</div>
+              <div class="tl-d">
+                7개 소스 · 73개 키워드<br>
+                매주 핵심(14일) + 이머징(7일) 자동 생성 운영 중
+              </div>
+            </div>
+          </div>
+          <div class="tli">
+            <div class="tli-l"><div class="tl-dot" style="background:rgba(91,148,255,.5);border-color:rgba(91,148,255,.85)"></div></div>
+            <div class="tli-b" style="padding-bottom:0;">
+              <div class="tl-t" style="color:#5b94ff">V2 · BUILD COMPLETE</div>
+              <div class="tl-h">자동차</div>
+              <div class="tl-d">
+                26개 소스 (19 전용 + 7 트래커 재활용) · 168개 키워드 빌드 완료<br>
+                스마트폰 v1의 트래커 중심 구조 위에 자동차 도메인 특성(OEM 다양성·정책 변수)에 맞춰 소스 구성을 확장 — 주제 선정 정합성 검증 대기<br>
+                <span style="color:var(--text3)">다음 단계 — 자동차 도메인 담당자와 시범 운영 범위·우선순위 협의</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TRACK B — 데이터 희소형 -->
+    <div>
+      <div style="padding:18px 22px;border-radius:14px 14px 0 0;background:rgba(255,159,10,.08);border:1px solid rgba(255,159,10,.18);border-bottom:none;">
+        <div style="font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--hm);margin-bottom:4px;">Track B — 데이터 희소형</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.55;">전담 트래커 없음 → IB·OEM·논문까지 소스 다각화로 밀도 보완</div>
+      </div>
+      <div style="padding:28px 22px;border-radius:0 0 14px 14px;background:var(--bg3);border:1px solid var(--border);border-top:none;">
+        <div class="tl">
+          <div class="tli">
+            <div class="tli-l"><div class="tl-dot" style="background:var(--hm);border-color:var(--hm)"></div><div class="tl-line"></div></div>
+            <div class="tli-b">
+              <div class="tl-t" style="color:var(--hm)">V1 · LIVE</div>
+              <div class="tl-h">휴머노이드</div>
+              <div class="tl-d">
+                23개 소스 (14 전용 + 9 트래커 재활용) · 27개 키워드<br>
+                IB 리포트(GS · MS · BofA) 추가 완료, 매주 자동 생성 운영 중
+              </div>
+            </div>
+          </div>
+          <div class="tli">
+            <div class="tli-l"><div class="tl-dot"></div></div>
+            <div class="tli-b" style="padding-bottom:0;">
+              <div class="tl-t" style="color:var(--text3)">V2 · 추가 도메인</div>
+              <div class="tl-h">스페이스 데이터센터</div>
+              <div class="tl-d">
+                8개 소스 · 52개 키워드 빌드 완료<br>
+                휴머노이드 v1의 다중 레이어 구조 위에 스페이스·데이터센터 도메인 특성(우주 인프라·전력·냉각)에 맞춰 소스 구성 — 콘텐츠 밀도·정의 범위 검증 필요<br>
+                <span style="color:var(--text3)">다음 단계 — 우주·인프라 담당자와 도메인 스코프 및 평가 기준 협의</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </section>
 
