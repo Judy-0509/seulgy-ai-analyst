@@ -14,7 +14,7 @@ from src.services.search import SearchService
 from src.services.body_fetcher import fetch_or_cached, FETCHABLE_SOURCES, BLOCKED_SOURCES
 from src.services.llm import LLMService
 from src.services.citation import CitationRegistry
-from src.prompts.system import ANALYST_SYSTEM_PROMPT
+from src.prompts.system import DOMAIN_ANALYST_TYPES
 from src.domains import load_domain
 from src.prompts.step_prompts import (
     PLANNING_DIMENSIONS_PROMPT,
@@ -50,6 +50,9 @@ class AnalysisPipeline:
         self.state: Optional[PipelineState] = None
         self._domain = load_domain(domain_id)
         self._sys = self._domain["system_prompt"]
+        self._analyst_type = DOMAIN_ANALYST_TYPES.get(domain_id, "senior smartphone market analyst")
+        self._player_examples = self._domain.get("player_examples", "Samsung, Apple, Xiaomi, Huawei")
+        self._example_topic = self._domain.get("example_topic", "foldable smartphones")
 
     def _make_step(self, cls, progress_cb=None, **kwargs):
         return cls(self.search, self.llm, self.registry, progress_cb=progress_cb, **kwargs)
@@ -80,8 +83,9 @@ class AnalysisPipeline:
         if progress_cb:
             await progress_cb("영문 키워드 변환 중...\n")
         kw_raw = (await self.llm.complete(
-            ANALYST_SYSTEM_PROMPT,
-            PRE_SEARCH_PROMPT.format(topic=topic_title, current_year=_year()),
+            self._sys,
+            PRE_SEARCH_PROMPT.format(topic=topic_title, current_year=_year(), analyst_type=self._analyst_type,
+                                     player_examples=self._player_examples, example_topic=self._example_topic),
             max_tokens=2000,
             temperature=0.1,
         )).content.strip()
@@ -186,10 +190,11 @@ class AnalysisPipeline:
         if progress_cb:
             await progress_cb("핵심차원 5개 제안 중...\n")
         dim_prompt = PLANNING_DIMENSIONS_PROMPT.format(
-            topic=topic_title, pre_search_context=pre_search_context, current_year=_year()
+            topic=topic_title, pre_search_context=pre_search_context, current_year=_year(),
+            player_examples=self._player_examples, example_topic=self._example_topic,
         )
         dim_response = await self.llm.complete(
-            ANALYST_SYSTEM_PROMPT, dim_prompt,
+            self._sys, dim_prompt,
             max_tokens=8000, thinking=True, temperature=0.4,
         )
         dim_raw = dim_response.content.strip()
@@ -265,7 +270,7 @@ class AnalysisPipeline:
             prev_excluded_topics=json.dumps(proposal.excluded_topics, ensure_ascii=False),
         )
         resp = await self.llm.complete(
-            ANALYST_SYSTEM_PROMPT, finalize_prompt,
+            self._sys, finalize_prompt,
             max_tokens=4000, thinking=False, temperature=0.3,
         )
         raw = resp.content.strip()
@@ -461,7 +466,7 @@ class AnalysisPipeline:
             )
             try:
                 response = await self.llm.complete(
-                    ANALYST_SYSTEM_PROMPT,
+                    self._sys,
                     prompt,
                     max_tokens=max_tokens,
                     thinking=False,
@@ -535,7 +540,7 @@ class AnalysisPipeline:
             )
             try:
                 linkage_resp = await self.llm.complete(
-                    ANALYST_SYSTEM_PROMPT, linkage_prompt,
+                    self._sys, linkage_prompt,
                     max_tokens=8000, thinking=True, temperature=0.4,
                 )
                 _log_plan_raw("LINKAGE RAW", linkage_resp.content, linkage_resp.reasoning)
@@ -599,7 +604,7 @@ class AnalysisPipeline:
             )
             try:
                 kq_resp = await self.llm.complete(
-                    ANALYST_SYSTEM_PROMPT, kq_prompt,
+                    self._sys, kq_prompt,
                     max_tokens=8000, thinking=True, temperature=0.4,
                 )
                 _log_plan_raw("KEY_QUESTIONS RAW", kq_resp.content, kq_resp.reasoning)
@@ -709,7 +714,7 @@ async def detect_dimension_overlap(
     )
     try:
         resp = await llm.complete(
-            ANALYST_SYSTEM_PROMPT, prompt,
+            self._sys, prompt,
             max_tokens=2000, thinking=False, temperature=0.1,
         )
         raw = resp.content.strip()

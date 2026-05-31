@@ -73,26 +73,41 @@ def classify_core_terms(eng_topic: str, current_year: str | None = None) -> dict
 class SearchService:
     _edge_driver = None  # shared singleton
 
-    def __init__(self):
+    def __init__(self, domain: str | None = None):
         self._httpx_client = httpx.AsyncClient(
             timeout=SEARCH_CONFIG["httpx_timeout"],
             headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"},
             follow_redirects=True,
         )
+        self.domain = domain
         self.core_terms: dict | None = None  # {"required": [...], "anchor": [...]}
-        self._archives: list[dict] = self._load_archives()  # Tier 0: institutional archive
+        self._archives: list[dict] = self._load_archives(domain)  # Tier 0: institutional archive
 
     @staticmethod
-    def _load_archives() -> list[dict]:
-        """data/archives/*.json 모두 로드.
+    def _load_archives(domain: str | None = None) -> list[dict]:
+        """data/archives/*.json 로드. domain 지정 시 해당 도메인 archive_files만 (report 스코프).
 
         각 archive 파일 형식: {entries: [{url, title, description, lastmod, source, tier}]}
         반환: 모든 entry를 평탄화한 리스트 (archive 키 보존: source, tier).
+
+        도메인 스코프(fail-open): domain 설정 + 도메인 config에 archive_files가 있으면 그 파일만
+        로드, 없으면(또는 미설정) 전체 로드 = 기존 동작 보존. 파일명 기준 필터로 source 이름
+        drift에 의한 starvation 방지. 외부 tier(RSS/httpx)는 스코프하지 않음 (thin 도메인 안전판).
         """
+        allowed_files: set[str] | None = None
+        if domain:
+            try:
+                from src.domains import load_domain
+                _files = load_domain(domain).get("archive_files") or []
+                allowed_files = set(_files) if _files else None
+            except Exception:
+                allowed_files = None
         if not ARCHIVES_DIR.exists():
             return []
         flat: list[dict] = []
         for f in sorted(ARCHIVES_DIR.glob("*.json")):
+            if allowed_files is not None and f.name not in allowed_files:
+                continue
             try:
                 data = json.loads(f.read_text(encoding="utf-8"))
                 for e in (data.get("entries") or []):

@@ -120,9 +120,7 @@ def start_scheduler() -> None:
     _scheduler = BackgroundScheduler(daemon=True, timezone="Asia/Seoul")
 
     for job_id, hour, minute in [
-        ("mi_news_morning",   7,  0),
-        ("mi_news_afternoon", 15, 30),
-        ("mi_news_night",     23, 0),
+        ("mi_news_daily",   7,  0),   # 2026-05-30: 하루 3회 → 1회로 축소 (뉴스피드 갱신은 1일 1회로 충분)
     ]:
         _scheduler.add_job(
             _job_mi_news,
@@ -133,7 +131,7 @@ def start_scheduler() -> None:
         )
 
     _scheduler.start()
-    logger.info("MI News scheduler started (07:00, 15:30, 23:00 KST)")
+    logger.info("MI News scheduler started (07:00 KST, daily)")
 
 
 def get_scheduler() -> BackgroundScheduler | None:

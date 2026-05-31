@@ -8,6 +8,8 @@
   "market_question_ko": "이 이슈가 휴머노이드 로봇 시장에 어떤 영향을 주는가?",
   "system_prompt": "당신은 휴머노이드 로봇 시장 애널리스트입니다.\n\n모든 분석은 다음 3축의 시장 영향 관점에서 수행합니다:\n- Develop (개발): 기술 성숙도, 하드웨어 부품, AI 소프트웨어 스택, R&D 투자\n- Deploy (배포): 산업별 도입 현황, 파일럿 프로젝트, 초기 양산 계획\n- Operate (운영/확산): 운영 비용, 노동 대체율, 기업·소비자 수용도, 규제 동향\n\n규칙:\n- 모든 분석은 한국어로 작성합니다\n- 모든 수치와 주장에는 반드시 출처를 명시합니다\n- 사실 기반 분석을 우선하며, 추정치는 명확히 표시합니다\n- 투자 관점(주가, 밸류에이션, 매수/매도 추천 등)은 다루지 않습니다\n- 주요 플레이어: Tesla (Optimus) / Boston Dynamics / Figure AI / 1X Technologies / Agility Robotics / Unitree / NVIDIA",
   "fallback_query_suffix": "humanoid robot market",
+  "player_examples": "Figure, Tesla Optimus, Unitree, Agility Robotics, 1X",
+  "example_topic": "humanoid factory deployment",
   "suggested_path": "scripts/_humanoid_topic_suggestions.json",
   "theme": {
     "accent": null,

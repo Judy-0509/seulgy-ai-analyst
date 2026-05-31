@@ -32,6 +32,11 @@ SKIP_SOURCES = {"Naver Research"}
 FETCHABLE_SOURCES = {
     "Counterpoint Research", "IDC", "TrendForce",
     "MacRumors", "AppleInsider", "9to5Mac", "9to5Google", "Digitimes", "Wccftech",
+    # Automotive (2026-05-30 robots.txt 정밀 재검토 통과 — docs/crawling_robots_review.md)
+    # 제외(metadata-only): Automotive World, Transport & Environment = robots에서 AI 크롤러 명시 차단.
+    "WardsAuto", "Automotive Dive", "InsideEVs", "CnEVPost", "CarNewsChina",
+    "VW Group", "JATO Dynamics", "Cox Automotive", "ACEA", "BloombergNEF", "RMI",
+    "Motor1",  # 2026-05-30: robots clean(AI봇 차단 없음), 본문 5000+자 추출 확인
 }
 
 # robots.txt / ToS 정책상 본문 fetch 금지 — metadata only.
@@ -41,6 +46,10 @@ FETCHABLE_SOURCES = {
 METADATA_ONLY_SOURCES = {
     "DigiTimes Asia",       # robots.txt: GPTBot/The Knowledge AI 차단; codex 정책 metadata-only
     "CCS Insight",          # 유료 리서치 firm; codex 정책 metadata-only
+    # 2026-05-30 robots.txt에서 AI 크롤러 명시 차단 확인 → fetch 안 함 (metadata only)
+    "Automotive World",        # robots: GPTBot/ClaudeBot/CCBot/Google-Extended/Bytespider/Amazonbot/Applebot-Extended 전면 Disallow
+    "Transport & Environment", # robots: GPTBot/Google-Extended Disallow
+    "Autocar",                 # robots: GPTBot Disallow + 본문 추출 thin(~400자, JS) → metadata only
 }
 
 HEADERS = {

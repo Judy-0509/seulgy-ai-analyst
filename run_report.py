@@ -25,6 +25,7 @@ from src.services.llm import LLMService
 from src.services.search import SearchService
 from src.services.body_fetcher import fetch_or_cached, FETCHABLE_SOURCES
 from src.prompts.system import ANALYST_SYSTEM_PROMPT, DOMAIN_SYSTEM_PROMPTS, DOMAIN_ANALYST_TYPES
+from src.domains import load_domain
 
 _active_system_prompt = ANALYST_SYSTEM_PROMPT
 
@@ -134,7 +135,11 @@ def _extract_search_queries(text: str) -> list[str]:
     return lines[:8]
 
 
-async def stage_a(llm: LLMService, topic: str, progress_cb=None) -> tuple[list[str], str]:
+async def stage_a(llm: LLMService, topic: str, progress_cb=None, *,
+                  system_prompt: str = ANALYST_SYSTEM_PROMPT,
+                  analyst_type: str = "senior smartphone market analyst",
+                  player_examples: str = "Samsung, Apple, Xiaomi, Huawei",
+                  example_topic: str = "foldable smartphones") -> tuple[list[str], str]:
     async def progress(step: str, text: str, **extra):
         if progress_cb:
             await progress_cb(step=step, text=text, **extra)
@@ -142,11 +147,11 @@ async def stage_a(llm: LLMService, topic: str, progress_cb=None) -> tuple[list[s
     print("[A] 영문 쿼리 생성...")
     t0 = time.time()
     await progress("topic_received", "한국어 분석 주제를 수신했습니다.", topic=topic)
-    _analyst_type = os.getenv("GLM_ANALYST_TYPE", "senior smartphone market analyst")
-    prompt = PRE_SEARCH_PROMPT.format(topic=topic, current_year=_year(), analyst_type=_analyst_type)
+    prompt = PRE_SEARCH_PROMPT.format(topic=topic, current_year=_year(), analyst_type=analyst_type,
+                                      player_examples=player_examples, example_topic=example_topic)
     _stage_a_model = os.getenv("GLM_ANALYSIS_MODEL", "glm-4.7-flashx")
     await progress("llm_request", "GLM에 영어 검색 쿼리 생성을 요청했습니다.", model=_stage_a_model)
-    resp = await llm.complete(_get_system_prompt(), prompt, max_tokens=2000, temperature=0.1,
+    resp = await llm.complete(system_prompt, prompt, max_tokens=2000, temperature=0.1,
                               model=_stage_a_model)
     raw = _strip_fence((resp.content or resp.reasoning or "").strip())
     await progress(
@@ -174,7 +179,7 @@ async def stage_a(llm: LLMService, topic: str, progress_cb=None) -> tuple[list[s
             f'Topic: "{topic}"\nYear: {_year()}'
         )
         try:
-            resp2 = await llm.complete(_get_system_prompt(), simple_prompt, max_tokens=2000, temperature=0.1,
+            resp2 = await llm.complete(system_prompt, simple_prompt, max_tokens=2000, temperature=0.1,
                                        model=_stage_a_model)
             raw2 = _strip_fence((resp2.content or resp2.reasoning or "").strip())
             retry_raw_queries = _extract_search_queries(raw2)
@@ -291,7 +296,11 @@ STAGE_C_MIN_SECTIONS = 3            # TOC_PROMPT가 3-section 강제하므로 �
 STAGE_C_MAX_RETRY = 3               # LLM 응답이 비정상이면 재시도
 
 
-async def stage_c(llm: LLMService, topic: str, archive_results: list) -> list[dict]:
+async def stage_c(llm: LLMService, topic: str, archive_results: list, *,
+                  system_prompt: str = ANALYST_SYSTEM_PROMPT,
+                  analyst_type: str = "senior smartphone market analyst",
+                  player_examples: str = "Samsung, Apple, Xiaomi, Huawei",
+                  example_topic: str = "foldable smartphones") -> list[dict]:
     """반환: [{"title": str, "queries": [str, ...], "included": [bool, ...]}, ...]
 
     가드레일: sections >= 3 AND 각 section의 queries non-empty 검증.
@@ -301,7 +310,6 @@ async def stage_c(llm: LLMService, topic: str, archive_results: list) -> list[di
     print("[C] 목차 + 검색어 생성...")
     t0 = time.time()
     archive_ctx = _format_archive_context(archive_results)
-    analyst_type = os.getenv("GLM_ANALYST_TYPE", "senior smartphone market analyst")
     prompt = TOC_PROMPT.format(
         topic=topic, current_year=_year(), archive_context=archive_ctx, analyst_type=analyst_type,
     )
@@ -311,7 +319,7 @@ async def stage_c(llm: LLMService, topic: str, archive_results: list) -> list[di
     for attempt in range(1, STAGE_C_MAX_RETRY + 1):
         try:
             resp = await llm.complete(
-                ANALYST_SYSTEM_PROMPT, prompt,
+                system_prompt, prompt,
                 max_tokens=3000,
                 temperature=0.2 + (attempt - 1) * 0.1,  # 재시도마다 약간씩 다양성 ↑
                 model=os.getenv("GLM_TOC_MODEL", "glm-5.1"),
@@ -594,14 +602,17 @@ async def _fetch_bodies(sections: list[dict]) -> dict:
     return bodies
 
 
-async def stage_ef(llm: LLMService, topic: str, sections: list[dict], progress_cb=None) -> list[dict]:
+async def stage_ef(llm: LLMService, topic: str, sections: list[dict], progress_cb=None, *,
+                   system_prompt: str = ANALYST_SYSTEM_PROMPT,
+                   analyst_type: str = "senior smartphone market analyst",
+                   player_examples: str = "Samsung, Apple, Xiaomi, Huawei",
+                   example_topic: str = "foldable smartphones") -> list[dict]:
     """각 섹션 분석. sections에 'report' 키 추가."""
     print("\n[E/F] 목차별 분석 및 보고서 작성...")
     bodies = await _fetch_bodies(sections)
 
     all_titles = [s["title"] for s in sections]
     cited_bullets: list[str] = []  # 이전 섹션에서 인용된 bullet 누적
-    analyst_type = os.getenv("GLM_ANALYST_TYPE", "senior smartphone market analyst")
 
     for si, sec in enumerate(sections, 1):
         print(f"   [{si}/{len(sections)}] {sec['title']}...")
@@ -623,7 +634,7 @@ async def stage_ef(llm: LLMService, topic: str, sections: list[dict], progress_c
             analyst_type=analyst_type,
         )
         resp = await llm.complete(
-            ANALYST_SYSTEM_PROMPT, prompt,
+            system_prompt, prompt,
             max_tokens=6000, temperature=0.3,
             response_format={"type": "json_object"},
             thinking="disabled",
@@ -701,17 +712,20 @@ def _format_report_summary(sections: list[dict]) -> str:
     return "\n".join(lines)
 
 
-async def stage_g(llm: LLMService, topic: str, sections: list[dict]) -> dict:
+async def stage_g(llm: LLMService, topic: str, sections: list[dict], *,
+                  system_prompt: str = ANALYST_SYSTEM_PROMPT,
+                  analyst_type: str = "senior smartphone market analyst",
+                  player_examples: str = "Samsung, Apple, Xiaomi, Huawei",
+                  example_topic: str = "foldable smartphones") -> dict:
     """Executive Summary + 시사점(Insights) 생성.
 
     품질이 가장 중요한 단계라 GLM-5.1 사용 (4.7 대비 hallucination -56%, AA-Omniscience +35pt).
     A/B 테스트 결과: Investor Takeaway 라벨링·구체적 회사명·actionable 권고 우위.
     추가 비용: 보고서당 +¥0.04~0.08 (~₩10).
     """
-    print("\n[G] Executive Summary + 시사점 + 한국 시장 영향 생성 (GLM-5.1)...")
+    print("\n[G] Executive Summary + 시사점 생성 (GLM-5.1)...")
     t0 = time.time()
     summary = _format_report_summary(sections)
-    analyst_type = os.getenv("GLM_ANALYST_TYPE", "senior smartphone market analyst")
     prompt = INSIGHTS_PROMPT.format(
         topic=topic,
         report_summary=summary,
@@ -719,7 +733,7 @@ async def stage_g(llm: LLMService, topic: str, sections: list[dict]) -> dict:
         analyst_type=analyst_type,
     )
     resp = await llm.complete(
-        ANALYST_SYSTEM_PROMPT, prompt,
+        system_prompt, prompt,
         model=os.getenv("GLM_FINAL_MODEL", "glm-5.1"),
         max_tokens=6000, temperature=0.3,
         response_format={"type": "json_object"},
@@ -733,16 +747,12 @@ async def stage_g(llm: LLMService, topic: str, sections: list[dict]) -> dict:
     quick_brief = data.get("quick_brief") or {}
     if not isinstance(quick_brief, dict):
         quick_brief = {}
-    korea_impact = data.get("korea_impact") or {}
-    if not isinstance(korea_impact, dict):
-        korea_impact = {}
-    print(f"   → 시사점 {len(insights)}개, quick_brief {'✓' if quick_brief.get('headline') else '×'}, korea_impact {'✓' if korea_impact.get('body') else '×'} ({round(time.time()-t0,1)}s)")
+    print(f"   → 시사점 {len(insights)}개, quick_brief {'✓' if quick_brief.get('headline') else '×'} ({round(time.time()-t0,1)}s)")
     return {
         "research_background": research_background,
         "executive_summary": exec_summary,
         "insights": insights,
         "quick_brief": quick_brief,
-        "korea_impact": korea_impact,
     }
 
 
@@ -1046,12 +1056,14 @@ def _save_report(
 # ---------------------------------------------------------------------------
 
 async def main(topic: str, auto: bool = False, gate1_cb=None, gate2_cb=None, domain: str = "smartphone"):
-    global _active_system_prompt
-    _active_system_prompt = DOMAIN_SYSTEM_PROMPTS.get(domain, ANALYST_SYSTEM_PROMPT)
-    os.environ["GLM_ANALYST_TYPE"] = DOMAIN_ANALYST_TYPES.get(domain, "senior smartphone market analyst")
+    _sys_prompt = DOMAIN_SYSTEM_PROMPTS.get(domain, ANALYST_SYSTEM_PROMPT)
+    _analyst_type = DOMAIN_ANALYST_TYPES.get(domain, "senior smartphone market analyst")
+    _dom_cfg = load_domain(domain)
+    _player_examples = _dom_cfg.get("player_examples", "Samsung, Apple, Xiaomi, Huawei")
+    _example_topic = _dom_cfg.get("example_topic", "foldable smartphones")
 
     llm = LLMService()
-    search = SearchService()
+    search = SearchService(domain=domain)
     run_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     print("\n" + "=" * 60)
@@ -1062,7 +1074,8 @@ async def main(topic: str, auto: bool = False, gate1_cb=None, gate2_cb=None, dom
     print("=" * 60)
 
     # A: 영문 쿼리 생성
-    pre_queries, eng_topic = await stage_a(llm, topic)
+    pre_queries, eng_topic = await stage_a(llm, topic, system_prompt=_sys_prompt, analyst_type=_analyst_type,
+                                           player_examples=_player_examples, example_topic=_example_topic)
     search.set_core_terms(eng_topic, current_year=str(_year()))
 
     # B: Archive 사전 검색
@@ -1098,7 +1111,8 @@ async def main(topic: str, auto: bool = False, gate1_cb=None, gate2_cb=None, dom
             print(f"   → 보완 후 {len(archive_results)}건")
 
     # C: LLM 목차 생성
-    sections = await stage_c(llm, topic, archive_results)
+    sections = await stage_c(llm, topic, archive_results, system_prompt=_sys_prompt, analyst_type=_analyst_type,
+                             player_examples=_player_examples, example_topic=_example_topic)
 
     # 목차 중복 경고
     _warn_section_overlap(sections)
@@ -1152,10 +1166,12 @@ async def main(topic: str, auto: bool = False, gate1_cb=None, gate2_cb=None, dom
                 raise RuntimeError("[Stage D 가드레일] 사용자가 evidence 부족으로 보고서 생성 중단을 선택.")
 
     # E+F: 목차별 분석 + 보고서 작성
-    sections = await stage_ef(llm, topic, sections)
+    sections = await stage_ef(llm, topic, sections, system_prompt=_sys_prompt, analyst_type=_analyst_type,
+                              player_examples=_player_examples, example_topic=_example_topic)
 
     # G: Executive Summary + 시사점
-    meta = await stage_g(llm, topic, sections)
+    meta = await stage_g(llm, topic, sections, system_prompt=_sys_prompt, analyst_type=_analyst_type,
+                         player_examples=_player_examples, example_topic=_example_topic)
 
     # 저장
     print("\n[저장 중...]")

@@ -72,6 +72,8 @@ BUILDERS = [
     ("Automotive World",    "build_automotive_world_archive.py", "automotive_world.json"),
     ("Electrek",            "build_electrek_archive.py",         "electrek.json"),
     ("InsideEVs",           "build_insideevs_archive.py",        "insideevs.json"),
+    ("Motor1",              "build_motor1_archive.py",           "motor1.json"),
+    ("Autocar",             "build_autocar_archive.py",          "autocar.json"),
     ("Toyota Newsroom",     "build_toyota_archive.py",           "toyota.json"),
     # 2026-05-07 추가 — 중국 EV 가시성 + EU 정책/통계
     ("CnEVPost",            "build_cnevpost_archive.py",         "cnevpost.json"),

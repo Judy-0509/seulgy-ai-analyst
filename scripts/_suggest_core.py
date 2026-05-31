@@ -235,12 +235,26 @@ def parse_json_response(raw: str) -> list[dict]:
     raise ValueError("Cannot parse LLM JSON response")
 
 
+# OEM 명칭 영↔한 정규화 — trend 주차 매칭 시 한글/영문 표기 차이로 매칭 실패 방지
+_OEM_ALIASES = {
+    "비와이디": "byd", "폭스바겐": "volkswagen", "도요타": "toyota", "토요타": "toyota",
+    "현대차": "hyundai", "현대자동차": "hyundai", "기아": "kia", "테슬라": "tesla",
+    "스텔란티스": "stellantis", "메르세데스": "mercedes", "벤츠": "mercedes",
+    "포드": "ford", "니오": "nio", "샤오펑": "xpeng", "지커": "zeekr", "리비안": "rivian",
+    "샤오미": "xiaomi", "지리": "geely",
+}
+
+
 def _topic_terms(topic: dict) -> set[str]:
     text_parts = [topic.get("title", "")]
     for article in topic.get("articles", []):
         text_parts.append(article.get("title", ""))
         text_parts.append(article.get("source", ""))
     text = " ".join(text_parts).lower()
+    # OEM 명칭 영한 정규화 — 비야디/BYD, 폭스바겐/Volkswagen 등 동일 토큰화
+    # 조사 분리 위해 공백으로 감싸 치환: "비야디의" → " byd 의" → "byd" 토큰 추출
+    for _ko, _en in _OEM_ALIASES.items():
+        text = text.replace(_ko, f" {_en} ")
     raw_terms = re.findall(r"[a-z0-9가-힣]{2,}", text)
     stop = {
         "market", "smartphone", "smartphones", "phone", "phones", "global", "research",
@@ -424,6 +438,144 @@ def _humanoid_repetition_penalty(topic: dict) -> float:
     return penalty
 
 
+# ── Automotive trend scoring (humanoid 패턴 차용, automotive 소스/시그널로 튜닝) ──
+# 레이어: C(정량 트래커) > A(독립 미디어)·D(컨설팅/정책) > B(OEM 1차, 자기 narrative 편향)
+
+_AUTOMOTIVE_SOURCE_WEIGHTS = {
+    # C — quantitative trackers (sales/registration/component, 다중 합의 신뢰)
+    "JATO Dynamics": 0.95,
+    "Cox Automotive": 0.92,
+    "Counterpoint Research": 0.88,
+    "TrendForce": 0.88,
+    "Omdia": 0.88,
+    "IDC": 0.86,
+    "Yole": 0.84,
+    # D — consultancy / industry assoc / policy research
+    "AlixPartners": 0.86,
+    "BloombergNEF": 0.82,
+    "SAE International": 0.80,
+    "ICCT": 0.78,
+    "ACEA": 0.78,
+    "RMI": 0.72,
+    "Transport & Environment": 0.70,
+    "IRENA": 0.68,
+    "CCS Insight": 0.66,
+    # A — independent media (편집권 독립)
+    "WardsAuto": 0.82,
+    "Automotive Dive": 0.80,
+    "Automotive World": 0.78,
+    "DigiTimes Asia": 0.78,
+    "CnEVPost": 0.74,
+    "Electrek": 0.72,
+    "InsideEVs": 0.72,
+    "Motor1": 0.70,
+    "Autocar": 0.70,
+    "CarNewsChina": 0.70,
+    # B — first-party OEM (자기 narrative — 단독 corroboration 가중치 낮춤)
+    "VW Group": 0.58,
+    "Toyota Newsroom": 0.58,
+}
+
+
+def _automotive_source_quality(topic: dict) -> float:
+    sources = {a.get("source") for a in topic.get("articles", []) if a.get("source")}
+    if not sources:
+        return 0.0
+    return sum(_AUTOMOTIVE_SOURCE_WEIGHTS.get(s, 0.60) for s in sources) / len(sources)
+
+
+def _automotive_impact_score(topic: dict) -> float:
+    text_parts = [
+        topic.get("title", ""),
+        topic.get("rationale", ""),
+        " ".join(topic.get("key_data", [])),
+    ]
+    for article in topic.get("articles", []):
+        text_parts.append(article.get("title", ""))
+    text = " ".join(text_parts).lower()
+
+    patterns = [
+        (1.00, [  # Build 축 — 생산·양산·공장 구조 신호
+            "production cut", "production halt", "capacity", "gigafactory", "plant closure",
+            "plant opening", "retooling", "output target", "ramp", "양산", "감산", "공장",
+            "가동률", "생산 목표",
+        ]),
+        (1.00, [  # Shift 축 — 자율주행/로보택시 상용화·SDV 수익화
+            "robotaxi", "level 4", "l4 ", "commercial launch", "fleet deployment",
+            "autonomous commercial", "sdv monetization", "상용화", "무인", "로보택시",
+        ]),
+        (0.90, [  # 정책·관세·규제
+            "tariff", "subsidy", "mandate", "emission target", "ev credit", "ban",
+            "regulation", "관세", "보조금", "규제", "배출", "의무",
+        ]),
+        (0.72, [  # 산업구조 — 수직계열화/자체칩/배터리 JV/OS
+            "vertical integration", "in-house chip", "own silicon", "foundry",
+            "battery cell joint", "battery jv", "ultium", "powerco", "mb.os", "self-developed",
+            "수직계열화", "자체 칩", "배터리 합작", "자체 os",
+        ]),
+        (0.66, [  # Market 축 — 수요·점유율 전환
+            "market share", "registration", "sales decline", "sales surge", "demand",
+            "inventory buildup", "점유율", "등록", "수요", "재고",
+        ]),
+        (0.54, [  # 기술·충전·배터리 화학
+            "charging infrastructure", "solid-state", "lfp", "battery chemistry",
+            "fast charging", "충전", "전고체", "배터리 화학",
+        ]),
+    ]
+    for score, keywords in patterns:
+        if any(keyword in text for keyword in keywords):
+            return score
+    return 0.45
+
+
+def _automotive_commitment_score(topic: dict) -> float:
+    text_parts = [
+        topic.get("title", ""),
+        topic.get("rationale", ""),
+        " ".join(topic.get("key_data", [])),
+    ]
+    for article in topic.get("articles", []):
+        text_parts.append(article.get("title", ""))
+    text = " ".join(text_parts).lower()
+
+    if any(k in text for k in [
+        "production cut", "production halt", "capacity", "gigafactory", "ramp",
+        "commercial launch", "fleet deployment", "robotaxi", "양산", "감산", "상용화",
+    ]):
+        return 1.00
+    if any(k in text for k in [
+        "tariff", "subsidy", "mandate", "ban", "regulation", "관세", "보조금", "규제",
+    ]):
+        return 0.80
+    if any(k in text for k in [
+        "vertical integration", "battery jv", "foundry", "in-house", "수직계열화", "합작",
+    ]):
+        return 0.65
+    if any(k in text for k in [
+        "partnership", "joint venture", "supply agreement", "파트너", "협력", "계약",
+    ]):
+        return 0.55
+    if any(k in text for k in ["investment", "capex", "funding", "투자", "증설"]):
+        return 0.50
+    return 0.45
+
+
+def _automotive_repetition_penalty(topic: dict) -> float:
+    sources = [a.get("source") for a in topic.get("articles", []) if a.get("source")]
+    if not sources:
+        return 0.0
+    # 고볼륨 매체 / 단일 OEM PR 편중 — 단독 narrative 위험
+    low_weight_sources = {"Electrek", "InsideEVs", "CarNewsChina", "VW Group", "Toyota Newsroom"}
+    low_count = sum(1 for s in sources if s in low_weight_sources)
+    single_source_repeat = len(set(sources)) == 1 and len(sources) >= 3
+    penalty = 0.0
+    if low_count / len(sources) >= 0.60:
+        penalty += 0.08
+    if single_source_repeat:
+        penalty += 0.08
+    return penalty
+
+
 def apply_trend_ranking(
     topics: list[dict],
     *,
@@ -432,7 +584,7 @@ def apply_trend_ranking(
     generated_at: str | None = None,
 ) -> list[dict]:
     """Re-rank topics by domain-specific trend and evidence quality."""
-    if domain_label not in {"smartphone", "humanoid"} or not topics:
+    if domain_label not in {"smartphone", "humanoid", "automotive"} or not topics:
         return topics
 
     out = ROOT / out_path
@@ -479,6 +631,30 @@ def apply_trend_ranking(
             impact_score = _humanoid_impact_score(topic)
             commitment_score = _humanoid_commitment_score(topic)
             repetition_penalty = _humanoid_repetition_penalty(topic)
+            final_score = (
+                0.08 * volume_score
+                + 0.08 * momentum_score
+                + 0.10 * source_score
+                + 0.24 * source_quality_score
+                + 0.25 * impact_score
+                + 0.18 * commitment_score
+                + 0.05 * freshness_score
+                + 0.02 * novelty_score
+                - 0.18 * decline_penalty
+                - stale_penalty
+                - repetition_penalty
+            )
+            extra_trend_fields = {
+                "source_quality_score": round(source_quality_score, 3),
+                "impact_score": round(impact_score, 3),
+                "commitment_score": round(commitment_score, 3),
+                "repetition_penalty": round(repetition_penalty, 3),
+            }
+        elif domain_label == "automotive":
+            source_quality_score = _automotive_source_quality(topic)
+            impact_score = _automotive_impact_score(topic)
+            commitment_score = _automotive_commitment_score(topic)
+            repetition_penalty = _automotive_repetition_penalty(topic)
             final_score = (
                 0.08 * volume_score
                 + 0.08 * momentum_score

@@ -8,7 +8,7 @@
   + source_layers 자동 채움 (코드가 인용 출처에서 직접 도출)
 
 사용법:
-  python scripts/suggest_automotive_topics.py [--days 30]
+  python scripts/suggest_automotive_topics.py [--days 14]
   python scripts/suggest_automotive_topics.py [--days 7] [--with-existing]
 
 산출:
@@ -34,6 +34,9 @@ ARCHIVE_REGISTRY = [
     ("Automotive World",   "automotive_world.json"),
     ("Electrek",           "electrek.json"),
     ("InsideEVs",          "insideevs.json"),
+    # 2026-05-30 추가 — A레이어 미디어 폭 확대 (RSS 빌더)
+    ("Motor1",             "motor1.json"),
+    ("Autocar",            "autocar.json"),
     ("VW Group",           "vw_group.json"),
     ("Toyota Newsroom",    "toyota.json"),
     # 2026-05-07 추가 — 중국 EV 가시성 + EU 정책/통계 강화
@@ -59,7 +62,7 @@ ARCHIVE_REGISTRY = [
 
 SOURCE_LABEL = (
     "WardsAuto, Cox Automotive, AlixPartners, SAE International, JATO Dynamics, "
-    "Automotive Dive, Automotive World, Electrek, InsideEVs, VW Group, Toyota Newsroom, "
+    "Automotive Dive, Automotive World, Electrek, InsideEVs, Motor1, Autocar, VW Group, Toyota Newsroom, "
     "CnEVPost, CarNewsChina, ICCT, ACEA, "
     "Counterpoint Research, TrendForce, Omdia, IDC, Yole, DigiTimes Asia, CCS Insight, "
     "BloombergNEF, RMI, Transport & Environment, IRENA"
@@ -78,6 +81,8 @@ SOURCE_TAXONOMY = {
     "Automotive World":   "A",
     "Electrek":           "A",
     "InsideEVs":          "A",
+    "Motor1":             "A",  # 글로벌 자동차 미디어
+    "Autocar":            "A",  # 영국 자동차 미디어
     "CnEVPost":           "A",  # 영문 중국 EV 매체
     "CarNewsChina":       "A",  # 영문 중국 자동차 매체
     "DigiTimes Asia":     "A",  # 아시아 공급망 매체 (자동차 반도체·OEM 부품 leak)
@@ -113,7 +118,7 @@ _KEYWORDS: list[str] = []
 # (단, 빌드 시 require_auto_keyword=True 로 이미 1차 필터된 소스도 포함)
 _DEDICATED_SOURCES = {
     "WardsAuto", "SAE International", "JATO Dynamics",
-    "Automotive Dive", "Automotive World", "Electrek", "InsideEVs",
+    "Automotive Dive", "Automotive World", "Electrek", "InsideEVs", "Motor1", "Autocar",
     "CnEVPost", "CarNewsChina", "ICCT", "ACEA",
     # 컨설팅·정책 — 빌더가 자동차 키워드로 1차 필터한 결과만 저장됨
     "BloombergNEF", "RMI", "Transport & Environment", "IRENA",
@@ -381,9 +386,11 @@ Rules:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--days",          type=int, default=30)
+    parser.add_argument("--days",          type=int, default=14)  # 스마트폰처럼 14일 — 정보 풍부 도메인이라 최신성 우선
     parser.add_argument("--out",           default="scripts/_automotive_topic_suggestions.json")
     parser.add_argument("--with-existing", action="store_true")
+    parser.add_argument("--end-date",      default=None, help="ISO date upper bound (e.g. 2026-05-21) for backfill")
+    parser.add_argument("--backfill",      action="store_true", help="Skip trend ranking; save directly to --out as history snapshot")
     args = parser.parse_args()
 
     run_pipeline(
@@ -399,6 +406,8 @@ def main():
         days=args.days,
         with_existing=args.with_existing,
         source_taxonomy=SOURCE_TAXONOMY,
+        end_date=args.end_date,
+        backfill=args.backfill,
     )
 
 

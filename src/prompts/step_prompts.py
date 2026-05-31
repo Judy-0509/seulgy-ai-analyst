@@ -11,16 +11,16 @@ Respond with a JSON array only (no markdown, no explanation):
 Generate queries spanning ALL FOUR angles (1-2 queries per angle). Each query must be topically relevant to the topic above — do NOT default to generic memory/DRAM queries unless the topic is specifically about memory:
 
 ANGLE 1 — SUPPLY-SIDE (production capacity, pricing, supply chain related to THIS topic):
-  e.g. if topic is about foldable phones → "foldable display panel supply chain {current_year}"
+  e.g. if topic is about {example_topic} → "{example_topic} supply chain {current_year}"
 
 ANGLE 2 — MARKET-DATA (shipments, ASP, market share by vendor related to THIS topic):
-  e.g. if topic is about foldable phones → "foldable smartphone shipment market share {current_year}"
+  e.g. if topic is about {example_topic} → "{example_topic} shipment market share {current_year}"
 
 ANGLE 3 — COMPONENT/COST (BOM breakdown, component pricing related to THIS topic):
-  e.g. if topic is about foldable phones → "foldable phone BOM cost hinge display {current_year}"
+  e.g. if topic is about {example_topic} → "{example_topic} BOM cost breakdown {current_year}"
 
 ANGLE 4 — OEM STRATEGY (competitive response related to THIS topic):
-  e.g. if topic is about foldable phones → "Samsung Apple foldable launch strategy {current_year}"
+  e.g. if topic is about {example_topic} → "{player_examples} {example_topic} strategy {current_year}"
 
 Rules:
 - ALL queries in English — translate Korean topic to English first
@@ -88,11 +88,11 @@ Dimension selection criteria:
 
 Rules for dimension_queries_grouped — 3 fixed lenses per dimension:
 - Q1 (Current state / News / Specs): latest news, announcements, facts, or hardware specs about this dimension.
-    e.g. "iPhone Fold launch date specs 2026", "Galaxy Z Fold 7 specs comparison 2026", "EU battery regulation enforcement 2026"
-- Q2 (Player response / Strategy): how key players (Samsung, Apple, CN OEMs) are reacting.
-    e.g. "Samsung Galaxy Z Fold 7 response Apple foldable 2026", "Apple foldable supply chain strategy 2026"
+    e.g. "{example_topic} launch date specs {current_year}", "{example_topic} specs comparison {current_year}", "{example_topic} regulation enforcement {current_year}"
+- Q2 (Player response / Strategy): how key players ({player_examples}) are reacting.
+    e.g. "{player_examples} {example_topic} response {current_year}", "{player_examples} {example_topic} supply chain strategy {current_year}"
 - Q3 (Market data / Metrics): shipment numbers, market share, forecasts, or pricing data.
-    e.g. "foldable smartphone shipments 2026 forecast", "smartphone market share Q1 2026 vendor", "foldable phone ASP revenue 2026"
+    e.g. "{example_topic} shipments {current_year} forecast", "{example_topic} market share {current_year} vendor", "{example_topic} ASP revenue {current_year}"
 
 Query rules:
 - English only — no Korean characters in any query
@@ -341,11 +341,11 @@ CRITICAL FAIL-SAFE — evidence emptiness check (MUST follow before producing se
 """
 
 
-INSIGHTS_PROMPT = """You are a {analyst_type}. Based on the three-section causal chain report below, generate a quick brief, research background, executive summary, market insights (시사점), and a Korea market impact section.
+INSIGHTS_PROMPT = """You are a {analyst_type}. Based on the three-section causal chain report below, generate a quick brief, research background, executive summary, and market insights (시사점).
 
 Topic: "{topic}"
 Current date: {current_date}
-Temporal accuracy rules — apply to EVERY sentence in executive_summary, all insight body fields, and korea_impact body:
+Temporal accuracy rules — apply to EVERY sentence in executive_summary and all insight body fields:
 - Events that occurred BEFORE {current_date}: past tense — ~했습니다, ~됐습니다, ~나타났습니다
 - Events confirmed/announced but NOT yet occurred (after {current_date}): future/expectation — ~예정입니다, ~전망됩니다, ~출시될 것으로 예상됩니다
 - Rumored or speculative events (source says "reportedly", "plans to", "expected to"): ~알려져 있습니다, ~보도됩니다, ~것으로 전해집니다

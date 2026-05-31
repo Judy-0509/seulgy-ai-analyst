@@ -1,4 +1,4 @@
-"""FastAPI server: serves the React UI and bridges to AnalysisPipeline via SSE."""
+"""FastAPI server: serves the React UI and bridges to the run_report.py report pipeline via SSE."""
 import asyncio
 import json
 import os
@@ -22,7 +22,6 @@ from src.models import (
     DimensionProposal,
 )
 from src.news_api import router as news_router
-from src.state_machine import AnalysisPipeline
 from src.domains import load_domain
 
 ROOT = Path(__file__).parent.parent
@@ -134,102 +133,11 @@ if (FRONTEND_DIST / "assets").exists():
     app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST / "assets")), name="assets")
 
 
-# Session management
-class Session:
-    def __init__(self, topic: str, domain_id: str = "smartphone"):
-        self.id = str(uuid.uuid4())
-        self.topic = topic
-        self.pipeline = AnalysisPipeline(domain_id=domain_id)
-        self.queue: asyncio.Queue = asyncio.Queue()
-        self.plan: Optional[ResearchPlan] = None
-        self.task: Optional[asyncio.Task] = None
-        self.dim_feedback_event: asyncio.Event = asyncio.Event()
-        self.dim_feedback: str = ""
-
-    async def emit(self, **kwargs):
-        await self.queue.put(kwargs)
-
-
-SESSIONS: dict[str, Session] = {}
-
-
-# Log -> event parser
-def parse_log(text: str) -> Optional[dict]:
-    """Convert pipeline log line to UI event."""
-    stripped = text.strip()
-    if not stripped:
-        return None
-    # Skip step headers / footers / bold markers
-    if (
-        stripped.startswith("[Step")
-        or stripped.startswith("[완료]")
-        or stripped.startswith("**[")
-        or stripped.startswith("[")
-    ):
-        return None
-    # Result counts: "└─ N개 결과" — skip for cleaner UI
-    if "└─" in stripped:
-        return None
-    # Query lines: "  · {query}"  (leading bullet)
-    m = re.match(r"^\s*·\s+(.+)$", text.rstrip("\n"))
-    if m:
-        content = m.group(1).strip()
-        # Heuristic: action descriptions end with "중..." or "중"
-        if content.endswith(("중...", "중", "중…")) or "변환" in content or "수립" in content:
-            return {"type": "step_log", "text": content}
-        return {"type": "step_query", "text": content}
-    return {"type": "step_log", "text": stripped}
-
-
-# Pipeline runners
-async def _run_phase0(sess: Session):
-    pipeline = sess.pipeline
-
-    async def cb(text: str):
-        if text.startswith("§THINKING§"):
-            await sess.emit(type="step_thinking", text=text[len("§THINKING§"):])
-            return
-        ev = parse_log(text)
-        if ev:
-            await sess.emit(**ev)
-
-    await sess.emit(type="phase0_start", topic=sess.topic)
-    try:
-        # A->B->C: 5개 차원 제안
-        proposal = await pipeline.plan_propose(sess.topic, progress_cb=cb)
-        pre_urls = getattr(pipeline, '_pre_search_urls', [])
-        await sess.emit(
-            type="dimension_proposal",
-            proposal=proposal.model_dump(),
-            pre_urls=pre_urls,
-        )
-
-        # User action timeout: terminate instead of auto-progress.
-        try:
-            await asyncio.wait_for(sess.dim_feedback_event.wait(), timeout=USER_ACTION_TIMEOUT_SECONDS)
-        except asyncio.TimeoutError:
-            await sess.emit(type="error", text="차원 선택 대기 시간이 10분을 초과해 프로세스를 종료했습니다.")
-            return
-        feedback = sess.dim_feedback
-
-        # 피드백 반영 -> 최종 ResearchPlan
-        plan = await pipeline.plan_finalize(sess.topic, proposal, feedback, progress_cb=cb)
-        sess.plan = plan
-        eng = getattr(pipeline, '_eng_topic', sess.topic)
-        pipeline.state = PipelineState(topic=Topic(title=sess.topic, eng_title=eng))
-        plan_dict = plan.model_dump()
-
-        # E->F->G->H: 차원별 분석
-        mindmap = await pipeline.analyze_by_dimensions(sess.topic, plan, progress_cb=cb)
-
-        await sess.emit(type="phase0_done", plan=plan_dict, pre_urls=pre_urls, mindmap=mindmap)
-        await sess.emit(type="done")
-    except asyncio.CancelledError:
-        return
-    except Exception as e:
-        await sess.emit(type="error", text=f"Phase 0 오류: {e}")
-    finally:
-        SESSIONS.pop(sess.id, None)
+# (2026-05-30 제거) 레거시 Phase0 dimension-proposal 흐름:
+#   Session/SESSIONS, parse_log, _run_phase0 및 /api/start·/api/cancel·
+#   /api/confirm_dimensions·/api/stream 엔드포인트를 제거했다. frontend는 더 이상 호출하지 않으며,
+#   활성 보고서 경로는 ReportSession + /api/report/* (run_report.py stage_a~g)다.
+#   state_machine.AnalysisPipeline 클래스는 tests에서 계속 사용하므로 보존.
 
 
 # Endpoints
@@ -244,68 +152,6 @@ async def root():
         "frontend": "http://localhost:5173  (cd frontend && npm run dev)",
         "reports": "http://localhost:8000/reports/glm_topic_suggestions.html",
     })
-
-
-@app.post("/api/start")
-async def api_start(req: Request):
-    body = await req.json()
-    topic = (body.get("topic") or "").strip()
-    if not topic:
-        raise HTTPException(400, "topic required")
-    sess = Session(topic)
-    SESSIONS[sess.id] = sess
-    sess.task = asyncio.create_task(_run_phase0(sess))
-    return {"session_id": sess.id}
-
-
-@app.post("/api/cancel")
-async def api_cancel(req: Request):
-    body = await req.json()
-    sid = body.get("session_id")
-    sess = SESSIONS.get(sid)
-    if not sess:
-        return {"ok": True}
-    if sess.task:
-        sess.task.cancel()
-    await sess.emit(type="cancelled")
-    SESSIONS.pop(sid, None)
-    return {"ok": True}
-
-
-@app.post("/api/confirm_dimensions")
-async def api_confirm_dimensions(req: Request):
-    body = await req.json()
-    sid = body.get("session_id")
-    feedback = (body.get("feedback") or "").strip()
-    sess = SESSIONS.get(sid)
-    if not sess:
-        raise HTTPException(404, "session not found")
-    sess.dim_feedback = feedback
-    sess.dim_feedback_event.set()
-    return {"ok": True}
-
-
-@app.get("/api/stream/{sid}")
-async def api_stream(sid: str):
-    sess = SESSIONS.get(sid)
-    if not sess:
-        raise HTTPException(404, "session not found")
-
-    async def gen():
-        try:
-            while True:
-                try:
-                    event = await asyncio.wait_for(sess.queue.get(), timeout=20)
-                except asyncio.TimeoutError:
-                    yield ": keepalive\n\n"
-                    continue
-                yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
-                if event.get("type") in ("done", "cancelled", "error"):
-                    break
-        except asyncio.CancelledError:
-            return
-
-    return StreamingResponse(gen(), media_type="text/event-stream")
 
 
 # Archive Dashboard — DB 자동 수집 컨트롤
@@ -668,14 +514,22 @@ async def _run_report(sess: ReportSession):
     )
     from src.services.llm import LLMService
     from src.services.search import SearchService
+    from src.prompts.system import DOMAIN_SYSTEM_PROMPTS, DOMAIN_ANALYST_TYPES, ANALYST_SYSTEM_PROMPT
     from datetime import datetime as _dt
 
     search = None
     try:
         llm = LLMService()
-        search = SearchService()
+        search = SearchService(domain=sess.domain_id)
         run_ts = _dt.now().strftime("%Y-%m-%d %H:%M:%S")
         topic = sess.topic
+        # 도메인 페르소나/시스템 프롬프트를 요청 단위로 해석해 stage에 인자로 전달
+        # (전역 상태 미사용 → 동시 멀티도메인 보고서 교차 오염 방지)
+        _sys_prompt = DOMAIN_SYSTEM_PROMPTS.get(sess.domain_id, ANALYST_SYSTEM_PROMPT)
+        _analyst_type = DOMAIN_ANALYST_TYPES.get(sess.domain_id, "senior smartphone market analyst")
+        _dom_cfg = load_domain(sess.domain_id)
+        _player_examples = _dom_cfg.get("player_examples", "Samsung, Apple, Xiaomi, Huawei")
+        _example_topic = _dom_cfg.get("example_topic", "foldable smartphones")
 
         await sess.emit(type="report_log", text="보고서 생성 시작")
 
@@ -685,7 +539,9 @@ async def _run_report(sess: ReportSession):
         async def stage_a_progress(**event):
             await sess.emit(type="report_step_a_trace", **event)
 
-        pre_queries, eng_topic = await stage_a(llm, topic, progress_cb=stage_a_progress)
+        pre_queries, eng_topic = await stage_a(llm, topic, progress_cb=stage_a_progress,
+                                               system_prompt=_sys_prompt, analyst_type=_analyst_type,
+                                               player_examples=_player_examples, example_topic=_example_topic)
         search.set_core_terms(eng_topic, current_year=str(_year()))
         await sess.emit(type="report_step_a", queries=pre_queries, eng_topic=eng_topic)
         await sess.emit(type="report_log", text=f"쿼리 {len(pre_queries)}개 생성")
@@ -746,7 +602,9 @@ async def _run_report(sess: ReportSession):
         # C
         await sess.emit(type="report_step_c")
         await sess.emit(type="report_log", text="목차 생성 중...")
-        sections = await stage_c(llm, topic, archive_results)
+        sections = await stage_c(llm, topic, archive_results,
+                                 system_prompt=_sys_prompt, analyst_type=_analyst_type,
+                                 player_examples=_player_examples, example_topic=_example_topic)
         _warn_section_overlap(sections)
         await sess.emit(type="report_log", text=f"목차 {len(sections)}개 생성")
 
@@ -817,11 +675,15 @@ async def _run_report(sess: ReportSession):
         async def ef_progress(si, total, title):
             await sess.emit(type="report_step_ef_progress", si=si, total=total, title=title)
 
-        sections = await stage_ef(llm, topic, sections, progress_cb=ef_progress)
+        sections = await stage_ef(llm, topic, sections, progress_cb=ef_progress,
+                                  system_prompt=_sys_prompt, analyst_type=_analyst_type,
+                                  player_examples=_player_examples, example_topic=_example_topic)
 
         # G
         await sess.emit(type="report_log", text="시사점 생성 중...")
-        meta = await stage_g(llm, topic, sections)
+        meta = await stage_g(llm, topic, sections,
+                             system_prompt=_sys_prompt, analyst_type=_analyst_type,
+                             player_examples=_player_examples, example_topic=_example_topic)
 
         # 저장
         await sess.emit(type="report_log", text="저장 중...")
