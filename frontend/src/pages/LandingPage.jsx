@@ -432,7 +432,7 @@ function WeekGroup({ weekOf, topics, onStart, theme, isAuthenticated }) {
 export default function LandingPage() {
   const nav = useNavigate();
   const { domain } = useDomain();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isAdmin, signOut } = useAuth();
   const E = THEMES[domain.id] || THEMES.smartphone;
   const [monthlyHot, setMonthlyHot] = useState([]);
   const [monthlyNew, setMonthlyNew] = useState([]);
@@ -506,21 +506,26 @@ export default function LandingPage() {
       <div style={{ position: "relative", zIndex: 3, height: "100%", overflowY: "auto", overflowX: "hidden" }}>
         <nav style={{ position: "sticky", top: 0, zIndex: 10, display: "flex", justifyContent: "flex-end",
           gap: 8, padding: "18px clamp(16px, 4vw, 48px) 0", pointerEvents: "none" }}>
-          {(isAuthenticated ? [
+          {[
             ["Onboarding", "/onboarding"],
-            ["Archive", "/archive"],
-            ["News", "/news"],
-            ["DB", "/db"],
-            ["Keywords", "/keywords"],
-            ["Usage", "/usage"],
-          ] : [
-            ["Onboarding", "/onboarding"],
-            ["Login", "/login"],
-          ]).map(([label, path]) => (
+            ...(isAuthenticated ? [
+              ["Archive", "/archive"],
+              ["News", "/news"],
+              ...(isAdmin ? [
+                ["DB", "/db"],
+                ["Keywords", "/keywords"],
+                ["Usage", "/usage"],
+              ] : []),
+              ["Logout", "__logout__"],
+            ] : [
+              ["Login", "/login"],
+            ]),
+          ].map(([label, path]) => (
             <button
               key={path}
               onClick={() => {
                 if (path === "/onboarding") { window.location.href = path; return; }
+                if (path === "__logout__") { signOut(); return; }
                 nav(path);
               }}
               style={{ pointerEvents: "auto", height: 34, borderRadius: 99,

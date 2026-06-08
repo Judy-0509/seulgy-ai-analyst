@@ -2,6 +2,7 @@
 import Wordmark from "./Wordmark";
 import { PIPELINE_STEPS } from "../data/mock";
 import { useDomain } from "../contexts/DomainContext";
+import { authFetch, getAccessToken } from "../lib/authFetch";
 
 const API = "";
 
@@ -1024,7 +1025,15 @@ export default function PipelineScreen({ topic, onBack, topicInfo = null }) {
   useEffect(() => {
     const onPageHide = () => {
       const sid = sessionRef.current;
-      if (sid) navigator.sendBeacon(`${API}/api/report/cancel/${sid}`);
+      if (!sid) return;
+      // pagehide is synchronous; we fire-and-forget with a best-effort token.
+      // getAccessToken() is async so we use a cached value if available.
+      getAccessToken().then(token => {
+        const cancelUrl = token
+          ? `${API}/api/report/cancel/${sid}?access_token=${encodeURIComponent(token)}`
+          : `${API}/api/report/cancel/${sid}`;
+        navigator.sendBeacon(cancelUrl);
+      });
     };
     window.addEventListener("pagehide", onPageHide);
     return () => window.removeEventListener("pagehide", onPageHide);
@@ -1235,7 +1244,7 @@ export default function PipelineScreen({ topic, onBack, topicInfo = null }) {
 
     (async () => {
       try {
-        const res = await fetch(`${API}/api/report/start`, {
+        const res = await authFetch(`${API}/api/report/start`, {
           method: "POST",
           headers: {"Content-Type": "application/json"},
           body: JSON.stringify({ topic, domain: domain.id }),
@@ -1246,7 +1255,11 @@ export default function PipelineScreen({ topic, onBack, topicInfo = null }) {
         setStatusText(`연결됨: ${session_id.slice(0, 8)}`);
         appendStepLog("step01", `연결됨: ${session_id.slice(0, 8)}`);
 
-        es = new EventSource(`${API}/api/report/stream/${session_id}`);
+        const token = await getAccessToken();
+        const streamUrl = token
+          ? `${API}/api/report/stream/${session_id}?access_token=${encodeURIComponent(token)}`
+          : `${API}/api/report/stream/${session_id}`;
+        es = new EventSource(streamUrl);
         es.onmessage = (e) => {
           try { handleEvent(JSON.parse(e.data)); }
           catch(err) { console.error("SSE parse:", err); }
@@ -1269,7 +1282,12 @@ export default function PipelineScreen({ topic, onBack, topicInfo = null }) {
       timers.forEach(clearTimeout);
       const sid = sessionRef.current;
       if (sid) {
-        navigator.sendBeacon(`${API}/api/report/cancel/${sid}`);
+        getAccessToken().then(token => {
+          const cancelUrl = token
+            ? `${API}/api/report/cancel/${sid}?access_token=${encodeURIComponent(token)}`
+            : `${API}/api/report/cancel/${sid}`;
+          navigator.sendBeacon(cancelUrl);
+        });
         sessionRef.current = null;
       }
     };
@@ -1289,7 +1307,7 @@ export default function PipelineScreen({ topic, onBack, topicInfo = null }) {
   const handleExtDecision = async () => {
     setExtDecisionDone(true);
     try {
-      const res = await fetch(`${API}/api/report/ext_decision`, {
+      const res = await authFetch(`${API}/api/report/ext_decision`, {
         method: "POST", headers: {"Content-Type": "application/json"},
         body: JSON.stringify({ session_id: sessionRef.current, use_external: useExternal }),
       });
@@ -1318,7 +1336,7 @@ export default function PipelineScreen({ topic, onBack, topicInfo = null }) {
       i===3 ? {...s,status:"done"} : i===4 ? {...s,status:"running"} : s
     ));
     try {
-      const res = await fetch(`${API}/api/report/gate1`, {
+      const res = await authFetch(`${API}/api/report/gate1`, {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({ session_id: sessionRef.current, sections: gate1SectionsRef.current }),
       });
@@ -1341,7 +1359,7 @@ export default function PipelineScreen({ topic, onBack, topicInfo = null }) {
       i===5 ? {...s,status:"done"} : i===6 ? {...s,status:"running"} : s
     ));
     try {
-      await fetch(`${API}/api/report/gate2`, {
+      await authFetch(`${API}/api/report/gate2`, {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({ session_id: sessionRef.current, proceed: true, sections: gate2SectionsRef.current }),
       });

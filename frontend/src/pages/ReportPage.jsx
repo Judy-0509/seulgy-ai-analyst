@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Wordmark from "../components/Wordmark";
+import { authFetch } from "../lib/authFetch";
 
 const API = "";
 
@@ -454,7 +455,7 @@ export default function ReportPage() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`${API}/api/reports/${encodeURIComponent(slug)}`)
+    authFetch(`${API}/api/reports/${encodeURIComponent(slug)}`)
       .then((res) => {
         if (!res.ok) throw new Error("report not found");
         return res.json();

@@ -12,11 +12,27 @@ import ReportsArchivePage from "./pages/ReportsArchivePage";
 import KeywordsPage from "./pages/KeywordsPage";
 import UsagePage from "./pages/UsagePage";
 
-function ProtectedRoute({ children }) {
-  const { isAuthenticated } = useAuth();
+/** 로그인 필요 (멤버 이상) — 미인증 시 /login 으로 리디렉트 */
+function MemberRoute({ children }) {
+  const { isAuthenticated, loading } = useAuth();
   const location = useLocation();
+  if (loading) return null;
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+  return children;
+}
+
+/** 관리자 전용 — 미인증 시 /login, 비관리자 시 / 으로 리디렉트 */
+function AdminRoute({ children }) {
+  const { isAuthenticated, isAdmin, loading } = useAuth();
+  const location = useLocation();
+  if (loading) return null;
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+  if (!isAdmin) {
+    return <Navigate to="/" replace />;
   }
   return children;
 }
@@ -34,20 +50,25 @@ function RouterContent() {
       {isHome && <Sidebar />}
       <div style={{ width: "100%", height: "100%", overflow: "hidden", minWidth: 0 }}>
         <Routes>
+          {/* PUBLIC */}
           <Route path="/"       element={<LandingPage />} />
           <Route path="/login"  element={<LoginPage />} />
-          <Route path="/news"   element={<ProtectedRoute><NewsPage /></ProtectedRoute>} />
+          <Route path="/news"   element={<NewsPage />} />
+          <Route path="/archive" element={<ReportsArchivePage />} />
 
-          <Route path="/app"    element={<ProtectedRoute><AppPage /></ProtectedRoute>} />
-          <Route path="/db"     element={<ProtectedRoute><DbPage /></ProtectedRoute>} />
-          <Route path="/archive"       element={<ProtectedRoute><ReportsArchivePage /></ProtectedRoute>} />
-          <Route path="/archive/:slug" element={<ReportPage />} />
-          <Route path="/keywords"      element={<ProtectedRoute><KeywordsPage /></ProtectedRoute>} />
-          <Route path="/usage"         element={<ProtectedRoute><UsagePage /></ProtectedRoute>} />
+          {/* MEMBER */}
+          <Route path="/archive/:slug" element={<MemberRoute><ReportPage /></MemberRoute>} />
 
-          <Route path="/reports"       element={<Navigate to="/archive" replace />} />
-          <Route path="/report/:slug"  element={<LegacyReportRedirect />} />
-          <Route path="*"              element={<Navigate to="/" replace />} />
+          {/* ADMIN */}
+          <Route path="/app"      element={<AdminRoute><AppPage /></AdminRoute>} />
+          <Route path="/db"       element={<AdminRoute><DbPage /></AdminRoute>} />
+          <Route path="/keywords" element={<AdminRoute><KeywordsPage /></AdminRoute>} />
+          <Route path="/usage"    element={<AdminRoute><UsagePage /></AdminRoute>} />
+
+          {/* Redirects */}
+          <Route path="/reports"      element={<Navigate to="/archive" replace />} />
+          <Route path="/report/:slug" element={<LegacyReportRedirect />} />
+          <Route path="*"             element={<Navigate to="/" replace />} />
         </Routes>
       </div>
     </div>
