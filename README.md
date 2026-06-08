@@ -1,10 +1,26 @@
+<div align="center">
+
+**English** · [한국어](README.ko.md)
+
+</div>
+
+![Seulgy AI Analyst — hand-drawn map of the research pipeline from sources to dashboard](docs/readme-banner-flow-girl.png)
+
 # Seulgy AI Analyst
 
-![Seulgy AI Analyst hand-drawn system map](docs/readme-hero.svg)
+<div align="center">
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
+![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
+![FastAPI](https://img.shields.io/badge/FastAPI-async-009688?logo=fastapi&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)
+
+</div>
 
 Seulgy AI Analyst is an AI-powered market intelligence workspace that turns trusted research sources into topic recommendations, evidence-backed analysis plans, and structured analyst reports.
 
-It was built as a full-stack product, not a notebook demo: a FastAPI backend runs the research pipeline, a React interface manages topic discovery and report generation, and source archives keep the system grounded in reusable industry evidence.
+It was built as a full-stack product, not a notebook demo: a FastAPI backend runs the research pipeline, a React interface manages topic discovery and report generation, and curated source archives keep the system grounded in reusable industry evidence.
 
 ## Why This Project Stands Out
 
@@ -45,7 +61,7 @@ The repository currently includes domain configuration for:
 - Automotive
 - Space datacenter
 
-It also includes **66 archive JSON files** under `data/archives/`, with builders for sources such as Counterpoint, Omdia, TrendForce, IDC, Gartner, Reuters, McKinsey, Morgan Stanley, Yole, ABI Research, IEEE Spectrum, TechCrunch, and more.
+It also includes **66 source archives** under `data/archives/`, each with a dedicated builder script. Sources span market-research firms, investment-bank research, trade press, OEMs, and primary feeds — for example Counterpoint, Omdia, TrendForce, IDC, Yole, Gartner, Goldman Sachs, Morgan Stanley, BofA, McKinsey, BCG, Bloomberg, ABI Research, IDTechEx, IFR, IEEE Spectrum, TechCrunch, Boston Dynamics, Figure AI, Unitree, NVIDIA, SpaceNews, Data Center Frontier, JATO, AlixPartners, and arXiv.
 
 ## Architecture
 
@@ -75,7 +91,7 @@ tests/
 
 | Layer | Tools |
 | --- | --- |
-| Frontend | React 19, Vite, react-router-dom |
+| Frontend | React 19, Vite 8, react-router-dom 7 |
 | Backend | Python 3.10+, FastAPI, uvicorn, Pydantic |
 | AI | GLM-4.7 Thinking by default, optional Qwen-compatible backend |
 | Search | Archive search, RSS, DuckDuckGo fallback |
@@ -174,6 +190,10 @@ pytest
 cd frontend
 npm run lint
 ```
+
+## License
+
+Released under the [MIT License](LICENSE).
 
 ## Repository Note
 
