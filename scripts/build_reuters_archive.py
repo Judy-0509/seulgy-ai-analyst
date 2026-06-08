@@ -202,10 +202,10 @@ async def build(cutoff: str) -> dict:
     print(f"\n  [0/3] 기존 archive 로드: {len(existing_entries)}건")
 
     async with httpx.AsyncClient(headers=HEADERS, follow_redirects=True) as client:
-        print(f"\n  [1/3] 일반 sitemap 수집")
+        print("\n  [1/3] 일반 sitemap 수집")
         url_dates = await collect_general_sitemap(client, cutoff)
 
-        print(f"\n  [2/3] news-sitemap 제목 보강")
+        print("\n  [2/3] news-sitemap 제목 보강")
         real_titles = await collect_news_titles(client)
 
     new_pairs = [(u, d) for u, d in url_dates.items() if u not in known_urls]
@@ -238,7 +238,7 @@ async def build(cutoff: str) -> dict:
         merged.append(e)
     merged.sort(key=lambda e: e.get("lastmod") or "", reverse=True)
 
-    print(f"\n  [3/3] 아카이브 저장")
+    print("\n  [3/3] 아카이브 저장")
     archive = {
         "source": "Reuters",
         "site_base": SITE_BASE,

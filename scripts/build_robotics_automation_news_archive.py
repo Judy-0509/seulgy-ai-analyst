@@ -15,7 +15,6 @@ import io
 import json
 import re
 import sys
-import time
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -130,7 +129,7 @@ async def build(months: int) -> dict:
 
     async with httpx.AsyncClient(headers=HEADERS, follow_redirects=True) as client:
         # 1. sitemap 수집 (2단계 중첩: index → sub-index → 실제 sitemaps)
-        print(f"\n  [1/3] sitemap index 수집")
+        print("\n  [1/3] sitemap index 수집")
         st, xml = await fetch(client, SITEMAP_SUB_INDEX)
         if st != 200:
             # fallback: 최상위 index
@@ -147,7 +146,7 @@ async def build(months: int) -> dict:
         print(f"  → sitemap {len(sitemap_urls)}개 발견")
 
         # 2. 각 sitemap에서 URL 수집
-        print(f"\n  [2/3] 개별 sitemap URL 수집")
+        print("\n  [2/3] 개별 sitemap URL 수집")
         all_pairs: list[tuple[str, str]] = []
         stop_flag = False
 

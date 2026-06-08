@@ -1,6 +1,5 @@
 """body_cache 단위 테스트 (AC #4 #5 #8)."""
 import importlib
-import os
 import sqlite3
 import pytest
 

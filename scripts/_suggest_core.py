@@ -1000,7 +1000,7 @@ def run_pipeline(
         encoding="utf-8",
     )
 
-    print(f"\n[5/5] Done.")
+    print("\n[5/5] Done.")
     print("=" * 60)
     print(f"  {len(enriched_topics)} topics  |  {enriched_count} enriched  |  thinking {len(reasoning):,} chars")
     print(f"  Saved → {out}")

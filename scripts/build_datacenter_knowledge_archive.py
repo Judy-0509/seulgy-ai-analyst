@@ -131,7 +131,7 @@ def _fetch_feed(base_url: str, cutoff: str, known_urls: set[str],
             print(f"    → cutoff {cutoff} 도달")
         # RSS가 pagination을 지원하지 않으면 page 2부터 모두 기존 URL → 조기 종료
         if page > 1 and page_new == 0:
-            print(f"    → 신규 없음, pagination 미지원으로 판단 → 종료")
+            print("    → 신규 없음, pagination 미지원으로 판단 → 종료")
             break
         time.sleep(CRAWL_DELAY)
 

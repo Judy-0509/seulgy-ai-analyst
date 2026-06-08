@@ -61,8 +61,8 @@ class DimensionProposal(BaseModel):
 class ResearchPlan(BaseModel):
     analysis_rationale: str
     key_dimensions: list[str]
-    dimension_rationale: dict[str, str] = {}            # dim → why selected
-    dimension_queries_grouped: list[list[str]] = []     # parallel to key_dimensions, 3 ENG queries each
+    dimension_rationale: dict[str, str] = Field(default_factory=dict)   # dim → why selected
+    dimension_queries_grouped: list[list[str]] = Field(default_factory=list)  # parallel to key_dimensions, 3 ENG queries each
     pre_queries: list[str] = Field(default_factory=list)  # [REV4-M3] propagated from DimensionProposal
     # C 단계에서 사용자가 명시 제외한 항목 — F/G/H 모두에서 강제 적용
     excluded_perspectives: list[str] = Field(default_factory=list)

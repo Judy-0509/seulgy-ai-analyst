@@ -221,7 +221,7 @@ async def stage_a(llm: LLMService, topic: str, progress_cb=None, *,
             f"{eng_kw} market impact {_year()}",
             f"{eng_kw} OEM strategy {_year()}",
         ]
-        print(f"   [!] LLM이 영어 쿼리를 생성하지 못해 키워드 폴백 사용")
+        print("   [!] LLM이 영어 쿼리를 생성하지 못해 키워드 폴백 사용")
     eng_topic = " ".join(queries[0].split()[:6])
     await progress(
         "final_queries",
@@ -764,20 +764,20 @@ def _build_markdown(topic: str, sections: list[dict], run_ts: str, meta: dict | 
     meta = meta or {}
     lines = [
         f"# {topic}",
-        f"",
+        "",
         f"생성일시: {run_ts}",
-        f"",
+        "",
     ]
 
     # Executive Summary
     exec_summary = meta.get("executive_summary", "")
     if exec_summary:
         lines.append("## Executive Summary")
-        lines.append(f"")
+        lines.append("")
         lines.append(exec_summary)
-        lines.append(f"")
+        lines.append("")
         lines.append("---")
-        lines.append(f"")
+        lines.append("")
 
     # 가드레일 #3로 omit된 섹션은 markdown에서 제외
     valid_sections = [s for s in sections if not (s.get("report") or {}).get("insufficient_evidence")]
@@ -789,24 +789,24 @@ def _build_markdown(topic: str, sections: list[dict], run_ts: str, meta: dict | 
         footnotes = rep.get("footnotes", [])
 
         lines.append(f"## {si}. {sec['title']}")
-        lines.append(f"")
+        lines.append("")
         lines.append(f"**{headline}**")
-        lines.append(f"")
+        lines.append("")
 
         for para in (narrative or "").split("\n\n"):
             para = para.strip()
             if para:
                 lines.append(para)
-                lines.append(f"")
+                lines.append("")
 
         if bullets:
             for b in bullets:
                 lines.append(b if b.startswith("•") else f"• {b}")
-            lines.append(f"")
+            lines.append("")
 
         if footnotes:
             lines.append("**출처**")
-            lines.append(f"")
+            lines.append("")
             for fn in footnotes:
                 num = fn.get("num", "")
                 url = fn.get("url", "")
@@ -819,22 +819,22 @@ def _build_markdown(topic: str, sections: list[dict], run_ts: str, meta: dict | 
                     lines.append(f"[{num}] [{src} — \"{title}\"]({url})")
                 else:
                     lines.append(f"[{num}] [{src}]({url})")
-            lines.append(f"")
+            lines.append("")
 
-        lines.append(f"")
+        lines.append("")
 
     # Insights
     insights = meta.get("insights", [])
     if insights:
         lines.append("---")
-        lines.append(f"")
+        lines.append("")
         lines.append("## 시사점 (Market Insights)")
-        lines.append(f"")
+        lines.append("")
         for i, ins in enumerate(insights, 1):
             lines.append(f"### {i}. {ins.get('title', '')}")
-            lines.append(f"")
+            lines.append("")
             lines.append(ins.get("body", ""))
-            lines.append(f"")
+            lines.append("")
 
     return "\n".join(lines)
 
@@ -1153,8 +1153,8 @@ async def main(topic: str, auto: bool = False, gate1_cb=None, gate2_cb=None, dom
             f"섹션당 평균 {avg_per_section:.1f}건 (요구 ≥{STAGE_D_MIN_AVG_PER_SECTION})."
         )
         print(msg)
-        print(f"  evidence 부족 시 LLM이 자체 지식으로 fabricate하는 위험 → 보고서 생성 중단 권장.")
-        print(f"  대응: archive 보강 / STAGE_D_EXTERNAL_DEFAULT=true / 토픽 재정의.")
+        print("  evidence 부족 시 LLM이 자체 지식으로 fabricate하는 위험 → 보고서 생성 중단 권장.")
+        print("  대응: archive 보강 / STAGE_D_EXTERNAL_DEFAULT=true / 토픽 재정의.")
         if auto:
             raise RuntimeError(
                 f"[Stage D 가드레일] Evidence {total_evidence}건 — auto 모드에서 abort. "
@@ -1197,7 +1197,7 @@ def rebuild_html_from_process(process_json_path: str):
         sys.exit(1)
     data = json.loads(p.read_text(encoding="utf-8"))
     topic = data["topic"]
-    run_ts = data["run_ts"]
+    run_ts = data["run_ts"]  # noqa: F841
 
     # 보고서 markdown 읽기
     slug = _slug(topic)
@@ -1209,7 +1209,7 @@ def rebuild_html_from_process(process_json_path: str):
 
     # archive_results 복원 (source_name, source_url, article_title 만 필요)
     from src.models import SearchResult
-    archive_results = [
+    archive_results = [  # noqa: F841
         SearchResult(
             source_url=e["url"], final_url=e["url"],
             content="", tier=0,
@@ -1241,8 +1241,8 @@ def rebuild_html_from_process(process_json_path: str):
             "report": {},
         })
 
-    pre_queries = data.get("pre_queries", [])
-    meta = data.get("meta", {})
+    pre_queries = data.get("pre_queries", [])  # noqa: F841
+    meta = data.get("meta", {})  # noqa: F841
     # 저장된 markdown 재사용 (이미 executive summary + insights 포함)
     report_html = md_lib.markdown(md_text, extensions=["tables", "nl2br"])
     html_text = HTML_TEMPLATE.format(title=topic, body=report_html)

@@ -154,7 +154,7 @@ async def build():
             new_entries = [r for r in results if r and is_2026(r["lastmod"])]
             print(f"      추출 완료: {len(new_entries)}건")
         else:
-            print(f"\n  [2/3] 신규 없음 — fetch 생략")
+            print("\n  [2/3] 신규 없음 — fetch 생략")
 
     all_entries = existing_entries + new_entries
     seen = set(); merged = []

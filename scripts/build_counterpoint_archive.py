@@ -125,7 +125,7 @@ def load_existing() -> tuple[list[dict], set[str]]:
 
 async def build(months: int) -> dict:
     print("=" * 76)
-    print(f"  Counterpoint Research Archive Builder")
+    print("  Counterpoint Research Archive Builder")
     print(f"  대상 개월: {months}, 동시 fetch: {CONCURRENCY}")
     print("=" * 76)
 
@@ -201,7 +201,7 @@ async def build(months: int) -> dict:
             new_entries = [r for r in results if r]
             print(f"  → 신규 추출 완료: {len(new_entries)}건 (실패 {len(new_pairs) - len(new_entries)}건)")
         else:
-            print(f"\n  [2/3] 신규 URL 없음 — fetch 생략")
+            print("\n  [2/3] 신규 URL 없음 — fetch 생략")
             new_entries = []
 
     # Merge: 기존 + 신규, URL dedup, lastmod desc 정렬
@@ -217,7 +217,7 @@ async def build(months: int) -> dict:
     merged.sort(key=lambda e: e.get("lastmod") or "", reverse=True)
 
     # 저장
-    print(f"\n  [3/3] 아카이브 저장")
+    print("\n  [3/3] 아카이브 저장")
     archive = {
         "source": "Counterpoint Research",
         "site_base": SITE_BASE,

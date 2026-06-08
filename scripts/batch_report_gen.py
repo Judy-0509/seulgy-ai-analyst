@@ -101,7 +101,7 @@ def main():
         print(f"\n[{i}/{len(topics)}] {topic}")
 
         if args.skip_existing and report_exists(topic):
-            print(f"  → 이미 생성됨, 건너뜀")
+            print("  → 이미 생성됨, 건너뜀")
             results["skip"].append(topic)
             continue
 
@@ -111,7 +111,7 @@ def main():
             print(f"  → 완료: {_slug(topic)}_report.md")
         else:
             results["fail"].append(topic)
-            print(f"  → 실패")
+            print("  → 실패")
 
         if i < len(topics):
             print(f"\n  [대기] 다음 주제까지 {args.delay}초 대기 중...")
@@ -120,7 +120,7 @@ def main():
     print(f"\n{'='*60}")
     print(f"  완료: {len(results['ok'])}개 | 건너뜀: {len(results['skip'])}개 | 실패: {len(results['fail'])}개")
     if results["fail"]:
-        print(f"  실패 목록:")
+        print("  실패 목록:")
         for t in results["fail"]:
             print(f"    - {t}")
     print(f"{'='*60}")

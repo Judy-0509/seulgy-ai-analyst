@@ -106,7 +106,7 @@ def load_existing() -> tuple[list[dict], set[str]]:
 
 async def collect_urls(client: httpx.AsyncClient, year: int, months_back: int | None) -> list[tuple[str, str]]:
     """대상 월(month) 사이트맵에서 /om{ID} URL + /insights URL 수집."""
-    print(f"\n  [1/3] sitemap 수집")
+    print("\n  [1/3] sitemap 수집")
 
     # 대상 월 결정
     today = date.today()
@@ -148,7 +148,7 @@ async def collect_urls(client: httpx.AsyncClient, year: int, months_back: int | 
         print(f"    [{s}] {mname}-{year}: /om 패턴 {added}건 수집 (sitemap 전체 {len(month_pairs)}건 중)")
 
     # /insights URL 보강 (sitemap-general)
-    print(f"\n    /insights 보강 (sitemap-general)")
+    print("\n    /insights 보강 (sitemap-general)")
     s, body = await fetch(client, GENERAL_SITEMAP)
     if s == 200:
         ins_pairs = parse_sitemap(
@@ -209,7 +209,7 @@ async def fetch_meta_all(client: httpx.AsyncClient, pairs: list[tuple[str, str]]
 
 async def build(year: int, months_back: int | None) -> dict:
     print("=" * 76)
-    print(f"  Omdia Archive Builder")
+    print("  Omdia Archive Builder")
     print(f"  year: {year}, months_back: {months_back or 'all'}, UA: Googlebot")
     print("=" * 76)
 
@@ -236,7 +236,7 @@ async def build(year: int, months_back: int | None) -> dict:
         merged.append(e)
     merged.sort(key=lambda e: e.get("lastmod") or "", reverse=True)
 
-    print(f"\n  [3/3] 아카이브 저장")
+    print("\n  [3/3] 아카이브 저장")
     archive = {
         "source": "Omdia",
         "site_base": SITE_BASE,

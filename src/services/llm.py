@@ -43,8 +43,13 @@ class LLMBackend(Protocol):
 
 class GLMBackend:
     def __init__(self):
+        _key = os.getenv("ZHIPU_API_KEY")
+        if not _key:
+            raise RuntimeError(
+                "ZHIPU_API_KEY is not set — add it to your .env (LLM_BACKEND=glm)."
+            )
         self.client = AsyncOpenAI(
-            api_key=os.getenv("ZHIPU_API_KEY"),
+            api_key=_key,
             base_url=GLM_API_BASE_URL,
             timeout=GLM_REQUEST_TIMEOUT_SECONDS,
         )

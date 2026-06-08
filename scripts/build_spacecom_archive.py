@@ -93,7 +93,7 @@ def build(months: int) -> dict:
     keywords = load_keywords()
     existing_entries, known_urls = load_existing()
     print(f"\n  [0/2] 기존 archive: {len(existing_entries)}건")
-    print(f"\n  [1/2] RSS 피드 수집")
+    print("\n  [1/2] RSS 피드 수집")
 
     new_entries: list[dict] = []
     feed_ok = False

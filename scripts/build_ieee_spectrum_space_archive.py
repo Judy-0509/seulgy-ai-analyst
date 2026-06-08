@@ -140,7 +140,7 @@ async def build(months: int) -> dict:
     print(f"\n  [0/3] 기존 archive: {len(existing_entries)}건")
 
     async with httpx.AsyncClient(headers=HEADERS, follow_redirects=True) as client:
-        print(f"\n  [1/3] sitemap 수집")
+        print("\n  [1/3] sitemap 수집")
         all_pairs: list[tuple[str, str]] = []
 
         for n in range(1, MAX_SITEMAP_N + 1):
@@ -209,7 +209,7 @@ async def build(months: int) -> dict:
         merged.append(e)
     merged.sort(key=lambda e: e.get("lastmod") or "", reverse=True)
 
-    print(f"\n  [3/3] 저장")
+    print("\n  [3/3] 저장")
     archive = {
         "source":           SOURCE_NAME,
         "site_base":        SITE_BASE,

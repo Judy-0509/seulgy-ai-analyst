@@ -59,7 +59,7 @@ def strip_html(text: str) -> str:
 def build() -> dict:
     print("=" * 60)
     print(f"  {SOURCE_NAME} Archive Builder")
-    print(f"  ※ 사이트 Cloudflare 차단 → RSS 증분 수집")
+    print("  ※ 사이트 Cloudflare 차단 → RSS 증분 수집")
     print("=" * 60)
 
     existing_entries, known_urls = load_existing()

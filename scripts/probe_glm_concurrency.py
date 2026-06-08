@@ -134,7 +134,7 @@ async def main():
     args = parser.parse_args()
 
     levels = [int(s) for s in args.steps.split(",") if s.strip()]
-    print(f"=== GLM-4.7 동시성 프로브 ===")
+    print("=== GLM-4.7 동시성 프로브 ===")
     print(f"  API key: {API_KEY[:10]}...{API_KEY[-4:]}")
     print(f"  steps: {levels}, cooldown: {args.cooldown}s")
 
@@ -161,7 +161,7 @@ async def main():
     if safe:
         print(f"\n  → 100% 성공 최대값: {max(safe)} (이 값 이하로 GLM_47_CONCURRENCY 권장)")
     else:
-        print(f"\n  → 모든 단계에서 일부 실패 — 결과를 보고 수동 판단")
+        print("\n  → 모든 단계에서 일부 실패 — 결과를 보고 수동 판단")
 
 
 if __name__ == "__main__":

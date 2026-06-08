@@ -15,12 +15,6 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from src.services.token_logger import read_all as read_token_log
-from src.models import (
-    PipelineState,
-    ResearchPlan,
-    Topic,
-    DimensionProposal,
-)
 from src.news_api import router as news_router
 from src.domains import load_domain
 
@@ -109,9 +103,13 @@ def _startup() -> None:
         start_scheduler()
 
 
+_cors = os.environ.get(
+    "CORS_ALLOW_ORIGINS",
+    "http://localhost:5173,http://localhost:8000,http://127.0.0.1:5173",
+).split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[o.strip() for o in _cors if o.strip()],
     allow_methods=["*"],
     allow_headers=["*"],
 )

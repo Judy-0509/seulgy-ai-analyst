@@ -161,7 +161,7 @@ async def build(months: int) -> dict:
             print(f"    [{i+1:2d}] {len(pairs):4d}건 (cutoff 내)  {sm_url.split('/')[-1]}")
             # 이 sitemap에 최근 항목이 전혀 없으면 이후 sitemaps도 오래된 데이터
             if not has_recent and i > 5:
-                print(f"    → 최근 항목 없음 → 나머지 sitemaps 스킵")
+                print("    → 최근 항목 없음 → 나머지 sitemaps 스킵")
                 break
 
         # 중복 제거
@@ -225,7 +225,7 @@ async def build(months: int) -> dict:
         merged.append(e)
     merged.sort(key=lambda e: e.get("lastmod") or "", reverse=True)
 
-    print(f"\n  [3/3] 저장")
+    print("\n  [3/3] 저장")
     archive = {
         "source":           SOURCE_NAME,
         "site_base":        SITE_BASE,

@@ -263,7 +263,7 @@ def run():
                 delta = rel_cur - rel_imp
                 print(f"\n  [DN-{delta}] 개선안이 필터 과도")
             else:
-                print(f"\n  [==] 동일")
+                print("\n  [==] 동일")
 
     print(f"\n{'='*80}")
     print("  종합 결과 (top-5 기준)")

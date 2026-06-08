@@ -210,7 +210,7 @@ async def build(months: int) -> dict:
         merged.append(e)
     merged.sort(key=lambda e: e.get("lastmod") or "", reverse=True)
 
-    print(f"\n  [3/3] 저장")
+    print("\n  [3/3] 저장")
     archive = {
         "source":           SOURCE_NAME,
         "site_base":        SITE_BASE,

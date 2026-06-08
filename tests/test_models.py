@@ -1,7 +1,6 @@
-import pytest
 from src.models import (
     Topic, Citation, MarketData,
-    PipelineState, SearchResult, SearchResults,
+    PipelineState, SearchResults,
     ResearchPlan,
 )
 

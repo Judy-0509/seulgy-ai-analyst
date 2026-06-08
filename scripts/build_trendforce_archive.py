@@ -19,7 +19,6 @@ import io
 import json
 import re
 import sys
-import time
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -188,7 +187,7 @@ def load_existing() -> tuple[list[dict], set[str]]:
 
 async def build(cutoff_date: str, max_pages: int) -> dict:
     print("=" * 76)
-    print(f"  TrendForce News Archive Builder")
+    print("  TrendForce News Archive Builder")
     print(f"  cutoff: {cutoff_date}, max_pages: {max_pages}")
     print("=" * 76)
 
@@ -221,7 +220,7 @@ async def build(cutoff_date: str, max_pages: int) -> dict:
         merged.append(e)
     merged.sort(key=lambda e: e.get("lastmod") or "", reverse=True)
 
-    print(f"\n  [3/3] 아카이브 저장")
+    print("\n  [3/3] 아카이브 저장")
     archive = {
         "source": "TrendForce",
         "site_base": SITE_BASE,

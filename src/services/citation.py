@@ -1,4 +1,3 @@
-import uuid
 from datetime import date
 from typing import Iterable
 from src.models import Citation

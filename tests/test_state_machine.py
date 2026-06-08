@@ -1,6 +1,5 @@
 import pytest
 from src.state_machine import AnalysisPipeline
-from src.models import PipelineState, Topic
 
 
 @pytest.mark.asyncio

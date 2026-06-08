@@ -99,7 +99,7 @@ def main():
             else:
                 failed += 1
         except subprocess.TimeoutExpired:
-            print(f"  → TIMEOUT after 1800s")
+            print("  → TIMEOUT after 1800s")
             failed += 1
         except Exception as e:
             print(f"  → ERROR: {type(e).__name__}: {e}")

@@ -21,7 +21,7 @@ import io
 import json
 import re
 import sys
-from datetime import date, datetime
+from datetime import datetime
 from pathlib import Path
 
 import httpx
@@ -213,7 +213,7 @@ async def fetch_meta_all(
 
 async def build(cutoff: str) -> dict:
     print("=" * 76)
-    print(f"  IDC Archive Builder")
+    print("  IDC Archive Builder")
     print(f"  cutoff: {cutoff}, concurrency: {CONCURRENCY}")
     print("=" * 76)
 
@@ -243,7 +243,7 @@ async def build(cutoff: str) -> dict:
         merged.append(e)
     merged.sort(key=lambda e: e.get("lastmod") or "", reverse=True)
 
-    print(f"\n  [3/3] 아카이브 저장")
+    print("\n  [3/3] 아카이브 저장")
     archive = {
         "source": "IDC",
         "site_base": SITE_BASE,

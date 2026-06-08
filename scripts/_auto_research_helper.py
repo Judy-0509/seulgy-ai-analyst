@@ -7,7 +7,6 @@ BNEF/RMI (RSS+키워드 필터)
 import asyncio
 import json
 import re
-import sys
 from datetime import datetime
 from pathlib import Path
 

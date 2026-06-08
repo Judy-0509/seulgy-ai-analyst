@@ -130,7 +130,7 @@ def _print_suggestions(suggestions: list[dict], recent: list[dict]):
     print("  📊 분석 주제 추천")
     print("=" * 60)
     if recent:
-        print(f"\n  [최근 분석 이력]")
+        print("\n  [최근 분석 이력]")
         for r in recent[:3]:
             print(f"  • [{r['date']}] {r['topic']}")
     print()

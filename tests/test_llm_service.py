@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from src.services.llm import LLMService, GLMBackend, LLMResponse, TokenUsage
+from src.services.llm import LLMService, GLMBackend
 
 
 @pytest.mark.asyncio

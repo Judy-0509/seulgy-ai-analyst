@@ -40,7 +40,7 @@ def articles_html(articles: list[dict]) -> str:
     html = ""
     for src, items in groups.items():
         cls = source_cls(src)
-        html += f'<div class="src-group">'
+        html += '<div class="src-group">'
         html += f'<div class="src-name src-{cls}">{src}</div>'
         for a in items:
             title = a.get("title", "")

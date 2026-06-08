@@ -6,7 +6,6 @@ Detects language from source name heuristic (Korean sources → 'ko').
 from __future__ import annotations
 
 import logging
-import os
 import re
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime

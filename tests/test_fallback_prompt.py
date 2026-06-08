@@ -8,7 +8,7 @@
 """
 import builtins
 import importlib
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import MagicMock, AsyncMock
 
 import pytest
 
@@ -148,7 +148,6 @@ async def test_plan_propose_sufficient_archive_no_external_no_prompt(
     """
     from src.state_machine import AnalysisPipeline
     from src.models import SearchResult, SearchResults
-    from unittest.mock import AsyncMock, MagicMock
 
     # 6건 archive 결과
     sr_archive = SearchResults(
@@ -196,7 +195,7 @@ async def test_plan_propose_sufficient_archive_no_external_no_prompt(
     monkeypatch.setattr("builtins.input", _spy_input)
 
     # 실제 plan_propose 호출
-    plan = await pipeline.plan_propose("EU 배터리 규제 영향")
+    plan = await pipeline.plan_propose("EU 배터리 규제 영향")  # noqa: F841
 
     # 검증: input() 호출 0회, external_only 호출 0회, _use_external == False
     assert len(input_calls) == 0
@@ -213,7 +212,6 @@ async def test_plan_propose_low_archive_user_n_no_external(
     """
     from src.state_machine import AnalysisPipeline
     from src.models import SearchResult, SearchResults
-    from unittest.mock import AsyncMock, MagicMock
 
     sr_archive = SearchResults(
         results=[
@@ -268,7 +266,6 @@ async def test_plan_propose_low_archive_user_y_runs_external(
     """archive 2건 (<5) → input() 'y' → search_external_only 호출 발생 + _use_external=True."""
     from src.state_machine import AnalysisPipeline
     from src.models import SearchResult, SearchResults
-    from unittest.mock import AsyncMock, MagicMock
 
     sr_archive = SearchResults(
         results=[

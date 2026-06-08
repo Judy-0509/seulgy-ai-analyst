@@ -16,7 +16,6 @@ import json
 import logging
 import os
 import re
-from typing import Optional
 
 from src.services.token_logger import log_usage, usage_counts
 

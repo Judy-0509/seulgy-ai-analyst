@@ -133,7 +133,7 @@ def collect_query(query: str, cutoff: str, known_urls: set[str]) -> list[dict] |
         # 429 Rate Limit 감지
         status = getattr(feed, "status", 200)
         if status == 429:
-            print(f"  ⚠ arXiv API 429 Rate Limit — IP 쿨다운 필요. 수 시간 후 재시도.")
+            print("  ⚠ arXiv API 429 Rate Limit — IP 쿨다운 필요. 수 시간 후 재시도.")
             return None
 
         if not feed.entries:

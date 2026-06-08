@@ -20,7 +20,7 @@ import io
 import json
 import re
 import sys
-from datetime import date, datetime
+from datetime import datetime
 from pathlib import Path
 
 if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
@@ -222,7 +222,7 @@ async def fetch_all_meta(browser_ctx, url_dates: list[tuple[str, str]]) -> list[
 
 async def build(cutoff: str) -> dict:
     print("=" * 76)
-    print(f"  Yole Group Strategy Insights Archive Builder")
+    print("  Yole Group Strategy Insights Archive Builder")
     print(f"  cutoff: {cutoff}, via: Playwright Chromium + FacetWP click")
     print("=" * 76)
 
@@ -263,7 +263,7 @@ async def build(cutoff: str) -> dict:
         merged.append(e)
     merged.sort(key=lambda e: e.get("lastmod") or "", reverse=True)
 
-    print(f"\n  [3/3] 아카이브 저장")
+    print("\n  [3/3] 아카이브 저장")
     archive = {
         "source": "Yole Group",
         "site_base": SITE_BASE,

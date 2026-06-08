@@ -1,15 +1,17 @@
 import asyncio
 import json
+import logging
 import random
 import re
 import time
-from datetime import date
 from pathlib import Path
 import httpx
 import feedparser
 from bs4 import BeautifulSoup
 from src.models import SearchResult, SearchResults
-from src.config import RSS_SOURCES, SOURCE_TIER_MAP, JS_REQUIRED_DOMAINS, SEARCH_CONFIG, PAID_SOURCE_DOMAINS
+from src.config import RSS_SOURCES, SOURCE_TIER_MAP, JS_REQUIRED_DOMAINS, SEARCH_CONFIG
+
+logger = logging.getLogger(__name__)
 
 ARCHIVES_DIR = Path(__file__).parent.parent.parent / "data" / "archives"
 
@@ -121,7 +123,8 @@ class SearchService:
                         "source": e.get("source") or data.get("source") or "Archive",
                         "tier": e.get("tier") if e.get("tier") is not None else data.get("tier", 1),
                     })
-            except Exception:
+            except Exception as e:
+                logger.warning("Failed to load archive file %s: %s", f.name, e)
                 continue
         return flat
 
@@ -338,7 +341,8 @@ class SearchService:
 
                 source_scored.sort(key=lambda x: -x[0])
                 return source_scored[:max_per_source]
-            except Exception:
+            except Exception as e:
+                logger.debug("RSS fetch failed for source %s: %s", source.get("url", "?"), e)
                 return []
 
         per_source = await asyncio.gather(*[_fetch_one(s) for s in RSS_SOURCES])
@@ -372,10 +376,11 @@ class SearchService:
                             tier=tier,
                             source_name=domain,
                         ))
-                    except Exception:
+                    except Exception as e:
+                        logger.debug("httpx page fetch failed for %s: %s", url, e)
                         continue
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("DuckDuckGo search failed for query %r: %s", query, e)
         return results
 
     async def fetch_url(self, url: str) -> SearchResult | None:
@@ -393,7 +398,8 @@ class SearchService:
                 tier=tier,
                 source_name=domain,
             )
-        except Exception:
+        except Exception as e:
+            logger.debug("fetch_url failed for %s: %s", url, e)
             return None
 
     def _fetch_with_selenium(self, url: str) -> SearchResult | None:
@@ -421,6 +427,7 @@ class SearchService:
                     except Exception:
                         pass
                 if driver_instance is None:
+                    logger.warning("No browser driver available for selenium fetch of %s", url)
                     return None
                 SearchService._edge_driver = driver_instance
             driver = SearchService._edge_driver
@@ -437,7 +444,8 @@ class SearchService:
                 tier=tier,
                 source_name=domain,
             )
-        except Exception:
+        except Exception as e:
+            logger.warning("Selenium fetch failed for %s: %s", url, e)
             return None
 
     async def close(self):

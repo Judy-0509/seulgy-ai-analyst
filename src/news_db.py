@@ -5,7 +5,6 @@ WAL mode for concurrent reads (scheduler writes, API reads).
 """
 from __future__ import annotations
 
-import json
 import logging
 import sqlite3
 import threading

@@ -11,7 +11,6 @@ data/archives/*.json 모두 읽어서 reports/archive_viewer.html 단일 파일 
 import io
 import json
 import sys
-from datetime import datetime
 from pathlib import Path
 
 if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
@@ -301,7 +300,7 @@ def main():
     OUTPUT_PATH.write_text(html, encoding="utf-8")
     size_kb = OUTPUT_PATH.stat().st_size / 1024
     print(f"\n  → 저장: {OUTPUT_PATH}  ({size_kb:.1f} KB)")
-    print(f"  → 브라우저에서 열기:")
+    print("  → 브라우저에서 열기:")
     print(f"     file:///{OUTPUT_PATH.absolute().as_posix()}")
 
 

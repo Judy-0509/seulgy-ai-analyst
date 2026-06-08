@@ -1,6 +1,5 @@
 """api_topics_suggested 응답 시뮬레이션 — emerging merge 검증."""
 import asyncio
-import json
 import sys
 from pathlib import Path
 

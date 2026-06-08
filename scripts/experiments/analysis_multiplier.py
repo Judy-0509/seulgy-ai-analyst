@@ -226,11 +226,11 @@ for qid, q, terms in query_data:
     if sat_items:
         print(f"  Best relevant (pre-mult):   base={sat_items[0][1]:.2f}  \"{sat_items[0][2]['title'][:50]}\"")
     else:
-        print(f"  Best relevant (pre-mult):   NOT IN TOP-50")
+        print("  Best relevant (pre-mult):   NOT IN TOP-50")
     if irr_items:
         print(f"  Best irrelevant (pre-mult): base={irr_items[0][1]:.2f}  \"{irr_items[0][2]['title'][:50]}\"")
     else:
-        print(f"  Best irrelevant (pre-mult): NONE in top-50")
+        print("  Best irrelevant (pre-mult): NONE in top-50")
 
     # Key insight: if both are Tier-1, the multiplier does NOT change their relative order
     # It only changes their order relative to non-Tier-1 sources
@@ -238,7 +238,7 @@ for qid, q, terms in query_data:
         gap_raw = sat_items[0][1] - irr_items[0][1]
         print(f"  Base score gap (relevant - irrelevant): {gap_raw:+.2f}")
         print(f"  >>> With x3.0: both scaled equally, gap becomes {gap_raw*3.0:+.2f}")
-        print(f"  >>> Multiplier does NOT change RELATIVE ORDER between Tier-1 articles")
+        print("  >>> Multiplier does NOT change RELATIVE ORDER between Tier-1 articles")
     print()
 
 # ── Section 7: The real problem — query token mismatch ───────────────────────
