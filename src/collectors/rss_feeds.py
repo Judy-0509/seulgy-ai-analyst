@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 _KO_SOURCE_NAMES = {"thelec", "digitimes"}  # partial match for Korean/Asia sources that publish in KR context
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (compatible; SparkBot/1.0; +https://github.com/spark)",
+    "User-Agent": "Mozilla/5.0 (compatible; SeulgyBot/1.0; +https://github.com/Judy-0509/seulgy-ai-analyst)",
 }
 
 

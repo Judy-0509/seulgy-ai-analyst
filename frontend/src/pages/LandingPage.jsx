@@ -168,16 +168,6 @@ const THEMES = {
   },
 };
 
-function critKey(criteria = "") {
-  if (criteria.includes("2") && criteria.includes("3")) return "both";
-  if (criteria.includes("2")) return "hot";
-  return "new";
-}
-
-function uniqueSourceCount(t) {
-  return new Set((t.articles || []).map(a => a.source).filter(Boolean)).size;
-}
-
 function isCoreTopic(t) {
   // Topics from the 7-day emerging file are tagged source="emerging" by the server
   return t.source !== "emerging";

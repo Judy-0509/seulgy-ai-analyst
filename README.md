@@ -4,7 +4,7 @@
 
 </div>
 
-![Seulgy AI Analyst — hand-drawn map of the research pipeline from sources to dashboard](docs/readme-banner-flow-girl.png)
+![Seulgy AI Analyst — hand-drawn map of the research pipeline from sources to dashboard](docs/readme-banner-flow-girl-title.png)
 
 # Seulgy AI Analyst
 

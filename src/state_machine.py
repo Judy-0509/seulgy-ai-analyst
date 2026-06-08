@@ -673,67 +673,6 @@ class AnalysisPipeline:
         return mindmap
 
 
-async def detect_dimension_overlap(
-    llm,
-    topic: str,
-    dimensions: list[str],
-    dimension_rationale: dict,
-    dimension_evidence: dict,
-) -> dict:
-    """C-stage 후 차원 간 의미 중복 검증 (LLM judge).
-
-    반환: {"overlapping_pairs": [...], "overall_judgment": "..."}
-    오류 시 빈 결과 반환 (분석을 막지 않음).
-    """
-    if not dimensions or len(dimensions) < 2:
-        return {"overlapping_pairs": [], "overall_judgment": "차원이 1개 이하 — 중복 검증 불필요"}
-
-    # 차원 블록 포맷
-    dim_lines = []
-    for d in dimensions:
-        rationale = dimension_rationale.get(d, "(no rationale)")
-        dim_lines.append(f"- {d} :: {rationale}")
-    dimensions_block = "\n".join(dim_lines)
-
-    # evidence 블록 (article_id 추출)
-    ev_lines = []
-    for d in dimensions:
-        evs = dimension_evidence.get(d, []) or []
-        ids = [str(e.get("article_id", "?")) for e in evs if isinstance(e, dict)]
-        whys = [(e.get("why") or "")[:60] for e in evs if isinstance(e, dict)]
-        ev_lines.append(f"- {d}: article_ids=[{', '.join(ids)}]")
-        for w in whys:
-            if w:
-                ev_lines.append(f"    · {w}")
-    evidence_block = "\n".join(ev_lines) or "(no evidence captured)"
-
-    prompt = DIMENSION_DEDUP_PROMPT.format(
-        topic=topic,
-        dimensions_block=dimensions_block,
-        evidence_block=evidence_block,
-    )
-    try:
-        resp = await llm.complete(
-            self._sys, prompt,
-            max_tokens=2000, thinking=False, temperature=0.1,
-        )
-        raw = resp.content.strip()
-        if raw.startswith("```"):
-            raw = re.sub(r"^```[a-z]*\n?", "", raw)
-            raw = re.sub(r"\n?```$", "", raw)
-        data = _extract_json_block(raw) or {}
-        if "overlapping_pairs" not in data:
-            data["overlapping_pairs"] = []
-        if "overall_judgment" not in data:
-            data["overall_judgment"] = ""
-        return data
-    except Exception as e:
-        return {
-            "overlapping_pairs": [],
-            "overall_judgment": f"(dedup 검증 실패: {e})",
-        }
-
-
 def _format_results_unlimited(results: list, max_chars: int = 200000) -> str:
     """차원 분석용: 검색 결과 전체를 LLM 프롬프트에 그대로 전달 (max_chars 사실상 무제한)."""
     lines = []

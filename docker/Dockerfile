@@ -17,12 +17,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Install Python deps from pyproject.toml
+# Install the Python package (dependencies + src) from pyproject.toml.
+# src/ must be copied before `pip install .` because setuptools packages.find targets src*.
 COPY pyproject.toml ./
+COPY src/      ./src/
 RUN pip install --no-cache-dir .
 
-# Project source
-COPY src/      ./src/
+# Project assets (not part of the installed package)
 COPY scripts/  ./scripts/
 COPY data/     ./data/
 COPY run_report.py ./

@@ -4,7 +4,7 @@
 
 </div>
 
-![Seulgy AI Analyst — 소스에서 대시보드까지 리서치 파이프라인을 손으로 그린 지도](docs/readme-banner-flow-girl.png)
+![Seulgy AI Analyst — 소스에서 대시보드까지 리서치 파이프라인을 손으로 그린 지도](docs/readme-banner-flow-girl-title.png)
 
 # Seulgy AI Analyst
 
