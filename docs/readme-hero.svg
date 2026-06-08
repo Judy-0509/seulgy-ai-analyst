@@ -1,0 +1,87 @@
+<svg width="1200" height="520" viewBox="0 0 1200 520" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Seulgy AI Analyst hand-drawn system map</title>
+  <desc id="desc">A hand-drawn style diagram showing sources flowing into an AI analyst pipeline and dashboard.</desc>
+  <defs>
+    <filter id="paperNoise" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.72" numOctaves="3" seed="7" result="noise"/>
+      <feColorMatrix in="noise" type="saturate" values="0"/>
+      <feComponentTransfer>
+        <feFuncA type="table" tableValues="0 0.035"/>
+      </feComponentTransfer>
+      <feBlend in="SourceGraphic" mode="multiply"/>
+    </filter>
+    <filter id="roughen">
+      <feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="2" seed="4" result="rough"/>
+      <feDisplacementMap in="SourceGraphic" in2="rough" scale="2.8"/>
+    </filter>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M2 2 L10 6 L2 10" stroke="#1E293B" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <style>
+      .paper { fill: #FFFDF7; }
+      .ink { stroke: #1E293B; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; filter: url(#roughen); }
+      .thin { stroke: #334155; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; filter: url(#roughen); }
+      .accent { stroke: #2563EB; }
+      .green { stroke: #059669; }
+      .orange { stroke: #EA580C; }
+      .muted { fill: #475569; }
+      .title { fill: #111827; font-family: "Comic Sans MS", "Segoe Print", "Bradley Hand", cursive; font-size: 58px; font-weight: 700; letter-spacing: 0; }
+      .subtitle { fill: #334155; font-family: "Comic Sans MS", "Segoe Print", "Bradley Hand", cursive; font-size: 24px; }
+      .label { fill: #111827; font-family: "Comic Sans MS", "Segoe Print", "Bradley Hand", cursive; font-size: 23px; font-weight: 700; }
+      .small { fill: #475569; font-family: "Comic Sans MS", "Segoe Print", "Bradley Hand", cursive; font-size: 17px; }
+      .tiny { fill: #64748B; font-family: "Comic Sans MS", "Segoe Print", "Bradley Hand", cursive; font-size: 14px; }
+      .wash-blue { fill: #DBEAFE; }
+      .wash-green { fill: #DCFCE7; }
+      .wash-orange { fill: #FFEDD5; }
+      .wash-slate { fill: #F1F5F9; }
+    </style>
+  </defs>
+
+  <rect class="paper" width="1200" height="520" rx="28"/>
+  <rect width="1200" height="520" rx="28" filter="url(#paperNoise)"/>
+
+  <path d="M64 92 C244 58 427 65 593 83 C769 102 937 54 1138 86" class="thin accent" opacity=".45"/>
+  <text x="70" y="86" class="title">Seulgy AI Analyst</text>
+  <text x="74" y="124" class="subtitle">archive-first market intelligence workspace</text>
+
+  <g transform="translate(74 178)">
+    <path d="M8 18 C54 2 129 3 180 14 C194 52 192 118 178 151 C122 161 48 161 10 146 C-2 105 -1 56 8 18Z" class="ink wash-blue"/>
+    <text x="34" y="52" class="label">Sources</text>
+    <text x="26" y="84" class="small">66 archives</text>
+    <text x="26" y="111" class="small">RSS + web</text>
+    <path d="M28 126 C55 118 91 118 128 126" class="thin accent"/>
+  </g>
+
+  <path d="M280 260 C334 238 371 239 423 255" class="thin" marker-end="url(#arrow)"/>
+
+  <g transform="translate(432 164)">
+    <path d="M12 12 C92 -2 224 5 304 20 C321 81 318 168 301 218 C218 235 89 230 16 215 C-4 158 -2 62 12 12Z" class="ink wash-green"/>
+    <text x="49" y="52" class="label">Research Engine</text>
+    <text x="36" y="88" class="small">1. topic ranking</text>
+    <text x="36" y="119" class="small">2. dimension planning</text>
+    <text x="36" y="150" class="small">3. citation registry</text>
+    <text x="36" y="181" class="small">4. section writing</text>
+    <circle cx="257" cy="77" r="19" class="thin green"/>
+    <path d="M247 77 L255 86 L271 66" class="thin green"/>
+  </g>
+
+  <path d="M754 260 C802 235 848 238 894 256" class="thin" marker-end="url(#arrow)"/>
+
+  <g transform="translate(904 178)">
+    <path d="M9 16 C78 2 177 6 233 18 C249 71 248 121 232 151 C169 161 82 159 12 149 C0 105 -2 59 9 16Z" class="ink wash-orange"/>
+    <text x="42" y="52" class="label">Analyst UI</text>
+    <text x="29" y="86" class="small">GATE reviews</text>
+    <text x="29" y="114" class="small">reports + DB</text>
+    <path d="M163 95 C177 81 202 83 215 97 C203 109 181 109 163 95Z" class="thin orange"/>
+  </g>
+
+  <g transform="translate(375 396)">
+    <path d="M5 9 C95 -5 286 -2 376 12 C383 42 382 73 374 96 C274 107 98 106 9 93 C-1 64 -1 36 5 9Z" class="thin wash-slate"/>
+    <text x="33" y="40" class="small">Human-in-the-loop checkpoints keep long-form AI output controlled.</text>
+    <text x="100" y="71" class="tiny">FastAPI - React - SSE - Pydantic - pytest</text>
+  </g>
+
+  <path d="M175 366 C290 468 833 464 1025 366" class="thin accent" opacity=".36"/>
+  <path d="M1006 143 C1046 120 1092 122 1124 148" class="thin orange"/>
+  <text x="958" y="125" class="small">portfolio-ready</text>
+</svg>

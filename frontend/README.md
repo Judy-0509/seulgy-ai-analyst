@@ -1,6 +1,6 @@
 # Seulgy Frontend
 
-React + Vite frontend for Research Helper.
+React + Vite frontend for Seulgy AI Analyst.
 
 ## Design System
 
