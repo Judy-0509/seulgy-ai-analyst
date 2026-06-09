@@ -25,7 +25,7 @@ const THEMES = {
     rowBg: "rgba(52,211,153,.06)",
     rowBgStrong: "rgba(16,185,129,.22)",
     vignette: "radial-gradient(circle at center, rgba(12,58,36,.1) 0%, rgba(4,17,9,.42) 42%, rgba(2,8,4,.88) 100%)",
-    image: "url('/smartphone-bg-v2.png')",
+    image: "url('/smartphone-bg-v3-desktop.webp')",
     bgPos: "30% 70%",
   },
   humanoid: {
@@ -48,7 +48,7 @@ const THEMES = {
     rowBg: "rgba(183,55,69,.08)",
     rowBgStrong: "rgba(183,55,69,.22)",
     vignette: "radial-gradient(circle at 48% 42%, rgba(150,34,45,.13) 0%, rgba(28,8,10,.46) 44%, rgba(7,3,4,.91) 100%)",
-    image: "url('/humanoid-bg.png')",
+    image: "url('/humanoid-bg-v2-desktop.webp')",
     bgPos: "center",
   },
   automotive: {
@@ -71,7 +71,7 @@ const THEMES = {
     rowBg: "rgba(59,130,246,.06)",
     rowBgStrong: "rgba(37,99,235,.22)",
     vignette: "radial-gradient(circle at 50% 46%, rgba(5,18,55,.08) 0%, rgba(3,10,36,.46) 42%, rgba(1,4,16,.93) 100%)",
-    image: "url('/automotive-bg.png')",
+    image: "url('/automotive-bg-v2-desktop.webp')",
     bgPos: "center",
   },
   smartglass: {
@@ -94,7 +94,7 @@ const THEMES = {
     rowBg: "rgba(6,182,212,.06)",
     rowBgStrong: "rgba(8,145,178,.22)",
     vignette: "radial-gradient(circle at 50% 45%, rgba(4,60,80,.1) 0%, rgba(2,12,16,.46) 44%, rgba(1,5,8,.91) 100%)",
-    image: "url('/smartglass-bg.png')",
+    image: "url('/smartglass-bg-v2-desktop.webp')",
     bgPos: "100% 40%",
   },
   tablet: {
@@ -117,7 +117,7 @@ const THEMES = {
     rowBg: "rgba(139,92,246,.06)",
     rowBgStrong: "rgba(124,58,237,.22)",
     vignette: "radial-gradient(circle at 50% 45%, rgba(60,20,120,.1) 0%, rgba(13,8,24,.46) 44%, rgba(5,3,12,.91) 100%)",
-    image: "url('/tablet-bg.png')",
+    image: "url('/tablet-bg-v2-desktop.webp')",
     bgPos: "center",
   },
   space_datacenter: {
@@ -140,7 +140,7 @@ const THEMES = {
     rowBg: "rgba(34,211,166,.06)",
     rowBgStrong: "rgba(34,211,166,.20)",
     vignette: "linear-gradient(90deg, rgba(2,6,5,.92) 0%, rgba(2,6,5,.72) 38%, rgba(2,6,5,.20) 68%, rgba(2,6,5,.52) 100%), radial-gradient(circle at 28% 46%, rgba(34,211,166,.14) 0%, rgba(2,6,5,.32) 42%, rgba(2,6,5,.88) 100%)",
-    image: "url('/space-datacenter-bg.png')",
+    image: "url('/space-datacenter-bg-v2-desktop.webp')",
     bgPos: "64% 48%",
   },
   macro: {
@@ -163,7 +163,7 @@ const THEMES = {
     rowBg: "rgba(245,158,11,.06)",
     rowBgStrong: "rgba(217,119,6,.22)",
     vignette: "radial-gradient(circle at 50% 45%, rgba(100,60,5,.1) 0%, rgba(26,15,2,.46) 44%, rgba(10,5,1,.91) 100%)",
-    image: "url('/macro-bg.png')",
+    image: "url('/macro-bg-v2-desktop.webp')",
     bgPos: "60% 40%",
   },
 };
