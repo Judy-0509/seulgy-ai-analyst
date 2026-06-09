@@ -12,11 +12,18 @@
 
 [![Live · seulgy.com](https://img.shields.io/badge/Live-seulgy.com-2ea44f?logo=googlechrome&logoColor=white)](https://seulgy.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
-![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
-![FastAPI](https://img.shields.io/badge/FastAPI-async-009688?logo=fastapi&logoColor=white)
-![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)
 [![CI](https://github.com/Judy-0509/seulgy-ai-analyst/actions/workflows/ci.yml/badge.svg)](https://github.com/Judy-0509/seulgy-ai-analyst/actions/workflows/ci.yml)
+![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-async-009688?logo=fastapi&logoColor=white)
+![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
+![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)
+![Supabase Auth](https://img.shields.io/badge/Supabase-Auth-3FCF8E?logo=supabase&logoColor=white)
+![Docker multi-stage](https://img.shields.io/badge/Docker-multi--stage-2496ED?logo=docker&logoColor=white)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+
+![Curated sources: 66](https://img.shields.io/badge/curated_sources-66-2ea44f)
+![Market domains: 4](https://img.shields.io/badge/market_domains-4-2563eb)
+![LLM: GLM-4.7 Thinking](https://img.shields.io/badge/LLM-GLM--4.7_Thinking-6f42c1)
 
 </div>
 
