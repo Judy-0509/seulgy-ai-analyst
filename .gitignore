@@ -16,10 +16,14 @@ data/article_bodies.db
 data/article_bodies.db-wal
 data/article_bodies.db-shm
 
+# ── 스크랩 아카이브 (Tier-1 기관 콘텐츠 — 공개 repo 비노출, 로컬/런타임 데이터) ──
+data/archives/*.json
+
 # ── 생성된 보고서 / 산출물 ────────────────────
 reports/*_report.html
 reports/*_report.md
 reports/*_process.json
+reports/*.en.json
 reports/archive_viewer.html
 reports/glm_topic_suggestions.html
 reports/_backup*/
@@ -53,6 +57,15 @@ server-*.log
 # ── 개인 작업 메모 ────────────────────────────
 todo.md
 HANDOFF.md
+
+# ── LinkedIn 글 (개인 홍보용 — 레포에 안 올림) ──
+linkedin/
+
+# ── 내부 기획/검토 문서 (공개 repo 비노출 — ToS 위험수용 기록/내부 WIP) ──
+docs/crawling_robots_review.md
+docs/automotive_parity_plan_2026-05-30.md
+docs/topic_pipeline_review_2026-05-07.md
+docs/superpowers/
 
 # ── 프론트엔드 ────────────────────────────────
 frontend/node_modules/
