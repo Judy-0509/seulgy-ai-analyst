@@ -6,10 +6,12 @@ Status: approved (approach 🅰)
 
 ## Goal
 
-Add passwordless **Supabase email OTP** login (no Google, no password) to the
-recruiter-facing app, and gate access in three tiers. Built on a new branch off
-`main`; merged to `main` only after the owner configures Supabase and verifies
-the OTP flow end-to-end. Translation/i18n/responsive work stays on
+Add Supabase login — **Google OAuth + email OTP** (both supported; no password) — to
+the recruiter-facing app, and gate access in three tiers. Both methods produce the same
+Supabase session JWT, so the backend is provider-agnostic and identical for both. Google
+is already enabled on the project (works immediately); email OTP works once the owner
+enables the Email provider. Built on a new branch off `main`; merged to `main` after the
+owner verifies login end-to-end. Translation/i18n/responsive work stays on
 `feat/supabase-auth` and is intentionally NOT included.
 
 ## Access tiers
@@ -69,7 +71,7 @@ Note: this flips today's `main` behavior (list is currently gated, detail is pub
 
 ## Out of scope (YAGNI)
 
-Google OAuth, password login, `team` role, feedback, report translation / public-page i18n /
+Password login, `team` role, feedback, report translation / public-page i18n /
 mobile responsive — those remain on `feat/supabase-auth`.
 
 ## Rollout
