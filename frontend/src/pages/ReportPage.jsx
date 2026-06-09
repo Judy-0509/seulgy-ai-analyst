@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Wordmark from "../components/Wordmark";
 import { authFetch } from "../lib/authFetch";
+import useMediaQuery from "../hooks/useMediaQuery";
 
 const API = "";
 
@@ -169,7 +170,7 @@ function MetricPill({ value, R, accent }) {
   );
 }
 
-function ViewToggle({ value, onChange, R }) {
+function ViewToggle({ value, onChange, R, isNarrow = false }) {
   const items = [
     { id: "report", label: "Report" },
     { id: "custom", label: "Custom" },
@@ -188,7 +189,7 @@ function ViewToggle({ value, onChange, R }) {
             type="button"
             onClick={() => onChange(item.id)}
             style={{
-              border: 0, borderRadius: 999, padding: "6px 14px",
+              border: 0, borderRadius: 999, padding: isNarrow ? "6px 10px" : "6px 14px",
               background: active ? R.em : "transparent",
               color: active ? "#fff" : R.t3,
               fontFamily: LABEL, fontSize: 11.5, fontWeight: 700,
@@ -276,7 +277,7 @@ function buildInsightSummary(insights = []) {
   }));
 }
 
-function SectionBlock({ section, R }) {
+function SectionBlock({ section, R, isNarrow = false }) {
   const [open, setOpen] = useState(false);
   const bullets = section.bullets || [];
   const num = String(section.index).padStart(2, "0");
@@ -286,7 +287,7 @@ function SectionBlock({ section, R }) {
         Section&nbsp;{num}
       </Kicker>
       <h2 style={{
-        margin: 0, fontFamily: SERIF, fontSize: 25, fontWeight: 700,
+        margin: 0, fontFamily: SERIF, fontSize: isNarrow ? "clamp(22px, 6vw, 25px)" : 25, fontWeight: 700,
         color: R.t1, letterSpacing: "-.01em", lineHeight: 1.4,
       }}>
         {section.title}
@@ -357,7 +358,7 @@ function SectionBlock({ section, R }) {
   );
 }
 
-function CustomSlideView({ report, R }) {
+function CustomSlideView({ report, R, isNarrow = false }) {
   const background = buildResearchBackground(report);
   const insightLines = buildInsightSummary(report.insights || []);
   const sections = report.sections || [];
@@ -368,11 +369,11 @@ function CustomSlideView({ report, R }) {
         minHeight: "calc(100vh - 168px)", gap: 14,
       }}>
         <section style={{
-          padding: "22px 26px", borderRadius: 14, background: R.paper,
+          padding: isNarrow ? "20px clamp(18px, 5vw, 26px)" : "22px 26px", borderRadius: 14, background: R.paper,
           border: `1px solid ${R.border}`, boxShadow: R.shadow,
         }}>
           <Kicker color={R.emD}>Custom Brief</Kicker>
-          <h1 style={{ margin: "14px 0 0", fontFamily: SERIF, fontSize: 27, fontWeight: 700, lineHeight: 1.32, letterSpacing: "-.01em", color: R.t1 }}>
+          <h1 style={{ margin: "14px 0 0", fontFamily: SERIF, fontSize: isNarrow ? "clamp(24px, 7vw, 27px)" : 27, fontWeight: 700, lineHeight: 1.32, letterSpacing: "-.01em", color: R.t1 }}>
             {report.topic}
           </h1>
         </section>
@@ -407,7 +408,7 @@ function CustomSlideView({ report, R }) {
         </section>
 
         <section style={{
-          padding: "22px 26px", borderRadius: 14, background: R.paper,
+          padding: isNarrow ? "20px clamp(18px, 5vw, 26px)" : "22px 26px", borderRadius: 14, background: R.paper,
           border: `1px solid ${R.border}`, boxShadow: R.shadow, minHeight: 0,
         }}>
           <Kicker color={R.emD} style={{ display: "block", marginBottom: 16 }}>핵심 분석</Kicker>
@@ -452,6 +453,7 @@ export default function ReportPage() {
   const [error, setError] = useState("");
   const [viewMode, setViewMode] = useState("report");
   const [refsOpen, setRefsOpen] = useState(true);
+  const isNarrowReport = useMediaQuery("(max-width: 768px)");
 
   useEffect(() => {
     let cancelled = false;
@@ -504,12 +506,13 @@ export default function ReportPage() {
       `}</style>
 
       <div style={{
-        position: "sticky", top: 0, zIndex: 5, height: 60, display: "flex",
-        alignItems: "center", justifyContent: "space-between", padding: "0 30px",
+        position: "sticky", top: 0, zIndex: 5, height: isNarrowReport ? "auto" : 60, minHeight: 60, display: "flex",
+        alignItems: isNarrowReport ? "flex-start" : "center", justifyContent: "space-between", padding: isNarrowReport ? "10px 14px" : "0 30px",
+        flexWrap: isNarrowReport ? "wrap" : "nowrap", gap: isNarrowReport ? 10 : 0,
         background: "rgba(246,244,239,.82)", backdropFilter: "blur(28px) saturate(180%)",
         WebkitBackdropFilter: "blur(28px) saturate(180%)", borderBottom: `1px solid ${R.border}`,
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: isNarrowReport ? 14 : 20, minHeight: 36 }}>
           <button onClick={() => nav("/")} className="rpt-navlink" style={{
             border: 0, background: "none", color: R.t3, fontFamily: LABEL, fontSize: 11.5,
             fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", cursor: "pointer", padding: 0,
@@ -523,8 +526,8 @@ export default function ReportPage() {
             Archive
           </button>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <ViewToggle value={viewMode} onChange={setViewMode} R={R} />
+        <div style={{ display: "flex", alignItems: "center", gap: isNarrowReport ? 10 : 16, flexWrap: isNarrowReport ? "wrap" : "nowrap", justifyContent: "flex-end", minWidth: 0 }}>
+          <ViewToggle value={viewMode} onChange={setViewMode} R={R} isNarrow={isNarrowReport} />
           <button onClick={() => nav("/")} style={{ border: 0, background: "none", padding: 0, cursor: "pointer", display: "inline-flex", alignItems: "center" }} aria-label="Seulgy 홈">
             <Wordmark size={22} color={R.emD} />
           </button>
@@ -532,14 +535,14 @@ export default function ReportPage() {
       </div>
 
       <div style={{
-        maxWidth: 1240, margin: "0 auto", padding: "44px 22px 64px",
-        display: "grid", gridTemplateColumns: "minmax(0, 1fr) 332px", gap: 46,
+        maxWidth: 1240, margin: "0 auto", padding: isNarrowReport ? "24px clamp(12px, 4vw, 22px) 44px" : "44px 22px 64px",
+        display: "grid", gridTemplateColumns: isNarrowReport ? "minmax(0, 1fr)" : "minmax(0, 1fr) 332px", gap: isNarrowReport ? 24 : 46,
       }}>
         {viewMode === "custom" ? (
-          <CustomSlideView report={report} R={R} />
+          <CustomSlideView report={report} R={R} isNarrow={isNarrowReport} />
         ) : (
           <article style={{
-            minWidth: 0, padding: "52px 60px 48px", borderRadius: 18, background: R.paper,
+            minWidth: 0, padding: isNarrowReport ? "clamp(24px, 6vw, 52px) clamp(20px, 5vw, 60px) clamp(26px, 6vw, 48px)" : "52px 60px 48px", borderRadius: 18, background: R.paper,
             border: `1px solid ${R.border}`, boxShadow: R.shadow,
           }}>
             {/* ── Masthead ── */}
@@ -548,7 +551,7 @@ export default function ReportPage() {
               <Kicker color={R.emD}>Executive Report · {domainLabel}</Kicker>
             </div>
             <h1 style={{
-              margin: "0 0 18px", fontFamily: SERIF, fontSize: 38, fontWeight: 700,
+              margin: "0 0 18px", fontFamily: SERIF, fontSize: isNarrowReport ? "clamp(28px, 8vw, 38px)" : 38, fontWeight: 700,
               lineHeight: 1.34, letterSpacing: "-.015em", color: R.t1, maxWidth: "20ch",
             }}>
               {report.topic}
@@ -569,7 +572,7 @@ export default function ReportPage() {
             {report.executive_summary && (
               <section style={{ padding: "30px 0 6px", borderLeft: `2px solid ${R.em}`, paddingLeft: 24, marginLeft: -2 }}>
                 <Kicker color={R.emD} style={{ display: "block", marginBottom: 12 }}>핵심 요약</Kicker>
-                <p style={{ margin: 0, fontFamily: SERIF, fontSize: 18.5, fontWeight: 500, color: R.t2, lineHeight: 1.85 }}>
+                <p style={{ margin: 0, fontFamily: SERIF, fontSize: isNarrowReport ? "clamp(16px, 4.8vw, 18.5px)" : 18.5, fontWeight: 500, color: R.t2, lineHeight: 1.85 }}>
                   {report.executive_summary}
                 </p>
               </section>
@@ -578,7 +581,7 @@ export default function ReportPage() {
             {/* ── Sections ── */}
             <div style={{ marginTop: 18 }}>
               {(report.sections || []).map((section) => (
-                <SectionBlock key={section.index} section={section} R={R} />
+                <SectionBlock key={section.index} section={section} R={R} isNarrow={isNarrowReport} />
               ))}
             </div>
 
@@ -586,7 +589,7 @@ export default function ReportPage() {
             {report.insights?.length > 0 && (
               <section style={{ marginTop: 44, paddingTop: 40, borderTop: `2px solid ${R.hair}` }}>
                 <Kicker color={R.emD} style={{ display: "block", marginBottom: 6 }}>Market Insights</Kicker>
-                <h2 style={{ margin: "0 0 8px", fontFamily: SERIF, fontSize: 24, fontWeight: 700, color: R.t1, letterSpacing: "-.01em" }}>
+                <h2 style={{ margin: "0 0 8px", fontFamily: SERIF, fontSize: isNarrowReport ? "clamp(22px, 6vw, 24px)" : 24, fontWeight: 700, color: R.t1, letterSpacing: "-.01em" }}>
                   시사점
                 </h2>
                 <div style={{ display: "grid", gap: 0 }}>
@@ -618,7 +621,7 @@ export default function ReportPage() {
         )}
 
         {/* ── Sidebar: references ── */}
-        <aside style={{ position: "sticky", top: 82, alignSelf: "start", maxHeight: "calc(100vh - 104px)", overflow: "auto" }}>
+        <aside style={{ position: isNarrowReport ? "static" : "sticky", top: 82, alignSelf: "start", maxHeight: isNarrowReport ? "none" : "calc(100vh - 104px)", overflow: "auto", width: "100%" }}>
           <div style={{
             padding: "20px 22px 8px", borderRadius: 16, background: R.panel,
             border: `1px solid ${R.border}`, boxShadow: R.shadow,

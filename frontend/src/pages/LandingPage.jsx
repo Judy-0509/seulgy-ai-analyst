@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDomain } from "../contexts/DomainContext";
 import { useAuth } from "../contexts/AuthContext";
+import { useIsMobile } from "../hooks/useMediaQuery";
 
 /* ── Dark forest theme tokens ── */
 const THEMES = {
@@ -26,6 +27,7 @@ const THEMES = {
     rowBgStrong: "rgba(16,185,129,.22)",
     vignette: "radial-gradient(circle at center, rgba(12,58,36,.1) 0%, rgba(4,17,9,.42) 42%, rgba(2,8,4,.88) 100%)",
     image: "url('/smartphone-bg-v3-desktop.webp')",
+    imageMobile: "url('/smartphone-bg-v3-mobile.webp')",
     bgPos: "30% 70%",
   },
   humanoid: {
@@ -49,6 +51,7 @@ const THEMES = {
     rowBgStrong: "rgba(183,55,69,.22)",
     vignette: "radial-gradient(circle at 48% 42%, rgba(150,34,45,.13) 0%, rgba(28,8,10,.46) 44%, rgba(7,3,4,.91) 100%)",
     image: "url('/humanoid-bg-v2-desktop.webp')",
+    imageMobile: "url('/humanoid-bg-v2-mobile.webp')",
     bgPos: "center",
   },
   automotive: {
@@ -72,6 +75,7 @@ const THEMES = {
     rowBgStrong: "rgba(37,99,235,.22)",
     vignette: "radial-gradient(circle at 50% 46%, rgba(5,18,55,.08) 0%, rgba(3,10,36,.46) 42%, rgba(1,4,16,.93) 100%)",
     image: "url('/automotive-bg-v2-desktop.webp')",
+    imageMobile: "url('/automotive-bg-v2-mobile.webp')",
     bgPos: "center",
   },
   smartglass: {
@@ -95,6 +99,7 @@ const THEMES = {
     rowBgStrong: "rgba(8,145,178,.22)",
     vignette: "radial-gradient(circle at 50% 45%, rgba(4,60,80,.1) 0%, rgba(2,12,16,.46) 44%, rgba(1,5,8,.91) 100%)",
     image: "url('/smartglass-bg-v2-desktop.webp')",
+    imageMobile: "url('/smartglass-bg-v2-mobile.webp')",
     bgPos: "100% 40%",
   },
   tablet: {
@@ -118,6 +123,7 @@ const THEMES = {
     rowBgStrong: "rgba(124,58,237,.22)",
     vignette: "radial-gradient(circle at 50% 45%, rgba(60,20,120,.1) 0%, rgba(13,8,24,.46) 44%, rgba(5,3,12,.91) 100%)",
     image: "url('/tablet-bg-v2-desktop.webp')",
+    imageMobile: "url('/tablet-bg-v2-mobile.webp')",
     bgPos: "center",
   },
   space_datacenter: {
@@ -141,6 +147,7 @@ const THEMES = {
     rowBgStrong: "rgba(34,211,166,.20)",
     vignette: "linear-gradient(90deg, rgba(2,6,5,.92) 0%, rgba(2,6,5,.72) 38%, rgba(2,6,5,.20) 68%, rgba(2,6,5,.52) 100%), radial-gradient(circle at 28% 46%, rgba(34,211,166,.14) 0%, rgba(2,6,5,.32) 42%, rgba(2,6,5,.88) 100%)",
     image: "url('/space-datacenter-bg-v2-desktop.webp')",
+    imageMobile: "url('/space-datacenter-bg-v2-mobile.webp')",
     bgPos: "64% 48%",
   },
   macro: {
@@ -164,6 +171,7 @@ const THEMES = {
     rowBgStrong: "rgba(217,119,6,.22)",
     vignette: "radial-gradient(circle at 50% 45%, rgba(100,60,5,.1) 0%, rgba(26,15,2,.46) 44%, rgba(10,5,1,.91) 100%)",
     image: "url('/macro-bg-v2-desktop.webp')",
+    imageMobile: "url('/macro-bg-v2-mobile.webp')",
     bgPos: "60% 40%",
   },
 };
@@ -433,6 +441,7 @@ export default function LandingPage() {
   const nav = useNavigate();
   const { domain } = useDomain();
   const { isAuthenticated, isAdmin, isTeam, signOut } = useAuth();
+  const isMobile = useIsMobile();
   const E = THEMES[domain.id] || THEMES.smartphone;
   const [monthlyHot, setMonthlyHot] = useState([]);
   const [monthlyNew, setMonthlyNew] = useState([]);
@@ -489,12 +498,14 @@ export default function LandingPage() {
     alert("이 주제로 생성된 리포트가 아직 없습니다.");
   };
 
+  const backgroundImage = isMobile && E.imageMobile ? E.imageMobile : E.image;
+
   return (
     /* Outer: clips the oversized forest-pan div */
     <div style={{ height: "100%", overflow: "hidden", background: E.bg, position: "relative" }}>
 
       {/* ── Background layers ── */}
-      <div className="forest-pan" style={{ backgroundImage: E.image, backgroundPosition: E.bgPos }} />
+      <div className="forest-pan" style={{ backgroundImage, backgroundPosition: E.bgPos }} />
       {/* radial vignette */}
       <div style={{ position: "absolute", inset: 0, zIndex: 1, pointerEvents: "none",
         background: E.vignette }} />
@@ -503,9 +514,9 @@ export default function LandingPage() {
         background: "linear-gradient(to bottom, rgba(0,0,0,.2) 0%, transparent 35%, rgba(0,0,0,.55) 100%)" }} />
 
       {/* ── Scrollable content ── */}
-      <div style={{ position: "relative", zIndex: 3, height: "100%", overflowY: "auto", overflowX: "hidden" }}>
+      <div style={{ position: "relative", zIndex: 3, height: "100%", overflowY: "auto", overflowX: "hidden", paddingTop: isMobile ? 54 : 0, boxSizing: "border-box" }}>
         <nav style={{ position: "sticky", top: 0, zIndex: 10, display: "flex", justifyContent: "flex-end",
-          gap: 8, padding: "18px clamp(16px, 4vw, 48px) 0", pointerEvents: "none" }}>
+          gap: 8, padding: isMobile ? "10px 12px 0 72px" : "18px clamp(16px, 4vw, 48px) 0", flexWrap: isMobile ? "wrap" : "nowrap", pointerEvents: "none" }}>
           {[
             ["Onboarding", "/onboarding", false],
             ...(isAuthenticated ? [
@@ -530,11 +541,11 @@ export default function LandingPage() {
                 if (locked) { nav("/feedback"); return; }
                 nav(path);
               }}
-              style={{ pointerEvents: "auto", height: 34, borderRadius: 99,
+              style={{ pointerEvents: "auto", height: 34, minHeight: 34, borderRadius: 99,
                 border: `1px solid ${locked ? "rgba(255,255,255,.10)" : E.border}`,
                 background: E.navBg,
                 color: locked ? E.t4 : E.emLL,
-                padding: "0 14px", fontFamily: '"Cabinet Grotesk", "Pretendard Variable", Pretendard, sans-serif',
+                padding: isMobile ? "0 11px" : "0 14px", fontFamily: '"Cabinet Grotesk", "Pretendard Variable", Pretendard, sans-serif',
                 fontSize: 12, fontWeight: 700, letterSpacing: "0.02em", cursor: "pointer",
                 backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
                 boxShadow: "0 4px 18px rgba(0,0,0,.18)", transition: "background .15s, color .15s" }}
@@ -564,11 +575,11 @@ export default function LandingPage() {
 
         {/* ── Hero section ── */}
         <section style={{ maxWidth: 1320, margin: "0 auto", display: "flex", flexDirection: "column",
-          alignItems: "center", padding: "18px 32px 18px", textAlign: "center" }}>
+          alignItems: "center", padding: isMobile ? "22px clamp(16px, 5vw, 32px) 18px" : "18px 32px 18px", textAlign: "center" }}>
 
           {/* Headline */}
           <h1 style={{ fontFamily: '"Cabinet Grotesk", "Pretendard Variable", Pretendard, sans-serif',
-            fontSize: 80, fontWeight: 800, color: E.t1, letterSpacing: "-0.045em",
+            fontSize: isMobile ? "clamp(40px, 11vw, 80px)" : 80, fontWeight: 800, color: E.t1, letterSpacing: "-0.045em",
             lineHeight: 0.98, margin: "16px 0 0", textShadow: "0 4px 32px rgba(0,0,0,.5)",
             animation: "fadeUp .5s ease .06s both" }}>
             Deep research.<br/>
@@ -578,11 +589,11 @@ export default function LandingPage() {
         </section>
 
         {/* ── Topic sections ── */}
-        <section style={{ width: "100%", maxWidth: 1320, margin: "0 auto", padding: "0 clamp(16px, 4vw, 48px) 64px", boxSizing: "border-box" }}>
-          <div style={{ borderRadius: 32, border: `1px solid ${E.border}`,
-            background: E.surf, padding: "28px clamp(20px, 4vw, 48px) 20px",
+        <section style={{ width: "100%", maxWidth: 1320, margin: "0 auto", padding: isMobile ? "0 clamp(12px, 4vw, 16px) 44px" : "0 clamp(16px, 4vw, 48px) 64px", boxSizing: "border-box" }}>
+          <div style={{ borderRadius: isMobile ? 20 : 32, border: `1px solid ${E.border}`,
+            background: E.surf, padding: isMobile ? "20px clamp(12px, 4vw, 18px) 16px" : "28px clamp(20px, 4vw, 48px) 20px",
             boxShadow: "0 8px 48px rgba(0,0,0,.45)", backdropFilter: "blur(24px)",
-            display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(430px, 100%), 1fr))", gap: 40,
+            display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(min(430px, 100%), 1fr))", gap: isMobile ? 22 : 40,
             overflow: "hidden", width: "100%", boxSizing: "border-box" }}>
 
             {/* Hot */}
@@ -629,9 +640,9 @@ export default function LandingPage() {
         {/* ── 이전 주 주제 ── */}
         {historyByWeek.length > 0 && (
           <section style={{ width: "100%", maxWidth: 1320, margin: "0 auto",
-            padding: "0 clamp(16px, 4vw, 48px) 56px", boxSizing: "border-box" }}>
-            <div style={{ borderRadius: 24, border: `1px solid ${E.border}`, background: E.surf,
-              padding: "20px clamp(16px, 4vw, 40px)", boxShadow: "0 4px 24px rgba(0,0,0,.3)",
+            padding: isMobile ? "0 clamp(12px, 4vw, 16px) 44px" : "0 clamp(16px, 4vw, 48px) 56px", boxSizing: "border-box" }}>
+            <div style={{ borderRadius: isMobile ? 18 : 24, border: `1px solid ${E.border}`, background: E.surf,
+              padding: isMobile ? "18px clamp(12px, 4vw, 16px)" : "20px clamp(16px, 4vw, 40px)", boxShadow: "0 4px 24px rgba(0,0,0,.3)",
               backdropFilter: "blur(20px)" }}>
               <h2 style={{ fontSize: 15, fontWeight: 800, color: E.t2, margin: "0 0 2px",
                 letterSpacing: "-0.02em" }}>이전 주 주제</h2>
