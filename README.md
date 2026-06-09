@@ -35,9 +35,11 @@ It was built as a full-stack product, not a notebook demo: a FastAPI backend run
 
 ## Live Preview
 
+> 🔗 Click any screenshot to open that page live on **[seulgy.com](https://seulgy.com)**.
+
 <div align="center">
 
-<img src="docs/screenshots/01-landing-desktop.png" width="100%" alt="Landing page — weekly market topics auto-ranked from curated industry sources" />
+<a href="https://seulgy.com/"><img src="docs/screenshots/01-landing-desktop.png" width="100%" alt="Landing page — weekly market topics auto-ranked from curated industry sources" /></a>
 
 <sub><b>Topic discovery landing</b> — weekly topics auto-ranked from curated industry sources, split into major themes and emerging picks.</sub>
 
@@ -46,18 +48,18 @@ It was built as a full-stack product, not a notebook demo: a FastAPI backend run
 <table>
 <tr>
 <td width="50%" valign="top">
-<img src="docs/screenshots/03-news-desktop.png" alt="Market-intelligence news feed with vendor and issue filters" /><br/>
+<a href="https://seulgy.com/news"><img src="docs/screenshots/03-news-desktop.png" alt="Market-intelligence news feed with vendor and issue filters" /></a><br/>
 <sub><b>Market-intelligence news feed</b> — filter by vendor, issue, source tier; importance-ranked and clustered.</sub>
 </td>
 <td width="50%" valign="top">
-<img src="docs/screenshots/04-archive-desktop.png" alt="Archive of generated executive reports" /><br/>
+<a href="https://seulgy.com/archive"><img src="docs/screenshots/04-archive-desktop.png" alt="Archive of generated executive reports" /></a><br/>
 <sub><b>Report archive</b> — evidence-backed executive reports with section and citation counts per domain.</sub>
 </td>
 </tr>
 </table>
 
 <div align="center">
-<img src="docs/screenshots/02-landing-mobile.png" width="240" alt="Mobile-responsive landing page" />
+<a href="https://seulgy.com/"><img src="docs/screenshots/02-landing-mobile.png" width="240" alt="Mobile-responsive landing page" /></a>
 <br/>
 <sub><b>Responsive</b> public pages, down to 375&nbsp;px.</sub>
 </div>

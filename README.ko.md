@@ -35,9 +35,11 @@ Seulgy AI Analyst는 신뢰할 수 있는 리서치 소스를 주제 추천, 근
 
 ## 라이브 미리보기
 
+> 🔗 스크린샷을 클릭하면 **[seulgy.com](https://seulgy.com)** 해당 페이지로 이동합니다.
+
 <div align="center">
 
-<img src="docs/screenshots/01-landing-desktop.png" width="100%" alt="랜딩 페이지 — 큐레이션 소스에서 자동 랭킹된 주간 시장 주제" />
+<a href="https://seulgy.com/"><img src="docs/screenshots/01-landing-desktop.png" width="100%" alt="랜딩 페이지 — 큐레이션 소스에서 자동 랭킹된 주간 시장 주제" /></a>
 
 <sub><b>주제 발굴 랜딩</b> — 큐레이션된 산업 소스에서 주간 주제를 자동 랭킹하고, 핵심 주제와 새로 떠오른 주제로 나눠 보여줍니다.</sub>
 
@@ -46,18 +48,18 @@ Seulgy AI Analyst는 신뢰할 수 있는 리서치 소스를 주제 추천, 근
 <table>
 <tr>
 <td width="50%" valign="top">
-<img src="docs/screenshots/03-news-desktop.png" alt="벤더·이슈 필터가 있는 마켓 인텔리전스 뉴스 피드" /><br/>
+<a href="https://seulgy.com/news"><img src="docs/screenshots/03-news-desktop.png" alt="벤더·이슈 필터가 있는 마켓 인텔리전스 뉴스 피드" /></a><br/>
 <sub><b>마켓 인텔리전스 뉴스 피드</b> — 벤더·이슈·출처 등급으로 필터, 중요도 랭킹과 클러스터링.</sub>
 </td>
 <td width="50%" valign="top">
-<img src="docs/screenshots/04-archive-desktop.png" alt="생성된 Executive 보고서 아카이브" /><br/>
+<a href="https://seulgy.com/archive"><img src="docs/screenshots/04-archive-desktop.png" alt="생성된 Executive 보고서 아카이브" /></a><br/>
 <sub><b>보고서 아카이브</b> — 도메인별 섹션·인용 수가 표기된 근거 기반 Executive 보고서.</sub>
 </td>
 </tr>
 </table>
 
 <div align="center">
-<img src="docs/screenshots/02-landing-mobile.png" width="240" alt="모바일 반응형 랜딩 페이지" />
+<a href="https://seulgy.com/"><img src="docs/screenshots/02-landing-mobile.png" width="240" alt="모바일 반응형 랜딩 페이지" /></a>
 <br/>
 <sub>375&nbsp;px까지 대응하는 <b>반응형</b> 공개 페이지.</sub>
 </div>
