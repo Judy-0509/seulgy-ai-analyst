@@ -7,7 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).parent.parent
 ROLES_PATH = ROOT / "data" / "roles.json"
 _LOCK = threading.Lock()
-_INITIAL_STATE = {"team": []}
+_INITIAL_STATE = {"team": [], "requests": []}
 
 
 def _normalize_email(email: str) -> str:
@@ -36,6 +36,16 @@ def _read_state() -> dict:
             for item in data.get("team", [])
             if isinstance(item, dict) and _normalize_email(item.get("email", ""))
         ],
+        "requests": [
+            {
+                "email": _normalize_email(item.get("email", "")),
+                "name": item.get("name", ""),
+                "status": item.get("status", "pending"),
+                "ts": item.get("ts", ""),
+            }
+            for item in data.get("requests", [])
+            if isinstance(item, dict) and _normalize_email(item.get("email", ""))
+        ],
     }
 
 
@@ -51,13 +61,25 @@ def is_team(email: str) -> bool:
         return any(item["email"] == email for item in _read_state()["team"])
 
 
+def is_requested(email: str) -> bool:
+    email = _normalize_email(email)
+    if not email:
+        return False
+    with _LOCK:
+        return any(r["email"] == email and r["status"] == "pending" for r in _read_state()["requests"])
+
+
 def add_team(email: str, name: str = "") -> str:
     email = _normalize_email(email)
     if not email:
         return "exists"
     with _LOCK:
         data = _read_state()
+        for r in data["requests"]:
+            if r["email"] == email and r["status"] == "pending":
+                r["status"] = "approved"
         if any(item["email"] == email for item in data["team"]):
+            _write_state(data)
             return "exists"
         data["team"].append({
             "email": email,
@@ -83,6 +105,68 @@ def remove_team(email: str) -> bool:
 def list_team() -> list[dict]:
     with _LOCK:
         return list(_read_state()["team"])
+
+
+def request_team(email: str, name: str = "") -> str:
+    """Record an analyst-access request. 'team' if already analyst, else 'requested'."""
+    email = _normalize_email(email)
+    if not email:
+        return "requested"
+    with _LOCK:
+        data = _read_state()
+        if any(item["email"] == email for item in data["team"]):
+            return "team"
+        for r in data["requests"]:
+            if r["email"] == email and r["status"] == "pending":
+                return "requested"
+        data["requests"].append({
+            "email": email,
+            "name": name or "",
+            "status": "pending",
+            "ts": datetime.now(timezone.utc).isoformat(),
+        })
+        _write_state(data)
+        return "requested"
+
+
+def list_requests(status: str = "pending") -> list[dict]:
+    with _LOCK:
+        return [r for r in _read_state()["requests"] if r["status"] == status]
+
+
+def approve_request(email: str) -> bool:
+    email = _normalize_email(email)
+    if not email:
+        return False
+    with _LOCK:
+        data = _read_state()
+        name = ""
+        for r in data["requests"]:
+            if r["email"] == email and r["status"] == "pending":
+                r["status"] = "approved"
+                name = r.get("name", "")
+        if not any(item["email"] == email for item in data["team"]):
+            data["team"].append({
+                "email": email,
+                "name": name,
+                "added_at": datetime.now(timezone.utc).isoformat(),
+            })
+        _write_state(data)
+        return True
+
+
+def reject_request(email: str) -> bool:
+    email = _normalize_email(email)
+    with _LOCK:
+        data = _read_state()
+        found = False
+        for r in data["requests"]:
+            if r["email"] == email and r["status"] == "pending":
+                r["status"] = "rejected"
+                found = True
+        if found:
+            _write_state(data)
+        return found
 
 
 def role_of(user: dict) -> str:

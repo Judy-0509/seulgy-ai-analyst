@@ -60,7 +60,7 @@ function TargetRefPlaceholder(type) {
 
 export default function FeedbackPage() {
   const nav = useNavigate();
-  const { isAdmin, canFeedback } = useAuth();
+  const { isAdmin, canFeedback, roleRequested, requestAnalyst } = useAuth();
 
   // ── form state ──
   const [domain, setDomain]         = useState("");
@@ -86,6 +86,19 @@ export default function FeedbackPage() {
   const [newEmail, setNewEmail]   = useState("");
   const [newName, setNewName]     = useState("");
   const [teamError, setTeamError] = useState("");
+
+  // ── analyst access request (non-analyst) ──
+  const [reqSubmitting, setReqSubmitting] = useState(false);
+  const [reqDone, setReqDone]             = useState(false);
+
+  // ── admin: pending analyst requests ──
+  const [requests, setRequests]       = useState([]);
+  const [requestsStatus, setRequestsStatus] = useState("idle");
+
+  // ── admin: logged-in supabase users ──
+  const [users, setUsers]         = useState([]);
+  const [usersStatus, setUsersStatus] = useState("idle");
+  const [usersError, setUsersError]   = useState("");
 
   const canAccess = canFeedback;
 
@@ -116,6 +129,27 @@ export default function FeedbackPage() {
       .catch(() => setTeamStatus("error"));
   }, []);
 
+  const loadRequests = useCallback(() => {
+    setRequestsStatus("loading");
+    authFetch("/api/roles/requests")
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(data => { setRequests(data.requests || []); setRequestsStatus("ready"); })
+      .catch(() => setRequestsStatus("error"));
+  }, []);
+
+  const loadUsers = useCallback(() => {
+    setUsersStatus("loading");
+    setUsersError("");
+    authFetch("/api/auth/users")
+      .then(async r => {
+        if (r.status === 503) { setUsersError("service_role 키 설정이 필요합니다."); throw new Error("503"); }
+        if (!r.ok) { setUsersError("불러오지 못했습니다."); throw new Error(String(r.status)); }
+        return r.json();
+      })
+      .then(data => { setUsers(data.users || []); setUsersStatus("ready"); })
+      .catch(() => setUsersStatus("error"));
+  }, []);
+
   useEffect(() => {
     if (canAccess) void Promise.resolve().then(loadMine);
   }, [canAccess, loadMine]);
@@ -124,8 +158,10 @@ export default function FeedbackPage() {
     if (isAdmin) {
       void Promise.resolve().then(loadAll);
       void Promise.resolve().then(loadTeam);
+      void Promise.resolve().then(loadRequests);
+      void Promise.resolve().then(loadUsers);
     }
-  }, [isAdmin, loadAll, loadTeam]);
+  }, [isAdmin, loadAll, loadTeam, loadRequests, loadUsers]);
 
   const handleSubmit = () => {
     if (!message.trim()) return;
@@ -180,6 +216,60 @@ export default function FeedbackPage() {
       .catch(() => {});
   };
 
+  const handleRequestAnalyst = async () => {
+    setReqSubmitting(true);
+    try {
+      const { ok } = await requestAnalyst();
+      if (ok) setReqDone(true);
+    } finally {
+      setReqSubmitting(false);
+    }
+  };
+
+  const handleApprove = (email) => {
+    authFetch("/api/roles/approve", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    })
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(() => { loadRequests(); loadTeam(); loadUsers(); })
+      .catch(() => {});
+  };
+
+  const handleReject = (email) => {
+    authFetch("/api/roles/reject", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    })
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(() => loadRequests())
+      .catch(() => {});
+  };
+
+  const handleDesignate = (email) => {
+    authFetch("/api/roles/team", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    })
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(() => { loadUsers(); loadTeam(); loadRequests(); })
+      .catch(() => {});
+  };
+
+  const handleRemoveUser = (email) => {
+    authFetch("/api/roles/team/remove", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    })
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(() => { loadUsers(); loadTeam(); loadRequests(); })
+      .catch(() => {});
+  };
+
   const inputStyle = {
     width: "100%", boxSizing: "border-box",
     padding: "6px 10px", borderRadius: 7,
@@ -212,21 +302,33 @@ export default function FeedbackPage() {
         {!canAccess && (
           <section style={panelStyle}>
             <h2 style={{ fontSize: 15, fontWeight: 700, color: C.t1, margin: "0 0 8px" }}>
-              애널리스트(analyst) 권한이 필요합니다
+              애널리스트 권한이 필요합니다
             </h2>
             <p style={{ fontSize: 14, color: C.t2, margin: "0 0 14px", lineHeight: 1.6 }}>
-              피드백 작성은 관리자가 지정한 애널리스트만 가능합니다. 권한이 필요하시면 아래로 관리자에게 요청해 주세요.
+              피드백 작성·DB·Keywords 열람은 관리자가 지정한 애널리스트만 가능합니다. 아래 버튼으로 권한을 신청하면 관리자 승인 후 이용할 수 있습니다.
             </p>
-            <a
-              href="mailto:jieunyi1995@gmail.com?subject=Seulgy%20analyst%20권한%20요청&body=안녕하세요,%20Seulgy%20피드백%20작성(analyst)%20권한을%20요청드립니다."
-              style={{
+            {(roleRequested || reqDone) ? (
+              <span style={{
                 display: "inline-block", height: 36, lineHeight: "36px", padding: "0 16px",
-                borderRadius: 8, background: "#2563eb", color: "#fff",
-                fontSize: 13, fontWeight: 700, textDecoration: "none",
-              }}
-            >
-              관리자에게 권한 요청 (jieunyi1995@gmail.com)
-            </a>
+                borderRadius: 8, background: C.subtle, border: `1px solid ${C.border}`,
+                color: C.t3, fontSize: 13, fontWeight: 700,
+              }}>
+                신청 완료 — 관리자 승인 대기 중
+              </span>
+            ) : (
+              <button
+                onClick={handleRequestAnalyst}
+                disabled={reqSubmitting}
+                style={{
+                  height: 36, padding: "0 16px", borderRadius: 8,
+                  background: "#2563eb", border: "1px solid #2563eb", color: "#fff",
+                  fontSize: 13, fontWeight: 700, cursor: "pointer",
+                  opacity: reqSubmitting ? 0.6 : 1,
+                }}
+              >
+                {reqSubmitting ? "신청 중..." : "애널리스트 권한 신청"}
+              </button>
+            )}
           </section>
         )}
 
@@ -402,6 +504,49 @@ export default function FeedbackPage() {
           </section>
         )}
 
+        {/* Admin: pending analyst requests */}
+        {isAdmin && (
+          <section style={panelStyle}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12 }}>
+              <h2 style={{ fontSize: 14, fontWeight: 700, color: C.t1, margin: 0 }}>
+                권한 신청 대기
+              </h2>
+              <button onClick={loadRequests} style={buttonStyle}>새로고침</button>
+            </div>
+            {requestsStatus === "loading" && <p style={{ fontSize: 13, color: C.t4, margin: 0 }}>불러오는 중...</p>}
+            {requestsStatus === "error" && <p style={{ fontSize: 13, color: "#ef4444", margin: 0 }}>불러오지 못했습니다.</p>}
+            {requestsStatus === "ready" && requests.length === 0 && (
+              <p style={{ fontSize: 13, color: C.t4, margin: 0 }}>대기 중인 신청이 없습니다.</p>
+            )}
+            {requests.length > 0 && (
+              <div style={{ display: "grid", gap: 8 }}>
+                {requests.map(req => (
+                  <div key={req.email} style={{
+                    display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12,
+                    padding: "10px 12px", border: `1px solid ${C.border}`, borderRadius: 8, background: C.subtle,
+                  }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: C.t1 }}>{req.email}</div>
+                      <div style={{ fontSize: 12, color: C.t4 }}>
+                        {[req.name, (req.ts || "").slice(0, 10)].filter(Boolean).join(" · ")}
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                      <button
+                        onClick={() => handleApprove(req.email)}
+                        style={{ ...buttonStyle, background: "#2563eb", border: "1px solid #2563eb", color: "#fff" }}
+                      >
+                        승인
+                      </button>
+                      <button onClick={() => handleReject(req.email)} style={buttonStyle}>거절</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
         {/* Admin: team management */}
         {isAdmin && (
           <section style={panelStyle}>
@@ -461,6 +606,56 @@ export default function FeedbackPage() {
                 ))}
               </div>
             )}
+
+            {/* Logged-in supabase users picker */}
+            <div style={{ marginTop: 22, paddingTop: 18, borderTop: `1px solid ${C.border}` }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12 }}>
+                <h3 style={{ fontSize: 13, fontWeight: 700, color: C.t1, margin: 0 }}>
+                  로그인 사용자
+                </h3>
+                <button onClick={loadUsers} style={buttonStyle}>새로고침</button>
+              </div>
+              {usersStatus === "loading" && <p style={{ fontSize: 13, color: C.t4, margin: 0 }}>불러오는 중...</p>}
+              {usersStatus === "error" && (
+                <p style={{ fontSize: 13, color: "#ef4444", margin: 0 }}>{usersError || "불러오지 못했습니다."}</p>
+              )}
+              {usersStatus === "ready" && users.length === 0 && (
+                <p style={{ fontSize: 13, color: C.t4, margin: 0 }}>로그인한 사용자가 없습니다.</p>
+              )}
+              {users.length > 0 && (
+                <div style={{ display: "grid", gap: 8 }}>
+                  {users.map(u => (
+                    <div key={u.email} style={{
+                      display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12,
+                      padding: "10px 12px", border: `1px solid ${C.border}`, borderRadius: 8, background: C.subtle,
+                    }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: C.t1 }}>{u.email}</div>
+                        <div style={{ fontSize: 12, color: C.t4 }}>
+                          최근 로그인 {(u.last_sign_in_at || "").slice(0, 10) || "—"}
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                        {u.role === "admin" && (
+                          <span style={{ fontSize: 11, fontWeight: 700, color: C.t3 }}>관리자</span>
+                        )}
+                        {u.role === "team" && (
+                          <button onClick={() => handleRemoveUser(u.email)} style={buttonStyle}>해제</button>
+                        )}
+                        {u.role === "other" && (
+                          <button
+                            onClick={() => handleDesignate(u.email)}
+                            style={{ ...buttonStyle, background: "#2563eb", border: "1px solid #2563eb", color: "#fff" }}
+                          >
+                            애널리스트 지정
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </section>
         )}
       </div>

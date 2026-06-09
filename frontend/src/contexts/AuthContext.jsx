@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { supabase } from "../lib/supabase";
+import { authFetch } from "../lib/authFetch";
 
 const AuthCtx = createContext(null);
 
@@ -11,12 +12,12 @@ async function _loadMe(token) {
     });
     if (res.ok) {
       const data = await res.json();
-      return { isAdmin: Boolean(data.is_admin), pages: Array.isArray(data.pages) ? data.pages : [], role: data.role || "other" };
+      return { isAdmin: Boolean(data.is_admin), pages: Array.isArray(data.pages) ? data.pages : [], role: data.role || "other", roleRequested: Boolean(data.role_requested) };
     }
   } catch {
     // network error → defaults
   }
-  return { isAdmin: false, pages: [], role: "other" };
+  return { isAdmin: false, pages: [], role: "other", roleRequested: false };
 }
 
 export function AuthProvider({ children }) {
@@ -24,14 +25,16 @@ export function AuthProvider({ children }) {
   const [isAdmin, setIsAdmin]         = useState(false);
   const [pages, setPages]             = useState([]);
   const [role, setRole]               = useState("other");
+  const [roleRequested, setRoleRequested] = useState(false);
   const [accessToken, setAccessToken] = useState(null);
   const [loading, setLoading]         = useState(true);
 
   const _applyMe = useCallback((token) => {
-    _loadMe(token).then(({ isAdmin: a, pages: p, role: r }) => {
+    _loadMe(token).then(({ isAdmin: a, pages: p, role: r, roleRequested: rr }) => {
       setIsAdmin(a);
       setPages(p);
       setRole(r);
+      setRoleRequested(rr);
     });
   }, []);
 
@@ -48,6 +51,7 @@ export function AuthProvider({ children }) {
         setIsAdmin(false);
         setPages([]);
         setRole("other");
+        setRoleRequested(false);
       }
       setLoading(false);
     });
@@ -64,6 +68,7 @@ export function AuthProvider({ children }) {
         setIsAdmin(false);
         setPages([]);
         setRole("other");
+        setRoleRequested(false);
       }
     });
 
@@ -115,6 +120,7 @@ export function AuthProvider({ children }) {
     setIsAdmin(false);
     setPages([]);
     setRole("other");
+    setRoleRequested(false);
     setAccessToken(null);
   }
 
@@ -126,6 +132,13 @@ export function AuthProvider({ children }) {
     const { data } = await supabase.auth.getSession();
     const token = data?.session?.access_token;
     if (token) _applyMe(token);
+  }
+
+  /** 애널리스트(team) 권한 신청 후 /api/me 를 갱신해 role/roleRequested 를 반영한다. */
+  async function requestAnalyst() {
+    const res = await authFetch("/api/roles/request", { method: "POST" });
+    await refreshMe();
+    return { ok: res.ok };
   }
 
   /** isAdmin 이거나 해당 page 가 부여된 경우 true. */
@@ -144,9 +157,11 @@ export function AuthProvider({ children }) {
       pages,
       hasPageAccess,
       role,
+      roleRequested,
       isTeam,
       canFeedback,
       refreshMe,
+      requestAnalyst,
       accessToken,
       loading,
       signIn,

@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDomain } from "../contexts/DomainContext";
 import { useAuth } from "../contexts/AuthContext";
-import { authFetch } from "../lib/authFetch";
 
 /* ── Dark forest theme tokens ── */
 const THEMES = {
@@ -430,90 +429,10 @@ function WeekGroup({ weekOf, topics, onStart, theme, isAuthenticated }) {
 }
 
 /* ── Main ── */
-/* ── 권한 신청 모달 ── */
-function AccessRequestModal({ page, label, theme: E, onClose }) {
-  const [reqStatus, setReqStatus] = useState("idle"); // idle | loading | done | error
-
-  async function handleRequest() {
-    setReqStatus("loading");
-    try {
-      const res = await authFetch("/api/access/request", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ page }),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setReqStatus("done");
-    } catch {
-      setReqStatus("error");
-    }
-  }
-
-  return (
-    <div
-      onClick={onClose}
-      style={{ position: "fixed", inset: 0, zIndex: 100,
-        background: "rgba(0,0,0,.6)", display: "flex",
-        alignItems: "center", justifyContent: "center" }}
-    >
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{ background: E.surf, border: `1px solid ${E.border}`,
-          borderRadius: 20, padding: "32px 36px", maxWidth: 400, width: "90%",
-          backdropFilter: "blur(24px)", boxShadow: "0 12px 48px rgba(0,0,0,.55)",
-          fontFamily: '"Cabinet Grotesk", "Pretendard Variable", Pretendard, sans-serif' }}
-      >
-        <h3 style={{ margin: "0 0 10px", fontSize: 18, fontWeight: 800,
-          color: E.t1, letterSpacing: "-0.02em" }}>
-          {label} 페이지 권한 필요
-        </h3>
-        <p style={{ margin: "0 0 24px", fontSize: 13, color: E.t4, lineHeight: 1.6 }}>
-          이 페이지({label})는 관리자 승인이 필요합니다.<br />
-          권한을 신청하면 관리자 검토 후 접근이 허용됩니다.
-        </p>
-
-        {reqStatus === "done" ? (
-          <p style={{ margin: 0, fontSize: 13, color: E.emLL, fontWeight: 700 }}>
-            신청 완료 — 관리자 승인 대기중
-          </p>
-        ) : (
-          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-            <button
-              onClick={onClose}
-              style={{ height: 36, padding: "0 16px", borderRadius: 99,
-                border: `1px solid ${E.border}`, background: "transparent",
-                color: E.t4, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
-            >
-              닫기
-            </button>
-            <button
-              onClick={handleRequest}
-              disabled={reqStatus === "loading"}
-              style={{ height: 36, padding: "0 18px", borderRadius: 99,
-                border: `1px solid ${E.emBr}`, background: E.emBg,
-                color: E.emLL, fontSize: 12, fontWeight: 700, cursor: "pointer",
-                opacity: reqStatus === "loading" ? 0.6 : 1 }}
-            >
-              {reqStatus === "loading" ? "신청 중…" : "권한 신청"}
-            </button>
-          </div>
-        )}
-
-        {reqStatus === "error" && (
-          <p style={{ margin: "12px 0 0", fontSize: 12, color: "#f87171" }}>
-            신청 실패. 다시 시도해 주세요.
-          </p>
-        )}
-      </div>
-    </div>
-  );
-}
-
 export default function LandingPage() {
   const nav = useNavigate();
   const { domain } = useDomain();
-  const { isAuthenticated, isAdmin, hasPageAccess, signOut } = useAuth();
-  const [accessModal, setAccessModal] = useState(null); // null | { page, label }
+  const { isAuthenticated, isAdmin, isTeam, signOut } = useAuth();
   const E = THEMES[domain.id] || THEMES.smartphone;
   const [monthlyHot, setMonthlyHot] = useState([]);
   const [monthlyNew, setMonthlyNew] = useState([]);
@@ -593,11 +512,10 @@ export default function LandingPage() {
               ["Archive", "/archive", false],
               ["News", "/news", false],
               ["Feedback", "/feedback", false],
-              ["DB", "/db", !hasPageAccess("db")],
-              ["Keywords", "/keywords", !hasPageAccess("keywords")],
+              ["DB", "/db", !isTeam],
+              ["Keywords", "/keywords", !isTeam],
               ...(isAdmin ? [
                 ["Usage", "/usage", false],
-                ["권한 요청", "/access", false],
               ] : []),
               ["Logout", "__logout__", false],
             ] : [
@@ -609,12 +527,7 @@ export default function LandingPage() {
               onClick={() => {
                 if (path === "/onboarding") { window.location.href = path; return; }
                 if (path === "__logout__") { signOut(); return; }
-                if (locked) {
-                  const PAGE_LABELS = { "/db": "DB", "/keywords": "Keywords" };
-                  const PAGE_KEYS   = { "/db": "db", "/keywords": "keywords" };
-                  setAccessModal({ page: PAGE_KEYS[path], label: PAGE_LABELS[path] });
-                  return;
-                }
+                if (locked) { nav("/feedback"); return; }
                 nav(path);
               }}
               style={{ pointerEvents: "auto", height: 34, borderRadius: 99,
@@ -638,16 +551,6 @@ export default function LandingPage() {
             </button>
           ))}
         </nav>
-
-        {/* ── 권한 신청 모달 ── */}
-        {accessModal && (
-          <AccessRequestModal
-            page={accessModal.page}
-            label={accessModal.label}
-            theme={E}
-            onClose={() => setAccessModal(null)}
-          />
-        )}
 
         {/* ── Hero section ── */}
         <section style={{ maxWidth: 1320, margin: "0 auto", display: "flex", flexDirection: "column",

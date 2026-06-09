@@ -11,7 +11,6 @@ import ReportPage from "./pages/ReportPage";
 import ReportsArchivePage from "./pages/ReportsArchivePage";
 import KeywordsPage from "./pages/KeywordsPage";
 import UsagePage from "./pages/UsagePage";
-import AccessRequestsPage from "./pages/AccessRequestsPage";
 import FeedbackPage from "./pages/FeedbackPage";
 
 /** 로그인 필요 (멤버 이상) — 미인증 시 /login 으로 리디렉트 */
@@ -39,17 +38,13 @@ function AdminRoute({ children }) {
   return children;
 }
 
-/** 페이지별 접근 제어 — isAdmin 또는 hasPageAccess(page) 인 경우 허용, 아니면 / 로 리디렉트 */
-function PageRoute({ page, children }) {
-  const { isAuthenticated, hasPageAccess, loading } = useAuth();
+/** 애널리스트(team) 전용 — 미인증 시 /login, 비애널리스트 시 / 으로 리디렉트 */
+function TeamRoute({ children }) {
+  const { isAuthenticated, isTeam, loading } = useAuth();
   const location = useLocation();
   if (loading) return null;
-  if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
-  if (!hasPageAccess(page)) {
-    return <Navigate to="/" replace />;
-  }
+  if (!isAuthenticated) return <Navigate to="/login" state={{ from: location }} replace />;
+  if (!isTeam) return <Navigate to="/" replace />;
   return children;
 }
 
@@ -79,11 +74,10 @@ function RouterContent() {
           {/* ADMIN */}
           <Route path="/app"      element={<AdminRoute><AppPage /></AdminRoute>} />
           <Route path="/usage"    element={<AdminRoute><UsagePage /></AdminRoute>} />
-          <Route path="/access"   element={<AdminRoute><AccessRequestsPage /></AdminRoute>} />
 
-          {/* PAGE-GATED (isAdmin 또는 granted) */}
-          <Route path="/db"       element={<PageRoute page="db"><DbPage /></PageRoute>} />
-          <Route path="/keywords" element={<PageRoute page="keywords"><KeywordsPage /></PageRoute>} />
+          {/* ANALYST (team) — isAdmin 또는 team */}
+          <Route path="/db"       element={<TeamRoute><DbPage /></TeamRoute>} />
+          <Route path="/keywords" element={<TeamRoute><KeywordsPage /></TeamRoute>} />
 
           {/* Redirects */}
           <Route path="/reports"      element={<Navigate to="/archive" replace />} />

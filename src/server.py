@@ -14,9 +14,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from src.auth import require_member, require_admin, require_admin_query, is_admin, require_page_access, require_team
+from src.auth import require_member, require_admin, require_admin_query, is_admin, require_team
 import src.page_access as page_access
-from src.roles import role_of, add_team, remove_team, list_team
+from src.roles import role_of, add_team, remove_team, list_team, request_team, list_requests, approve_request, reject_request, is_requested
 from src.feedback_store import (
     add_feedback, list_mine, list_all, update_status,
     ALLOWED_TARGET_TYPE,
@@ -225,7 +225,7 @@ async def api_me(user: dict = Depends(require_member)):
     email = user.get("email", "")
     admin = is_admin(user)
     pages = list(page_access.VALID_PAGES) if admin else page_access.granted_pages(email)
-    return {"email": email, "is_admin": admin, "pages": pages, "role": role_of(user)}
+    return {"email": email, "is_admin": admin, "pages": pages, "role": role_of(user), "role_requested": is_requested(email)}
 
 
 async def _run_archive_orchestrator(job_id: str):
@@ -305,7 +305,7 @@ def _is_smartphone(entry: dict) -> bool:
 
 
 @app.get("/api/keywords")
-async def api_keywords_get(domain: str = "smartphone", _user: dict = Depends(require_page_access("keywords"))):
+async def api_keywords_get(domain: str = "smartphone", _user: dict = Depends(require_team)):
     """도메인별 필터링 키워드 목록 반환."""
     cfg = load_domain(domain)
     kw_path = ROOT / cfg["keywords_file"]
@@ -336,7 +336,7 @@ async def api_keywords_put(req: Request, domain: str = "smartphone", _user: dict
 
 
 @app.get("/api/topics/mine")
-async def api_topics_mine(days: int = 30, domain: str = "smartphone", _user: dict = Depends(require_page_access("db"))):
+async def api_topics_mine(days: int = 30, domain: str = "smartphone", _user: dict = Depends(require_team)):
     """최근 N일 Tier-1 소스의 도메인 관련 기사를 소스별로 묶어 반환."""
     import re as _re
 
@@ -402,7 +402,7 @@ async def api_topics_mine(days: int = 30, domain: str = "smartphone", _user: dic
 
 
 @app.get("/api/archives/entries")
-async def api_archives_entries(source: str, limit: int = 300, _user: dict = Depends(require_page_access("db"))):
+async def api_archives_entries(source: str, limit: int = 300, _user: dict = Depends(require_team)):
     """특정 소스의 전체 아카이브 기사 반환. 키워드 필터 없음."""
     import re as _re
 
@@ -1497,6 +1497,75 @@ async def api_roles_team_remove(req: Request, user: dict = Depends(require_admin
         raise HTTPException(400, "email required")
     remove_team(email)
     return {"team": list_team()}
+
+
+@app.post("/api/roles/request")
+async def api_roles_request(user: dict = Depends(require_member)):
+    email = (user.get("email") or "").lower()
+    name = user.get("name") or user.get("user_metadata", {}).get("full_name", "") if isinstance(user.get("user_metadata"), dict) else (user.get("name") or "")
+    status = request_team(email, name)
+    return {"status": status}
+
+
+@app.get("/api/roles/requests")
+async def api_roles_requests(_user: dict = Depends(require_admin)):
+    return {"requests": list_requests()}
+
+
+@app.post("/api/roles/approve")
+async def api_roles_approve(req: Request, _user: dict = Depends(require_admin)):
+    body = await req.json()
+    email = (body.get("email") or "").strip().lower()
+    if not email:
+        raise HTTPException(400, "email required")
+    approve_request(email)
+    return {"team": list_team(), "requests": list_requests()}
+
+
+@app.post("/api/roles/reject")
+async def api_roles_reject(req: Request, _user: dict = Depends(require_admin)):
+    body = await req.json()
+    email = (body.get("email") or "").strip().lower()
+    if not email:
+        raise HTTPException(400, "email required")
+    reject_request(email)
+    return {"requests": list_requests()}
+
+
+@app.get("/api/auth/users")
+async def api_auth_users(_user: dict = Depends(require_admin)):
+    import os
+    import httpx
+    service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    base = os.getenv("SUPABASE_URL") or os.getenv("VITE_SUPABASE_URL")
+    if not service_key or not base:
+        raise HTTPException(503, "Supabase service_role 키가 설정되지 않았습니다")
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(
+                f"{base}/auth/v1/admin/users",
+                params={"per_page": 200},
+                headers={"apikey": service_key, "Authorization": f"Bearer {service_key}"},
+            )
+    except Exception:
+        raise HTTPException(502, "Supabase 사용자 조회 중 오류가 발생했습니다")
+    if resp.status_code != 200:
+        raise HTTPException(502, f"Supabase 사용자 조회 실패 ({resp.status_code})")
+    payload = resp.json()
+    raw = payload.get("users", payload) if isinstance(payload, dict) else payload
+    users = []
+    for u in raw or []:
+        email = (u.get("email") or "").lower()
+        if not email:
+            continue
+        users.append({
+            "id": u.get("id"),
+            "email": email,
+            "last_sign_in_at": u.get("last_sign_in_at"),
+            "role": role_of({"email": email}),  # 'admin' | 'team' | 'other'
+        })
+    users.sort(key=lambda x: x.get("last_sign_in_at") or "", reverse=True)
+    return {"users": users}
 
 
 # SPA fallback — serves static files if they exist, otherwise index.html for React Router
