@@ -84,3 +84,17 @@ async def require_admin(request: Request) -> dict:
     if not is_admin(user):
         raise HTTPException(403, "관리자 권한이 필요합니다")
     return user
+
+
+def require_page_access(page: str):
+    """Factory: returns an async FastAPI dependency that allows admins and
+    users who have been granted access to *page* via page_access.approve()."""
+    async def _dep(request: Request) -> dict:
+        user = await require_member(request)
+        if is_admin(user):
+            return user
+        import src.page_access as _pa  # lazy to avoid cycles
+        if _pa.has_access(user.get("email") or "", page):
+            return user
+        raise HTTPException(403, "이 페이지는 권한이 필요합니다")
+    return _dep

@@ -14,7 +14,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from src.auth import require_member, require_admin, require_admin_query, is_admin
+from src.auth import require_member, require_admin, require_admin_query, is_admin, require_page_access
+import src.page_access as page_access
 
 from src.services.token_logger import read_all as read_token_log
 from src.news_api import router as news_router
@@ -215,8 +216,11 @@ async def api_archives_status():
 
 @app.get("/api/me")
 async def api_me(user: dict = Depends(require_member)):
-    """현재 로그인 사용자의 이메일과 관리자 여부를 반환."""
-    return {"email": user.get("email", ""), "is_admin": is_admin(user)}
+    """현재 로그인 사용자의 이메일, 관리자 여부, 부여된 페이지 목록을 반환."""
+    email = user.get("email", "")
+    admin = is_admin(user)
+    pages = list(page_access.VALID_PAGES) if admin else page_access.granted_pages(email)
+    return {"email": email, "is_admin": admin, "pages": pages}
 
 
 async def _run_archive_orchestrator(job_id: str):
@@ -296,7 +300,7 @@ def _is_smartphone(entry: dict) -> bool:
 
 
 @app.get("/api/keywords")
-async def api_keywords_get(domain: str = "smartphone", _user: dict = Depends(require_admin)):
+async def api_keywords_get(domain: str = "smartphone", _user: dict = Depends(require_page_access("keywords"))):
     """도메인별 필터링 키워드 목록 반환."""
     cfg = load_domain(domain)
     kw_path = ROOT / cfg["keywords_file"]
@@ -327,7 +331,7 @@ async def api_keywords_put(req: Request, domain: str = "smartphone", _user: dict
 
 
 @app.get("/api/topics/mine")
-async def api_topics_mine(days: int = 30, domain: str = "smartphone", _user: dict = Depends(require_admin)):
+async def api_topics_mine(days: int = 30, domain: str = "smartphone", _user: dict = Depends(require_page_access("db"))):
     """최근 N일 Tier-1 소스의 도메인 관련 기사를 소스별로 묶어 반환."""
     import re as _re
 
@@ -393,7 +397,7 @@ async def api_topics_mine(days: int = 30, domain: str = "smartphone", _user: dic
 
 
 @app.get("/api/archives/entries")
-async def api_archives_entries(source: str, limit: int = 300, _user: dict = Depends(require_admin)):
+async def api_archives_entries(source: str, limit: int = 300, _user: dict = Depends(require_page_access("db"))):
     """특정 소스의 전체 아카이브 기사 반환. 키워드 필터 없음."""
     import re as _re
 
@@ -421,6 +425,38 @@ async def api_archives_entries(source: str, limit: int = 300, _user: dict = Depe
             continue
 
     return {"source": source, "total": 0, "items": []}
+
+
+# Page Access — 권한 신청 / 승인 엔드포인트
+
+@app.post("/api/access/request")
+async def api_access_request(req: Request, user: dict = Depends(require_member)):
+    """멤버가 특정 페이지의 접근 권한을 신청한다."""
+    body = await req.json()
+    pg = (body.get("page") or "").strip().lower()
+    if pg not in page_access.VALID_PAGES:
+        raise HTTPException(400, f"유효하지 않은 페이지입니다. 허용값: {sorted(page_access.VALID_PAGES)}")
+    email = (user.get("email") or "").strip().lower()
+    page_access.request_access(email, pg)
+    return {"ok": True}
+
+
+@app.get("/api/access/requests")
+async def api_access_requests(_user: dict = Depends(require_admin)):
+    """관리자: 대기 중인 권한 신청 목록을 반환한다."""
+    return {"requests": page_access.list_requests("pending")}
+
+
+@app.post("/api/access/approve")
+async def api_access_approve(req: Request, _user: dict = Depends(require_admin)):
+    """관리자: 권한 신청을 승인한다."""
+    body = await req.json()
+    email = (body.get("email") or "").strip().lower()
+    pg = (body.get("page") or "").strip().lower()
+    if not email or pg not in page_access.VALID_PAGES:
+        raise HTTPException(400, "email 과 유효한 page 가 필요합니다")
+    page_access.approve(email, pg)
+    return {"ok": True}
 
 
 # Report Generation — run_report.py pipeline UI bridge
