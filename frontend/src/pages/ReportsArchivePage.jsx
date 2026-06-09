@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Wordmark from "../components/Wordmark";
+import { useAuth } from "../contexts/AuthContext";
+import { authFetch } from "../lib/authFetch";
 
 const API = "";
 
@@ -99,7 +101,7 @@ function ReportCard({ report, onOpen, onDelete, deleting }) {
         )}
       </button>
 
-      {deleting ? (
+      {onDelete && (deleting ? (
         <div style={{
           display: "flex", alignItems: "center", gap: 10, padding: "10px 20px",
           borderTop: `1px solid ${A.border}`, background: "rgba(239,68,68,.04)",
@@ -136,13 +138,14 @@ function ReportCard({ report, onOpen, onDelete, deleting }) {
         >
           삭제
         </button>
-      )}
+      ))}
     </div>
   );
 }
 
 export default function ReportsArchivePage() {
   const nav = useNavigate();
+  const { isAdmin } = useAuth();
   const [reports, setReports] = useState([]);
   const [query, setQuery] = useState("");
   const [error, setError] = useState("");
@@ -183,7 +186,7 @@ export default function ReportsArchivePage() {
       setConfirmSlug(null);
       return;
     }
-    fetch(`${API}/api/reports/${encodeURIComponent(slug)}`, { method: "DELETE" })
+    authFetch(`${API}/api/reports/${encodeURIComponent(slug)}`, { method: "DELETE" })
       .then((res) => { if (!res.ok) throw new Error(); })
       .then(() => {
         setReports((prev) => prev.filter((r) => r.slug !== slug));
@@ -247,7 +250,7 @@ export default function ReportsArchivePage() {
               report={report}
               deleting={confirmSlug === report.slug}
               onOpen={() => nav(`/archive/${report.slug}`)}
-              onDelete={(action) => handleDelete(report.slug, action)}
+              onDelete={isAdmin ? (action) => handleDelete(report.slug, action) : null}
             />
           ))}
         </div>

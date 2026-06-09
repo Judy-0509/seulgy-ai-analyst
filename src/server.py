@@ -9,10 +9,12 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+
+from src.auth import require_member, require_admin, require_admin_query, is_admin
 
 from src.services.token_logger import read_all as read_token_log
 from src.news_api import router as news_router
@@ -211,6 +213,12 @@ async def api_archives_status():
     }
 
 
+@app.get("/api/me")
+async def api_me(user: dict = Depends(require_member)):
+    """현재 로그인 사용자의 이메일과 관리자 여부를 반환."""
+    return {"email": user.get("email", ""), "is_admin": is_admin(user)}
+
+
 async def _run_archive_orchestrator(job_id: str):
     """build_all_archives.py를 subprocess로 띄우고 stdout 줄을 큐에 넣음."""
     q = ARCHIVE_JOBS[job_id]
@@ -245,7 +253,7 @@ async def _run_archive_orchestrator(job_id: str):
 
 
 @app.post("/api/archives/refresh")
-async def api_archives_refresh():
+async def api_archives_refresh(_user: dict = Depends(require_admin)):
     job_id = uuid.uuid4().hex[:8]
     ARCHIVE_JOBS[job_id] = asyncio.Queue()
     asyncio.create_task(_run_archive_orchestrator(job_id))
@@ -253,7 +261,7 @@ async def api_archives_refresh():
 
 
 @app.get("/api/archives/stream/{job_id}")
-async def api_archives_stream(job_id: str):
+async def api_archives_stream(job_id: str, _user: dict = Depends(require_admin_query)):
     q = ARCHIVE_JOBS.get(job_id)
     if q is None:
         raise HTTPException(404, "job not found")
@@ -288,7 +296,7 @@ def _is_smartphone(entry: dict) -> bool:
 
 
 @app.get("/api/keywords")
-async def api_keywords_get(domain: str = "smartphone"):
+async def api_keywords_get(domain: str = "smartphone", _user: dict = Depends(require_admin)):
     """도메인별 필터링 키워드 목록 반환."""
     cfg = load_domain(domain)
     kw_path = ROOT / cfg["keywords_file"]
@@ -297,7 +305,7 @@ async def api_keywords_get(domain: str = "smartphone"):
 
 
 @app.put("/api/keywords")
-async def api_keywords_put(req: Request, domain: str = "smartphone"):
+async def api_keywords_put(req: Request, domain: str = "smartphone", _user: dict = Depends(require_admin)):
     """키워드 목록 전체 교체. add/remove 대신 전체 리스트를 전달."""
     body = await req.json()
     keywords = body.get("keywords")
@@ -319,7 +327,7 @@ async def api_keywords_put(req: Request, domain: str = "smartphone"):
 
 
 @app.get("/api/topics/mine")
-async def api_topics_mine(days: int = 30, domain: str = "smartphone"):
+async def api_topics_mine(days: int = 30, domain: str = "smartphone", _user: dict = Depends(require_admin)):
     """최근 N일 Tier-1 소스의 도메인 관련 기사를 소스별로 묶어 반환."""
     import re as _re
 
@@ -385,7 +393,7 @@ async def api_topics_mine(days: int = 30, domain: str = "smartphone"):
 
 
 @app.get("/api/archives/entries")
-async def api_archives_entries(source: str, limit: int = 300):
+async def api_archives_entries(source: str, limit: int = 300, _user: dict = Depends(require_admin)):
     """특정 소스의 전체 아카이브 기사 반환. 키워드 필터 없음."""
     import re as _re
 
@@ -903,7 +911,7 @@ async def api_topics_suggested(domain: str = "smartphone"):
 
 
 @app.get("/api/usage")
-async def api_usage():
+async def api_usage(_user: dict = Depends(require_admin)):
     """GLM 토큰 사용량 및 비용 집계 (USD primary, CNY backward-compat)."""
     from collections import defaultdict
     from src.services.token_logger import _price_for
@@ -1241,7 +1249,7 @@ async def api_reports_list():
 
 
 @app.get("/api/reports/{slug}")
-async def api_report_detail(slug: str):
+async def api_report_detail(slug: str, _user: dict = Depends(require_member)):
     safe_slug = Path(slug).name
     md_path = ROOT / "reports" / f"{safe_slug}_report.md"
     process_path = ROOT / "reports" / f"{safe_slug}_process.json"
@@ -1260,7 +1268,7 @@ async def api_report_detail(slug: str):
 
 
 @app.delete("/api/reports/{slug}")
-async def api_report_delete(slug: str):
+async def api_report_delete(slug: str, _user: dict = Depends(require_admin)):
     safe_slug = Path(slug).name
     reports_dir = ROOT / "reports"
     deleted = []
@@ -1275,15 +1283,17 @@ async def api_report_delete(slug: str):
 
 
 @app.get("/reports/{filename}")
-async def serve_report_file(filename: str):
-    path = ROOT / "reports" / filename
-    if not path.exists() or not path.is_file():
+async def serve_report_file(filename: str, _user: dict = Depends(require_member)):
+    reports_dir = (ROOT / "reports").resolve()
+    path = (reports_dir / filename).resolve()
+    # Prevent path traversal (e.g. encoded ../) escaping the reports directory.
+    if reports_dir not in path.parents or not path.is_file():
         raise HTTPException(404, "file not found")
     return FileResponse(path)
 
 
 @app.post("/api/report/start")
-async def api_report_start(req: Request):
+async def api_report_start(req: Request, _user: dict = Depends(require_admin)):
     body = await req.json()
     topic = (body.get("topic") or "").strip()
     if not topic:
@@ -1296,7 +1306,7 @@ async def api_report_start(req: Request):
 
 
 @app.get("/api/report/stream/{sid}")
-async def api_report_stream(sid: str):
+async def api_report_stream(sid: str, _user: dict = Depends(require_admin_query)):
     sess = REPORT_SESSIONS.get(sid)
     if not sess:
         raise HTTPException(404, "session not found")
@@ -1319,7 +1329,7 @@ async def api_report_stream(sid: str):
 
 
 @app.post("/api/report/cancel/{sid}")
-async def api_report_cancel(sid: str):
+async def api_report_cancel(sid: str, _user: dict = Depends(require_admin_query)):
     sess = REPORT_SESSIONS.pop(sid, None)
     if sess and sess.task and not sess.task.done():
         sess.task.cancel()
@@ -1327,7 +1337,7 @@ async def api_report_cancel(sid: str):
 
 
 @app.post("/api/report/ext_decision")
-async def api_report_ext_decision(req: Request):
+async def api_report_ext_decision(req: Request, _user: dict = Depends(require_admin)):
     body = await req.json()
     sid = body.get("session_id")
     sess = REPORT_SESSIONS.get(sid)
@@ -1339,7 +1349,7 @@ async def api_report_ext_decision(req: Request):
 
 
 @app.post("/api/report/gate1")
-async def api_report_gate1(req: Request):
+async def api_report_gate1(req: Request, _user: dict = Depends(require_admin)):
     body = await req.json()
     sid = body.get("session_id")
     sess = REPORT_SESSIONS.get(sid)
@@ -1351,7 +1361,7 @@ async def api_report_gate1(req: Request):
 
 
 @app.post("/api/report/gate2")
-async def api_report_gate2(req: Request):
+async def api_report_gate2(req: Request, _user: dict = Depends(require_admin)):
     body = await req.json()
     sid = body.get("session_id")
     sess = REPORT_SESSIONS.get(sid)
@@ -1368,10 +1378,13 @@ async def api_report_gate2(req: Request):
 if FRONTEND_DIST.exists():
     @app.get("/{full_path:path}", include_in_schema=False)
     async def spa_fallback(full_path: str):
-        candidate = FRONTEND_DIST / full_path
-        if candidate.is_file():
+        dist = FRONTEND_DIST.resolve()
+        candidate = (dist / full_path).resolve()
+        # Only serve files that stay within the built frontend dir (no ../ escape);
+        # anything else falls back to index.html for client-side routing.
+        if candidate.is_file() and dist in candidate.parents:
             return FileResponse(str(candidate))
-        return FileResponse(str(FRONTEND_DIST / "index.html"))
+        return FileResponse(str(dist / "index.html"))
 
 if __name__ == "__main__":
     import uvicorn

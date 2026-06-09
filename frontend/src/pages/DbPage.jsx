@@ -4,6 +4,7 @@ import { C, SRC_COLORS, SRC_COLOR_MAP } from "../theme";
 import Wordmark from "../components/Wordmark";
 import { useAuth } from "../contexts/AuthContext";
 import { useDomain } from "../contexts/DomainContext";
+import { authFetch } from "../lib/authFetch";
 
 const TOPIC_DAYS = 30;
 
@@ -52,8 +53,8 @@ export default function DbPage() {
   useEffect(() => {
     let alive = true;
     Promise.all([
-      fetch("/api/archives/status").then(r => { if (!r.ok) throw new Error(); return r.json(); }),
-      fetch(`/api/topics/mine?days=${TOPIC_DAYS}&domain=${domain.id}`).then(r => { if (!r.ok) throw new Error(); return r.json(); }),
+      authFetch("/api/archives/status").then(r => { if (!r.ok) throw new Error(); return r.json(); }),
+      authFetch(`/api/topics/mine?days=${TOPIC_DAYS}&domain=${domain.id}`).then(r => { if (!r.ok) throw new Error(); return r.json(); }),
     ])
       .then(([archiveData, topicData]) => {
         if (!alive) return;
@@ -72,7 +73,7 @@ export default function DbPage() {
   useEffect(() => {
     if (selectedOrg === "전체") return;
     const controller = new AbortController();
-    fetch(`/api/archives/entries?source=${encodeURIComponent(selectedOrg)}&limit=500`, { signal: controller.signal })
+    authFetch(`/api/archives/entries?source=${encodeURIComponent(selectedOrg)}&limit=500`, { signal: controller.signal })
       .then(r => { if (!r.ok) throw new Error(); return r.json(); })
       .then(data => setOrgData({ org: selectedOrg, items: data.items || [], total: data.total || 0 }))
       .catch(() => setOrgData(prev => prev.org === selectedOrg ? prev : { org: selectedOrg, items: [], total: 0 }));
@@ -112,7 +113,7 @@ export default function DbPage() {
         <div style={{ flex: 1 }} />
         {user && (
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 11, color: C.t4 }}>{user.username}</span>
+            <span style={{ fontSize: 11, color: C.t4 }}>{user.email}</span>
             <button onClick={logout} style={{ fontSize: 11, color: C.t3, background: "none", border: `1px solid ${C.border}`, borderRadius: 6, padding: "4px 9px", cursor: "pointer" }}>로그아웃</button>
           </div>
         )}
