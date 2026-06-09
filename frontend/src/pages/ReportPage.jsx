@@ -259,6 +259,76 @@ function firstSentences(text = "", max = 2) {
   return parts.slice(0, max).join(" ").trim();
 }
 
+function splitIntoSentences(segment) {
+  return segment
+    .replace(/(([가-힣]\.|[?!])["'”’)\]]*)(\s+)/g, "$1\u0000")
+    .split("\u0000")
+    .map((sentence) => sentence.replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+}
+
+function splitIntoParagraphs(text = "") {
+  const segments = String(text)
+    .split(/\n+/)
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+
+  return segments.flatMap((segment) => {
+    const cleaned = segment.replace(/\s+/g, " ").trim();
+    const sentences = splitIntoSentences(cleaned);
+
+    if (sentences.length <= 2 || cleaned.length <= 200) return [cleaned];
+
+    const paragraphs = [];
+    let current = [];
+    let currentLength = 0;
+
+    sentences.forEach((sentence) => {
+      current.push(sentence);
+      currentLength += sentence.length + (current.length > 1 ? 1 : 0);
+
+      if ((current.length >= 2 && currentLength >= 170) || current.length >= 3) {
+        paragraphs.push(current.join(" ").replace(/\s+/g, " ").trim());
+        current = [];
+        currentLength = 0;
+      }
+    });
+
+    if (current.length > 0) {
+      const tail = current.join(" ").replace(/\s+/g, " ").trim();
+      if (current.length === 1 && paragraphs.length > 0) {
+        paragraphs[paragraphs.length - 1] = `${paragraphs[paragraphs.length - 1]} ${tail}`.replace(/\s+/g, " ").trim();
+      } else {
+        paragraphs.push(tail);
+      }
+    }
+
+    return paragraphs;
+  });
+}
+
+function Prose({ text, style, gap = "0.9em" }) {
+  const paragraphs = splitIntoParagraphs(text);
+  if (paragraphs.length === 0) return null;
+
+  return (
+    <div style={{ maxWidth: style?.maxWidth }}>
+      {paragraphs.map((paragraph, index) => (
+        <p
+          key={index}
+          style={{
+            ...style,
+            marginTop: index === 0 ? style?.marginTop : gap,
+            marginBottom: index === 0 ? style?.marginBottom : 0,
+          }}
+        >
+          {paragraph}
+        </p>
+      ))}
+    </div>
+  );
+}
+
 function buildResearchBackground(report) {
   if (report.research_background) return report.research_background;
   const summary = firstSentences(report.executive_summary, 2);
@@ -301,12 +371,10 @@ function SectionBlock({ section, R, isNarrow = false }) {
         </p>
       )}
       {section.narrative && (
-        <p style={{
+        <Prose text={section.narrative} style={{
           margin: "18px 0 0", fontSize: 14.5, color: R.t2, lineHeight: 1.95,
-          whiteSpace: "pre-wrap", maxWidth: "68ch",
-        }}>
-          {section.narrative}
-        </p>
+          maxWidth: "68ch",
+        }} />
       )}
       {bullets.length > 0 && (
         <>
@@ -452,8 +520,9 @@ export default function ReportPage() {
   const [report, setReport] = useState(null);
   const [error, setError] = useState("");
   const [viewMode, setViewMode] = useState("report");
-  const [refsOpen, setRefsOpen] = useState(true);
   const isNarrowReport = useMediaQuery("(max-width: 768px)");
+  // 모바일에서는 참고 수치 아코디언을 기본 접힘으로 시작 (본문이 먼저 보이도록)
+  const [refsOpen, setRefsOpen] = useState(() => !isNarrowReport);
 
   useEffect(() => {
     let cancelled = false;
@@ -572,9 +641,7 @@ export default function ReportPage() {
             {report.executive_summary && (
               <section style={{ padding: "30px 0 6px", borderLeft: `2px solid ${R.em}`, paddingLeft: 24, marginLeft: -2 }}>
                 <Kicker color={R.emD} style={{ display: "block", marginBottom: 12 }}>핵심 요약</Kicker>
-                <p style={{ margin: 0, fontFamily: SERIF, fontSize: isNarrowReport ? "clamp(16px, 4.8vw, 18.5px)" : 18.5, fontWeight: 500, color: R.t2, lineHeight: 1.85 }}>
-                  {report.executive_summary}
-                </p>
+                <Prose text={report.executive_summary} style={{ margin: 0, fontFamily: SERIF, fontSize: isNarrowReport ? "clamp(16px, 4.8vw, 18.5px)" : 18.5, fontWeight: 500, color: R.t2, lineHeight: 1.85 }} />
               </section>
             )}
 
@@ -608,9 +675,7 @@ export default function ReportPage() {
                         <h3 style={{ margin: "2px 0 9px", fontFamily: SERIF, fontSize: 17, fontWeight: 700, color: R.t1, lineHeight: 1.45 }}>
                           {insight.title}
                         </h3>
-                        <p style={{ margin: 0, fontSize: 14, color: R.t2, lineHeight: 1.85, maxWidth: "66ch" }}>
-                          {insight.body}
-                        </p>
+                        <Prose text={insight.body} style={{ margin: 0, fontSize: 14, color: R.t2, lineHeight: 1.85, maxWidth: "66ch" }} />
                       </div>
                     </div>
                   ))}
