@@ -93,8 +93,6 @@ export default function LoginPage() {
           60%      { transform: translateX(-5px); }
           80%      { transform: translateX(5px); }
         }
-        .otp-input::placeholder { color: #c8c6c2; letter-spacing: 0; }
-        .otp-input:focus { border-color: ${C.t2} !important; }
         .submit-btn:hover:not(:disabled) { opacity: 0.82; }
       `}</style>
 

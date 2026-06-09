@@ -76,39 +76,12 @@ export function AuthProvider({ children }) {
   }, [_applyMe]);
 
   /**
-   * 이메일 OTP 발송 — signIn step 1.
-   * 성공 시 { ok: true }, 실패 시 { ok: false, error: string }
-   */
-  async function signIn(email) {
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { shouldCreateUser: true },
-    });
-    if (error) return { ok: false, error: error.message };
-    return { ok: true };
-  }
-
-  /**
    * Google OAuth 로그인 — 리디렉트 후 supabase.js 의 detectSessionInUrl 이 세션을 처리한다.
    */
   async function signInWithGoogle() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: `${window.location.origin}/archive` },
-    });
-    if (error) return { ok: false, error: error.message };
-    return { ok: true };
-  }
-
-  /**
-   * 이메일 OTP 코드 검증 — signIn step 2.
-   * 성공 시 { ok: true }, 실패 시 { ok: false, error: string }
-   */
-  async function verifyOtp(email, token) {
-    const { error } = await supabase.auth.verifyOtp({
-      email,
-      token,
-      type: "email",
     });
     if (error) return { ok: false, error: error.message };
     return { ok: true };
@@ -164,9 +137,7 @@ export function AuthProvider({ children }) {
       requestAnalyst,
       accessToken,
       loading,
-      signIn,
       signInWithGoogle,
-      verifyOtp,
       signOut,
       logout,
     }}>
