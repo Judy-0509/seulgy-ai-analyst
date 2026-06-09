@@ -6,6 +6,11 @@ RUN npm ci
 COPY frontend/ .
 ARG VITE_PIN_KEY
 ENV VITE_PIN_KEY=$VITE_PIN_KEY
+# Supabase keys must be present at build time so Vite bakes them into the bundle.
+ARG VITE_SUPABASE_URL
+ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
+ARG VITE_SUPABASE_ANON_KEY
+ENV VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
 RUN npm run build
 
 # ── Stage 2: Python Runtime ───────────────────────────────────────────────────
