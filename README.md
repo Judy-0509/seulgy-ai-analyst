@@ -10,25 +10,72 @@
 
 <div align="center">
 
+[![Live · seulgy.com](https://img.shields.io/badge/Live-seulgy.com-2ea44f?logo=googlechrome&logoColor=white)](https://seulgy.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
 ![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
 ![FastAPI](https://img.shields.io/badge/FastAPI-async-009688?logo=fastapi&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)
+[![CI](https://github.com/Judy-0509/seulgy-ai-analyst/actions/workflows/ci.yml/badge.svg)](https://github.com/Judy-0509/seulgy-ai-analyst/actions/workflows/ci.yml)
 
 </div>
 
-Seulgy AI Analyst is an AI-powered market intelligence workspace that turns trusted research sources into topic recommendations, evidence-backed analysis plans, and structured analyst reports.
+> 🌐 **Live in production at [seulgy.com](https://seulgy.com)** — this is a real, self-operated product, not a throwaway demo. It runs self-hosted behind a custom domain with Supabase authentication, role-based access, and continuous integration. The **landing, news feed, and report archive are publicly browsable**; report generation and the analyst database sit behind login.
 
-It was built as a full-stack product, not a notebook demo: a FastAPI backend runs the research pipeline, a React interface manages topic discovery and report generation, and curated source archives keep the system grounded in reusable industry evidence.
+Seulgy AI Analyst is an AI-powered market-intelligence workspace that turns trusted research sources into topic recommendations, evidence-backed analysis plans, and structured analyst reports.
+
+It was built as a full-stack product, not a notebook demo: a FastAPI backend runs the research pipeline, a React interface manages topic discovery and report generation, and curated source archives keep the system grounded in reusable industry evidence — and it actually runs in production, serving real reports across four market domains.
+
+## Live Preview
+
+<div align="center">
+
+<img src="docs/screenshots/01-landing-desktop.png" width="100%" alt="Landing page — weekly market topics auto-ranked from curated industry sources" />
+
+<sub><b>Topic discovery landing</b> — weekly topics auto-ranked from curated industry sources, split into major themes and emerging picks.</sub>
+
+</div>
+
+<table>
+<tr>
+<td width="50%" valign="top">
+<img src="docs/screenshots/03-news-desktop.png" alt="Market-intelligence news feed with vendor and issue filters" /><br/>
+<sub><b>Market-intelligence news feed</b> — filter by vendor, issue, source tier; importance-ranked and clustered.</sub>
+</td>
+<td width="50%" valign="top">
+<img src="docs/screenshots/04-archive-desktop.png" alt="Archive of generated executive reports" /><br/>
+<sub><b>Report archive</b> — evidence-backed executive reports with section and citation counts per domain.</sub>
+</td>
+</tr>
+</table>
+
+<div align="center">
+<img src="docs/screenshots/02-landing-mobile.png" width="240" alt="Mobile-responsive landing page" />
+<br/>
+<sub><b>Responsive</b> public pages, down to 375&nbsp;px.</sub>
+</div>
 
 ## Why This Project Stands Out
 
+- **Runs in production, not just on a laptop**: deployed and operated at [seulgy.com](https://seulgy.com) with a multi-stage Docker image, a one-command gitops rollout, Supabase auth, role-based access, and GitHub Actions CI.
 - **Archive-first research pipeline**: searches a curated source archive before falling back to live RSS or web search, reducing noisy citations and repeated scraping.
 - **Multi-step analyst workflow**: decomposes a topic into research dimensions, validates the table of contents through GATE checkpoints, then writes the final report section by section.
 - **Human-in-the-loop controls**: lets an analyst approve, revise, or extend plans before the system commits to long-form generation.
-- **Recruiter-readable product surface**: includes a React dashboard, report archive, topic suggestions, keyword management, feedback workflows, and usage views.
-- **Production-minded backend design**: uses typed models, async services, SSE streaming, body caching, citation tracking, role-aware routes, and focused pytest coverage.
+- **Production-minded backend design**: typed models, async services, SSE streaming, body caching, citation tracking, rate limiting, token accounting, and role-aware routes — with focused pytest coverage.
+
+## Live / Production
+
+The project is self-hosted and operated as a real product, not a one-off deploy:
+
+| Concern | Approach |
+| --- | --- |
+| **Hosting** | Self-hosted behind a custom domain — [seulgy.com](https://seulgy.com) |
+| **Packaging** | Multi-stage Docker build: Node builds the React bundle, which is baked into a slim Python runtime image |
+| **Deploy** | One-command gitops rollout — fast-forward pull → rebuild → health-gated container recreate (the previous container keeps serving if a build fails, so a bad build means no downtime) |
+| **Auth** | Supabase authentication (Google OAuth + email) |
+| **Access model** | Four tiers — **visitor → member → analyst → admin** — gating report generation, the analyst database, keyword editing, and the feedback workspace |
+| **CI** | GitHub Actions on every push/PR — backend (ruff, mypy, pytest) and frontend (eslint, build) |
+| **Frontend** | Mobile-responsive public pages, server-rendered report typography, and graceful loading / empty / error states |
 
 ## Product Flow
 
@@ -46,34 +93,38 @@ Curated sources
 
 | Area | What it does |
 | --- | --- |
-| Topic discovery | Ranks emerging market topics from archived industry sources. |
+| Topic discovery | Ranks major and emerging market topics from archived industry sources, per domain. |
 | Report planning | Generates search queries, research dimensions, TOC candidates, and data-gap checks. |
-| Evidence retrieval | Combines archive search, RSS, DuckDuckGo fallback, body fetching, caching, and citation registry logic. |
+| Evidence retrieval | Combines archive search, RSS, and DuckDuckGo fallback with body fetching, caching, and a citation registry. |
 | Report writing | Produces structured Markdown and HTML reports from section-level analysis. |
-| Analyst UI | Provides a domain-aware React experience for topic lists, pipeline progress, archives, reports, feedback, and admin views. |
+| News intelligence | Aggregates market-intelligence news with vendor / issue / source-tier filters, importance ranking, and clustering. |
+| Access & roles | Supabase auth with a four-tier role model, an analyst feedback workflow, and admin controls. |
+| Analyst UI | A domain-aware React experience for topic lists, pipeline progress, archives, reports, news, feedback, and admin views. |
 
 ## Domains And Sources
 
-The repository currently includes domain configuration for:
+The system covers four market domains:
 
 - Smartphone
 - Humanoid robotics
 - Automotive
 - Space datacenter
 
-It also includes **66 source archives** under `data/archives/`, each with a dedicated builder script. Sources span market-research firms, investment-bank research, trade press, OEMs, and primary feeds — for example Counterpoint, Omdia, TrendForce, IDC, Yole, Gartner, Goldman Sachs, Morgan Stanley, BofA, McKinsey, BCG, Bloomberg, ABI Research, IDTechEx, IFR, IEEE Spectrum, TechCrunch, Boston Dynamics, Figure AI, Unitree, NVIDIA, SpaceNews, Data Center Frontier, JATO, AlixPartners, and arXiv.
+It is grounded in **66 curated source archives** under `data/archives/`, each with a dedicated builder script. Sources span market-research firms, investment-bank research, trade press, OEMs, and primary feeds — for example Counterpoint, Omdia, TrendForce, IDC, Yole, Gartner, Goldman Sachs, Morgan Stanley, BofA, McKinsey, BCG, Bloomberg, ABI Research, IDTechEx, IFR, IEEE Spectrum, TechCrunch, Boston Dynamics, Figure AI, Unitree, NVIDIA, SpaceNews, Data Center Frontier, JATO, AlixPartners, and arXiv.
 
 ## Architecture
 
 ```text
 frontend/
   React 19 + Vite app
-  domain-aware landing, reports, DB, keywords, usage, feedback, and login pages
+  domain-aware landing, reports, news, DB, keywords, usage, feedback, and login pages
+  Supabase auth context + role-gated routes; mobile-responsive public pages
 
 src/
-  FastAPI server
-  async report pipeline
-  LLM, search, citation, translation, body-fetching, auth, roles, and feedback services
+  FastAPI server + async report pipeline (state machine)
+  services: LLM, search, citation, body fetching + cache, GLM rate limiter, token logging
+  auth, roles, and feedback modules
+  market-news ingestion (SQLite) + scheduler
 
 scripts/
   source-specific archive builders
@@ -81,7 +132,7 @@ scripts/
 
 data/
   domain prompts and keyword sets
-  curated source archives
+  66 curated source archives
 
 tests/
   focused pytest coverage for state machine, search, citations, cache, models, and LLM behavior
@@ -95,11 +146,13 @@ tests/
 | Backend | Python 3.10+, FastAPI, uvicorn, Pydantic |
 | AI | GLM-4.7 Thinking by default, optional Qwen-compatible backend |
 | Search | Archive search, RSS, DuckDuckGo fallback |
-| Data | JSON archives, SQLite body cache, generated Markdown/HTML reports |
+| Data | JSON archives, SQLite (news + body cache), generated Markdown/HTML reports |
+| Auth | Supabase (Google OAuth + email), four-tier role model |
 | Realtime | Server-Sent Events for pipeline progress |
-| Quality | pytest, eslint |
+| Delivery | Multi-stage Docker, GitHub Actions CI |
+| Quality | pytest, ruff, mypy, eslint |
 
-## Quick Start
+## Run It Locally
 
 ### 1. Install backend dependencies
 
@@ -149,9 +202,9 @@ Useful routes:
 | URL | Purpose |
 | --- | --- |
 | `http://localhost:5173/` | Topic discovery landing page |
+| `http://localhost:5173/news` | Market-intelligence news feed |
 | `http://localhost:5173/app` | Report-generation pipeline |
-| `http://localhost:5173/db` | Archive and research database view |
-| `http://localhost:5173/reports` | Generated report archive |
+| `http://localhost:5173/archive` | Generated report archive |
 | `http://localhost:8000/dashboard` | Backend archive dashboard |
 
 ## CLI Usage
@@ -194,7 +247,3 @@ npm run lint
 ## License
 
 Released under the [MIT License](LICENSE).
-
-## Repository Note
-
-The old working title was `Research Helper`. For a portfolio or recruiting context, **Seulgy AI Analyst** is the stronger project name: it is readable, personal, and immediately communicates that this is an analyst-facing AI product.
