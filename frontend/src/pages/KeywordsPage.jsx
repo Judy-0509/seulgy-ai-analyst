@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { C } from "../theme";
+import { authFetch } from "../lib/authFetch";
 
 const DOMAINS = [
   { id: "smartphone", label: "Smartphone", accent: "#10b981", accentBg: "rgba(16,185,129,.08)", accentBr: "rgba(16,185,129,.28)" },
@@ -18,7 +19,7 @@ export default function KeywordsPage() {
   useEffect(() => {
     DOMAINS.forEach(({ id }) => {
       setStatus(prev => ({ ...prev, [id]: "loading" }));
-      fetch(`/api/keywords?domain=${id}`)
+      authFetch(`/api/keywords?domain=${id}`)
         .then(r => { if (!r.ok) throw new Error(); return r.json(); })
         .then(data => {
           setAllKeywords(prev => ({ ...prev, [id]: data.keywords || [] }));

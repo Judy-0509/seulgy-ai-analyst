@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { C } from "../theme";
+import { authFetch } from "../lib/authFetch";
 
 const fmt = n => (n ?? 0).toLocaleString();
 const fmtUsd = n => `$${(n ?? 0).toFixed(4)}`;
@@ -44,7 +45,7 @@ export default function UsagePage() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch("/api/usage")
+    authFetch("/api/usage")
       .then(r => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
