@@ -641,7 +641,7 @@ export default function ReportPage() {
             {report.executive_summary && (
               <section style={{ padding: "30px 0 6px", borderLeft: `2px solid ${R.em}`, paddingLeft: 24, marginLeft: -2 }}>
                 <Kicker color={R.emD} style={{ display: "block", marginBottom: 12 }}>핵심 요약</Kicker>
-                <Prose text={report.executive_summary} style={{ margin: 0, fontSize: isNarrowReport ? "clamp(16px, 4.8vw, 18.5px)" : 18.5, fontWeight: 500, color: R.t2, lineHeight: 1.85 }} />
+                <Prose text={report.executive_summary} style={{ margin: 0, fontSize: 14.5, fontWeight: 500, color: R.t2, lineHeight: 1.95 }} />
               </section>
             )}
 
