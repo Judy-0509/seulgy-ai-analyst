@@ -12,6 +12,7 @@ import ReportsArchivePage from "./pages/ReportsArchivePage";
 import KeywordsPage from "./pages/KeywordsPage";
 import UsagePage from "./pages/UsagePage";
 import AccessRequestsPage from "./pages/AccessRequestsPage";
+import FeedbackPage from "./pages/FeedbackPage";
 
 /** 로그인 필요 (멤버 이상) — 미인증 시 /login 으로 리디렉트 */
 function MemberRoute({ children }) {
@@ -73,6 +74,7 @@ function RouterContent() {
 
           {/* MEMBER */}
           <Route path="/archive/:slug" element={<MemberRoute><ReportPage /></MemberRoute>} />
+          <Route path="/feedback" element={<MemberRoute><FeedbackPage /></MemberRoute>} />
 
           {/* ADMIN */}
           <Route path="/app"      element={<AdminRoute><AppPage /></AdminRoute>} />

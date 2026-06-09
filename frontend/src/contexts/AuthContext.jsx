@@ -11,25 +11,27 @@ async function _loadMe(token) {
     });
     if (res.ok) {
       const data = await res.json();
-      return { isAdmin: Boolean(data.is_admin), pages: Array.isArray(data.pages) ? data.pages : [] };
+      return { isAdmin: Boolean(data.is_admin), pages: Array.isArray(data.pages) ? data.pages : [], role: data.role || "other" };
     }
   } catch {
     // network error → defaults
   }
-  return { isAdmin: false, pages: [] };
+  return { isAdmin: false, pages: [], role: "other" };
 }
 
 export function AuthProvider({ children }) {
   const [user, setUser]               = useState(null);
   const [isAdmin, setIsAdmin]         = useState(false);
   const [pages, setPages]             = useState([]);
+  const [role, setRole]               = useState("other");
   const [accessToken, setAccessToken] = useState(null);
   const [loading, setLoading]         = useState(true);
 
   const _applyMe = useCallback((token) => {
-    _loadMe(token).then(({ isAdmin: a, pages: p }) => {
+    _loadMe(token).then(({ isAdmin: a, pages: p, role: r }) => {
       setIsAdmin(a);
       setPages(p);
+      setRole(r);
     });
   }, []);
 
@@ -45,6 +47,7 @@ export function AuthProvider({ children }) {
         setAccessToken(null);
         setIsAdmin(false);
         setPages([]);
+        setRole("other");
       }
       setLoading(false);
     });
@@ -60,6 +63,7 @@ export function AuthProvider({ children }) {
         setAccessToken(null);
         setIsAdmin(false);
         setPages([]);
+        setRole("other");
       }
     });
 
@@ -110,6 +114,7 @@ export function AuthProvider({ children }) {
     setUser(null);
     setIsAdmin(false);
     setPages([]);
+    setRole("other");
     setAccessToken(null);
   }
 
@@ -128,6 +133,9 @@ export function AuthProvider({ children }) {
     return isAdmin || pages.includes(page);
   }
 
+  const isTeam = role === "team" || role === "admin";
+  const canFeedback = isTeam;
+
   return (
     <AuthCtx.Provider value={{
       user,
@@ -135,6 +143,9 @@ export function AuthProvider({ children }) {
       isAdmin,
       pages,
       hasPageAccess,
+      role,
+      isTeam,
+      canFeedback,
       refreshMe,
       accessToken,
       loading,

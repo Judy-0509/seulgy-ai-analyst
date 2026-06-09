@@ -86,6 +86,16 @@ async def require_admin(request: Request) -> dict:
     return user
 
 
+async def require_team(request: Request) -> dict:
+    user = await require_member(request)
+    if is_admin(user):
+        return user
+    from src.roles import is_team  # lazy to avoid circular import
+    if is_team((user.get("email") or "").lower()):
+        return user
+    raise HTTPException(403, "팀원 권한이 필요합니다")
+
+
 def require_page_access(page: str):
     """Factory: returns an async FastAPI dependency that allows admins and
     users who have been granted access to *page* via page_access.approve()."""

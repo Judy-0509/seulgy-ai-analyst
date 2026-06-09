@@ -14,8 +14,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from src.auth import require_member, require_admin, require_admin_query, is_admin, require_page_access
+from src.auth import require_member, require_admin, require_admin_query, is_admin, require_page_access, require_team
 import src.page_access as page_access
+from src.roles import role_of, add_team, remove_team, list_team
+from src.feedback_store import (
+    add_feedback, list_mine, list_all, update_status,
+    ALLOWED_TARGET_TYPE,
+)
 
 from src.services.token_logger import read_all as read_token_log
 from src.news_api import router as news_router
@@ -220,7 +225,7 @@ async def api_me(user: dict = Depends(require_member)):
     email = user.get("email", "")
     admin = is_admin(user)
     pages = list(page_access.VALID_PAGES) if admin else page_access.granted_pages(email)
-    return {"email": email, "is_admin": admin, "pages": pages}
+    return {"email": email, "is_admin": admin, "pages": pages, "role": role_of(user)}
 
 
 async def _run_archive_orchestrator(job_id: str):
@@ -1408,6 +1413,90 @@ async def api_report_gate2(req: Request, _user: dict = Depends(require_admin)):
     sess.gate2_data = (proceed, sections)
     sess.gate2_event.set()
     return {"ok": True}
+
+
+# ── Feedback endpoints ──────────────────────────────────────────────────────
+
+@app.post("/api/feedback")
+async def api_feedback_create(req: Request, user: dict = Depends(require_team)):
+    body = await req.json()
+    message = (body.get("message") or "").strip()
+    if not message:
+        raise HTTPException(400, "message required")
+    target_type = body.get("target_type") or "general"
+    if target_type not in ALLOWED_TARGET_TYPE:
+        target_type = "general"
+    domain = body.get("domain") or ""
+    target_ref = body.get("target_ref") or ""
+    meta = user.get("user_metadata", {})
+    email = (user.get("email") or "").lower()
+    name = meta.get("full_name") or meta.get("name") or (email.split("@")[0] if email else "")
+    row = add_feedback(
+        user_id=user.get("id") or "",
+        email=email,
+        name=name,
+        domain=domain,
+        target_type=target_type,
+        target_ref=target_ref,
+        message=message,
+    )
+    return row
+
+
+@app.get("/api/feedback/mine")
+async def api_feedback_mine(user: dict = Depends(require_team)):
+    email = (user.get("email") or "").lower()
+    return list_mine(email)
+
+
+@app.get("/api/feedback")
+async def api_feedback_list(
+    domain: str = "",
+    status: str = "",
+    user: dict = Depends(require_admin),
+):
+    return list_all(domain=domain or None, status=status or None)
+
+
+@app.patch("/api/feedback/{fid}")
+async def api_feedback_patch(fid: int, req: Request, user: dict = Depends(require_admin)):
+    body = await req.json()
+    new_status = (body.get("status") or "").strip()
+    from src.feedback_store import ALLOWED_STATUS
+    if new_status not in ALLOWED_STATUS:
+        raise HTTPException(400, f"status must be one of: {', '.join(sorted(ALLOWED_STATUS))}")
+    ok = update_status(fid, new_status)
+    if not ok:
+        raise HTTPException(404, "feedback item not found")
+    return {"ok": True}
+
+
+# ── Role management endpoints ────────────────────────────────────────────────
+
+@app.get("/api/roles/team")
+async def api_roles_team_list(user: dict = Depends(require_admin)):
+    return {"team": list_team()}
+
+
+@app.post("/api/roles/team")
+async def api_roles_team_add(req: Request, user: dict = Depends(require_admin)):
+    body = await req.json()
+    email = (body.get("email") or "").strip()
+    if not email:
+        raise HTTPException(400, "email required")
+    name = (body.get("name") or "").strip()
+    add_team(email, name)
+    return {"team": list_team()}
+
+
+@app.post("/api/roles/team/remove")
+async def api_roles_team_remove(req: Request, user: dict = Depends(require_admin)):
+    body = await req.json()
+    email = (body.get("email") or "").strip()
+    if not email:
+        raise HTTPException(400, "email required")
+    remove_team(email)
+    return {"team": list_team()}
 
 
 # SPA fallback — serves static files if they exist, otherwise index.html for React Router

@@ -592,6 +592,7 @@ export default function LandingPage() {
             ...(isAuthenticated ? [
               ["Archive", "/archive", false],
               ["News", "/news", false],
+              ["Feedback", "/feedback", false],
               ["DB", "/db", !hasPageAccess("db")],
               ["Keywords", "/keywords", !hasPageAccess("keywords")],
               ...(isAdmin ? [
