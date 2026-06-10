@@ -71,17 +71,17 @@
 `LandingPage`와 `/app` pipeline은 현재 선택된 domain에 따라 배경 이미지와 accent palette가 바뀐다. 구조는 복사하지 않고 동일 UI에 theme token만 바꾼다.
 
 ### Smartphone
-- Background asset: `frontend/public/smartphone-bg.png`
+- Background asset: `frontend/public/smartphone-bg-v3-desktop.webp`
 - Accent: emerald green / Main `#10b981` / Dark `#059669`
 - Use case: smartphone/mobile market research
 
 ### Humanoid
-- Background asset: `frontend/public/humanoid-bg.png`
+- Background asset: `frontend/public/humanoid-bg-v2-desktop.webp`
 - Accent: burgundy/red / Main `#b73745` / Dark `#9f2f3b`
 - Use case: humanoid/robotics market research
 
 ### Automotive
-- Background asset: `frontend/public/automotive-bg.png`
+- Background asset: `frontend/public/automotive-bg-v2-desktop.webp`
 - Accent: electric blue / Main `#2563eb` / Dark `#1d4ed8`
 - Use case: automotive/EV market research (Build · Market · Shift 3축)
 
