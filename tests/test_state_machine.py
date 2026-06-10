@@ -16,6 +16,20 @@ async def test_pipeline_plan_returns_research_plan():
     pipeline.search.search = AsyncMock(return_value=SearchResults(
         results=[], fetched_urls=frozenset()
     ))
+    # B단계 pre-search: archive 매칭 5건 미만이면 외부검색 여부를 input()으로 묻는다.
+    # 실제 archive(data/archives/)는 CI에 없어 결과가 환경 의존적이므로 5건을 모킹해
+    # archive-only 경로로 고정한다.
+    from src.models import SearchResult
+    pipeline.search.search_archive_only = AsyncMock(return_value=SearchResults(
+        results=[
+            SearchResult(source_url=f"https://example.com/a{i}",
+                         final_url=f"https://example.com/a{i}",
+                         content="아카이브 본문", tier=0,
+                         source_name="Counterpoint Research")
+            for i in range(5)
+        ],
+        fetched_urls=frozenset(),
+    ))
     pipeline.search.set_core_terms = MagicMock()
 
     # C단계가 차원 + 차원별 쿼리를 동시에 출력
