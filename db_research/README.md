@@ -15,8 +15,8 @@
 db_research/
 ├── README.md                              ← 이 파일
 ├── _template.md                           ← 신규 도메인 조사용 템플릿
-└── humanoid/
-    └── 2026-05-07_tier1_ib_research.md    ← 휴머노이드 Tier-1 IB 리서치 추가 조사
+└── <domain>/                              ← 도메인별 조사 문서 (로컬 전용 — 공개 repo 비노출)
+    └── YYYY-MM-DD_<topic>.md
 ```
 
 도메인 폴더 명: `smartphone/`, `humanoid/`, `automotive/`, `space_datacenter/` 등 ID와 일치.

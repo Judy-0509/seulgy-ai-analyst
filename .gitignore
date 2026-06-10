@@ -16,6 +16,11 @@ data/article_bodies.db
 data/article_bodies.db-wal
 data/article_bodies.db-shm
 
+# ── 사용자 PII 런타임 파일 (이메일·역할·피드백 — 절대 커밋 금지) ──
+data/roles.json
+data/feedback.db
+data/keyword_access.json
+
 # ── 스크랩 아카이브 (Tier-1 기관 콘텐츠 — 공개 repo 비노출, 로컬/런타임 데이터) ──
 data/archives/*.json
 
@@ -62,6 +67,7 @@ HANDOFF.md
 linkedin/
 
 # ── 내부 기획/검토 문서 (공개 repo 비노출 — ToS 위험수용 기록/내부 WIP) ──
+db_research/humanoid/
 docs/crawling_robots_review.md
 docs/automotive_parity_plan_2026-05-30.md
 docs/topic_pipeline_review_2026-05-07.md
