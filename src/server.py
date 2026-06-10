@@ -23,6 +23,7 @@ from src.feedback_store import (
 )
 
 from src.services.token_logger import read_all as read_token_log
+from src.services.en_summary import load_en_summary
 from src.news_api import router as news_router
 from src.domains import load_domain
 
@@ -124,9 +125,22 @@ app.add_middleware(
 app.include_router(news_router)
 
 
+# 모든 응답에 적용하는 보안 헤더. CSP는 frame-ancestors만 지정(인라인 스타일 다수라
+# strict CSP는 UI를 깨뜨릴 수 있어 클릭재킹 방어 범위로 한정). HSTS는 HTTPS에서만 효력.
+SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Content-Security-Policy": "frame-ancestors 'none'",
+    "Strict-Transport-Security": "max-age=63072000; includeSubDomains",
+}
+
+
 @app.middleware("http")
-async def no_cache_for_html_and_api(request: Request, call_next):
+async def security_and_cache_headers(request: Request, call_next):
     response = await call_next(request)
+    for _k, _v in SECURITY_HEADERS.items():
+        response.headers.setdefault(_k, _v)
     accept = request.headers.get("accept", "")
     if request.url.path.startswith("/api/") or "text/html" in accept:
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
@@ -1274,12 +1288,15 @@ async def api_reports_list():
             for metric in ref.get("metrics", []):
                 if metric not in metric_tags:
                     metric_tags.append(metric)
+        en_data = load_en_summary(reports_dir, slug) or {}
         items.append({
             "slug": slug,
             "topic": report.get("topic") or slug,
             "run_ts": report.get("run_ts", ""),
             "modified_at": datetime.fromtimestamp(stat.st_mtime).isoformat(timespec="seconds"),
             "summary": (report.get("executive_summary") or "").strip(),
+            "summary_en": en_data.get("executive_summary_en", ""),
+            "topic_en": en_data.get("topic_en", ""),
             "section_count": len(report.get("sections", [])),
             "reference_count": len(report.get("references", [])),
             "metric_tags": metric_tags[:8],
@@ -1305,7 +1322,12 @@ async def api_report_detail(slug: str, _user: dict = Depends(require_member)):
             process_data = None
 
     report = _parse_report_markdown(md_path.read_text(encoding="utf-8"), process_data)
-    return {"slug": safe_slug, "domain": _detect_domain(process_data), **report}
+    result = {"slug": safe_slug, "domain": _detect_domain(process_data), **report}
+    en_data = load_en_summary(ROOT / "reports", safe_slug)
+    if en_data:
+        result["topic_en"] = en_data.get("topic_en", "")
+        result["executive_summary_en"] = en_data.get("executive_summary_en", "")
+    return result
 
 
 @app.delete("/api/reports/{slug}")

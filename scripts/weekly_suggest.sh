@@ -14,8 +14,9 @@ if [ -f "$ROOT/.env" ]; then
   export $(grep -v '^#' "$ROOT/.env" | grep -v '^$' | xargs) 2>/dev/null || true
 fi
 
-NTFY_TOPIC="${NTFY_TOPIC:-seulgy-weekly}"
-NOTIFY_EMAIL="${NOTIFY_EMAIL:-jieunyi1995@gmail.com}"
+# Set NTFY_TOPIC / NOTIFY_EMAIL in .env (kept out of source — public repo)
+NTFY_TOPIC="${NTFY_TOPIC:-}"
+NOTIFY_EMAIL="${NOTIFY_EMAIL:-}"
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG"; }
 notify() {
@@ -68,6 +69,10 @@ uv run python scripts/batch_report_gen.py --domain smartphone --delay 60 >> "$LO
 uv run python scripts/batch_report_gen.py --domain smartphone --include-emerging --delay 60 >> "$LOG" 2>&1
 uv run python scripts/batch_report_gen.py --domain humanoid --delay 60 >> "$LOG" 2>&1
 uv run python scripts/batch_report_gen.py --domain humanoid --include-emerging --delay 60 >> "$LOG" 2>&1
+
+# ── 3.5 EN 요약 백필 (신규 보고서 제목·핵심요약 자동 번역, 멱등 — 실패해도 보고서엔 영향 없음) ──
+log "[+] EN 요약 백필"
+uv run python scripts/backfill_en_summary.py >> "$LOG" 2>&1 || log "(EN 요약 백필 일부 실패 — 보고서 생성에는 영향 없음)"
 
 log "=== 전체 완료 ==="
 
