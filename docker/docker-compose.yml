@@ -4,7 +4,6 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
       args:
-        VITE_PIN_KEY: ${VITE_PIN_KEY}
         VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
         VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
     image: spark:latest

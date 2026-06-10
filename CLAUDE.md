@@ -28,7 +28,7 @@ cd frontend && npm run dev                              # 프론트엔드
 | URL | 내용 |
 |-----|------|
 | `http://localhost:5173/` | 랜딩/도메인 선택/추천 주제 화면 (공개) |
-| `http://localhost:5173/login` | PIN 로그인 화면 |
+| `http://localhost:5173/login` | Google 로그인 화면 (Supabase OAuth) |
 | `http://localhost:5173/app` | 보고서 생성 파이프라인 UI (인증 필요) |
 | `http://localhost:5173/db` | 아카이브 DB 화면 (인증 필요) |
 | `http://localhost:5173/news` | 뉴스 피드 화면 (공개) |
@@ -175,7 +175,7 @@ python scripts/build_arxiv_space_archive.py         # arXiv API (cs.DC + cs.NI)
 22_Research Helper/
 │
 ├── CLAUDE.md                       ← 이 파일
-├── .env                            ← API 키 + PIN (gitignore)
+├── .env                            ← API 키 (gitignore)
 ├── .env.example                    ← 키 템플릿
 ├── pyproject.toml
 │
@@ -295,14 +295,14 @@ python scripts/build_arxiv_space_archive.py         # arXiv API (cs.DC + cs.NI)
 │       ├── App.jsx                 ← 라우터 + ProtectedRoute
 │       ├── theme.js                ← C 토큰, SRC_COLOR_MAP (도메인별 기관 색상)
 │       ├── contexts/
-│       │   ├── AuthContext.jsx     ← PIN 기반 인증 (VITE_PIN_KEY)
+│       │   ├── AuthContext.jsx     ← Supabase Google OAuth 인증 + 역할(role) 제공
 │       │   └── DomainContext.jsx   ← 도메인 상태 (smartphone / humanoid / automotive)
 │       ├── components/
 │       │   ├── Sidebar.jsx         ← 홈 전용 사이드바 (도메인 전환)
 │       │   └── PipelineScreen.jsx  ← 보고서 생성 파이프라인 뷰
 │       └── pages/
 │           ├── LandingPage.jsx     ← 랜딩/도메인 선택/추천 주제
-│           ├── LoginPage.jsx       ← PIN 로그인 화면
+│           ├── LoginPage.jsx       ← Google 로그인 화면 (Supabase OAuth)
 │           ├── AppPage.jsx         ← 파이프라인 라우팅
 │           ├── DbPage.jsx          ← 아카이브 DB 화면
 │           ├── NewsPage.jsx        ← 뉴스 피드 화면
@@ -359,8 +359,12 @@ Tier 2: DuckDuckGo (SOURCE_TIER_MAP 도메인만)  ← 외부 검색 시
 ## 환경 변수 (.env)
 
 ```
-# 프론트엔드 PIN (Vite 빌드에 포함 — VITE_ 접두사 필수)
-VITE_PIN_KEY=your_pin_here   # /app, /db, /archive, /keywords 접근 시 요구
+# Supabase (Google OAuth 로그인 — Vite 빌드에 포함, VITE_ 접두사 필수)
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key-here
+
+# 관리자 이메일 (콤마 구분) — 이 주소로 로그인하면 Admin 권한
+ADMIN_EMAILS=owner@example.com
 
 # LLM 백엔드
 LLM_BACKEND=glm              # 기본값: glm, 선택값: qwen
@@ -380,10 +384,13 @@ QWEN_FAST_MODEL=qwen3-8b
 
 ## 인증 구조
 
-- **PIN 기반** — 아이디/비밀번호 없이 단일 PIN으로 접근 제어
+- **Supabase Google OAuth** — 이메일/비밀번호 없이 Google 계정으로 로그인
+- **역할 4단계**: 비로그인 → 로그인(member) → 애널리스트(team) → 관리자(admin). 역할은 `data/roles.json` + `ADMIN_EMAILS` 환경변수로 결정
 - **공개 라우트**: `/`, `/news`, `/login`
-- **보호 라우트**: `/app`, `/db`, `/archive`, `/archive/:slug`, `/keywords`
-- PIN은 `localStorage`에 세션 저장, 로그아웃 시 삭제
+- **로그인 필요 (MemberRoute)**: `/archive/:slug`, `/feedback`
+- **애널리스트 (TeamRoute)**: `/db`, `/keywords`
+- **관리자 (AdminRoute)**: `/app`, `/usage`
+- 백엔드는 Supabase 액세스 토큰을 검증하는 `require_member` / `require_team` / `require_admin` 의존성으로 API를 게이팅
 
 ---
 

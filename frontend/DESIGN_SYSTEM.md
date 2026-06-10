@@ -188,11 +188,11 @@ Every API-driven area should distinguish `loading` / `empty` / `error` / `ready`
 
 ## 14. Auth & Protected Routes
 
-- 인증은 PIN 기반 단일 키 (`VITE_PIN_KEY` — 루트 `.env`).
-- `AuthContext`가 localStorage(`canopy_auth`)에 세션을 저장하고, `App.jsx`의 `ProtectedRoute`가 미인증 시 `/login`으로 리디렉트. TTL 24h.
-- **공개**: `/`, `/news`, `/login` / **보호**: `/app`, `/db`, `/archive`, `/archive/:slug`, `/keywords`
-- 로그인 화면은 `C` 토큰 기반 흰색/크림 톤 — 큰 `<Wordmark size={42} />` + PIN 입력창만.
-- 새 보호 라우트 추가 시 `App.jsx`에서 `<ProtectedRoute>`로 감쌀 것.
+- 인증은 Supabase Google OAuth (`VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` — 루트 `.env`).
+- `AuthContext`가 Supabase 세션을 구독하고 역할(member/team/admin)을 제공. `App.jsx`의 `MemberRoute` / `TeamRoute` / `AdminRoute`가 권한 미달 시 `/login` 또는 홈으로 리디렉트.
+- **공개**: `/`, `/news`, `/login` / **member**: `/archive/:slug`, `/feedback` / **team**: `/db`, `/keywords` / **admin**: `/app`, `/usage`
+- 로그인 화면은 `C` 토큰 기반 흰색/크림 톤 — 큰 `<Wordmark size={42} />` + Google 로그인 버튼.
+- 새 보호 라우트 추가 시 `App.jsx`에서 역할에 맞는 라우트 래퍼(`MemberRoute`/`TeamRoute`/`AdminRoute`)로 감쌀 것.
 
 ## 15. Source Color Map
 
