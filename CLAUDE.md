@@ -288,9 +288,9 @@ python scripts/build_arxiv_space_archive.py         # arXiv API (cs.DC + cs.NI)
 │   ├── vite.config.js              ← envDir: '..' — 루트 .env에서 VITE_* 변수 읽음
 │   ├── public/
 │   │   ├── logo-mark.png           ← Canopy 로고/favicon
-│   │   ├── smartphone-bg.png       ← 스마트폰 도메인 배경 이미지
-│   │   ├── humanoid-bg.png         ← 휴머노이드 도메인 배경 이미지
-│   │   └── automotive-bg.png       ← 자동차 도메인 배경 이미지
+│   │   ├── smartphone-bg-v3-desktop.webp       ← 스마트폰 도메인 배경 이미지
+│   │   ├── humanoid-bg-v2-desktop.webp         ← 휴머노이드 도메인 배경 이미지
+│   │   └── automotive-bg-v2-desktop.webp       ← 자동차 도메인 배경 이미지
 │   └── src/
 │       ├── App.jsx                 ← 라우터 + ProtectedRoute
 │       ├── theme.js                ← C 토큰, SRC_COLOR_MAP (도메인별 기관 색상)
