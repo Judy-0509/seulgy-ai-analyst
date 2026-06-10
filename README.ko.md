@@ -4,26 +4,19 @@
 
 </div>
 
-![Seulgy AI Analyst — 소스에서 대시보드까지 리서치 파이프라인을 손으로 그린 지도](docs/readme-banner-flow-girl-title.png)
-
-# Seulgy AI Analyst
+![Seulgy AI Analyst — 흩어진 뉴스·리서치 조각들이 분석을 거쳐 하나의 구조화된 근거 기반 보고서로 정제되는 모습](docs/readme-banner.png)
 
 <div align="center">
 
 [![Live · seulgy.com](https://img.shields.io/badge/Live-seulgy.com-2ea44f?logo=googlechrome&logoColor=white)](https://seulgy.com)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![CI](https://github.com/Judy-0509/seulgy-ai-analyst/actions/workflows/ci.yml/badge.svg)](https://github.com/Judy-0509/seulgy-ai-analyst/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-async-009688?logo=fastapi&logoColor=white)
 ![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
-![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)
-![Supabase Auth](https://img.shields.io/badge/Supabase-Auth-3FCF8E?logo=supabase&logoColor=white)
-![Docker multi-stage](https://img.shields.io/badge/Docker-multi--stage-2496ED?logo=docker&logoColor=white)
-[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
 ![Curated sources: 66](https://img.shields.io/badge/curated_sources-66-2ea44f)
 ![Market domains: 4](https://img.shields.io/badge/market_domains-4-2563eb)
-![LLM: GLM-4.7 Thinking](https://img.shields.io/badge/LLM-GLM--4.7_Thinking-6f42c1)
 
 </div>
 
@@ -32,6 +25,10 @@
 Seulgy AI Analyst는 신뢰할 수 있는 리서치 소스를 주제 추천, 근거 기반 분석 계획, 구조화된 애널리스트 보고서로 바꿔주는 AI 기반 마켓 인텔리전스 워크스페이스입니다.
 
 노트북 데모가 아니라 풀스택 제품으로 설계했습니다. FastAPI 백엔드가 리서치 파이프라인을 실행하고, React 인터페이스가 주제 발굴과 보고서 생성을 관리하며, 큐레이션된 소스 아카이브가 시스템을 재사용 가능한 산업 근거에 기반하도록 잡아줍니다 — 그리고 네 개 시장 도메인에 걸쳐 실제 보고서를 서비스하며 프로덕션에서 운영되고 있습니다.
+
+## 만든 이유
+
+저는 Market Intelligence 애널리스트입니다. 시장을 추적한다는 건 증권사 노트, 조사기관 데이터, 업계 뉴스까지 전부 읽는다는 뜻인데, 읽어야 할 양은 매주 가용 시간을 넘어섰습니다. 더 큰 문제는 이 과정 전체가 "담당자가 한가한 주"에 의존한다는 것이었습니다. Seulgy는 그에 대한 답입니다: 큐레이션된 소스를 모니터링하고, 달라진 것을 찾아내고, 보고서 초안을 작성하는 시스템 — 단, 섹션 하나를 쓰기 전에 애널리스트가 계획을 승인·수정·반려하는 휴먼 인 더 루프 구조입니다. 애널리스트를 대체하지 않습니다. 애널리스트가 생각할 시간을 돌려줍니다.
 
 ## 라이브 미리보기
 
@@ -120,6 +117,8 @@ Seulgy AI Analyst는 신뢰할 수 있는 리서치 소스를 주제 추천, 근
 - 스페이스 데이터센터
 
 `data/archives/` 아래 **66개의 큐레이션된 소스 아카이브**에 기반하며, 각각 전용 빌더 스크립트를 갖습니다. 소스는 시장조사 기관, 투자은행 리서치, 트레이드 프레스, OEM, 1차 피드를 아우릅니다 — 예: Counterpoint, Omdia, TrendForce, IDC, Yole, Gartner, Goldman Sachs, Morgan Stanley, BofA, McKinsey, BCG, Bloomberg, ABI Research, IDTechEx, IFR, IEEE Spectrum, TechCrunch, Boston Dynamics, Figure AI, Unitree, NVIDIA, SpaceNews, Data Center Frontier, JATO, AlixPartners, arXiv.
+
+> 📦 아카이브 **내용물**은 빌더 스크립트로 로컬에서 생성되며 이 레포에는 **커밋되지 않습니다** — 레포에는 빌더와 도메인 설정만 포함됩니다. 새로 클론하면 아카이브가 비어 있으니 `python scripts/build_all_archives.py`로 채우세요.
 
 ## 아키텍처
 

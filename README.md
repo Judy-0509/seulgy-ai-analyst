@@ -4,26 +4,19 @@
 
 </div>
 
-![Seulgy AI Analyst — hand-drawn map of the research pipeline from sources to dashboard](docs/readme-banner-flow-girl-title.png)
-
-# Seulgy AI Analyst
+![Seulgy AI Analyst — scattered news and research fragments distilled through analysis into one structured, evidence-backed report](docs/readme-banner.png)
 
 <div align="center">
 
 [![Live · seulgy.com](https://img.shields.io/badge/Live-seulgy.com-2ea44f?logo=googlechrome&logoColor=white)](https://seulgy.com)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![CI](https://github.com/Judy-0509/seulgy-ai-analyst/actions/workflows/ci.yml/badge.svg)](https://github.com/Judy-0509/seulgy-ai-analyst/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-async-009688?logo=fastapi&logoColor=white)
 ![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
-![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)
-![Supabase Auth](https://img.shields.io/badge/Supabase-Auth-3FCF8E?logo=supabase&logoColor=white)
-![Docker multi-stage](https://img.shields.io/badge/Docker-multi--stage-2496ED?logo=docker&logoColor=white)
-[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
 ![Curated sources: 66](https://img.shields.io/badge/curated_sources-66-2ea44f)
 ![Market domains: 4](https://img.shields.io/badge/market_domains-4-2563eb)
-![LLM: GLM-4.7 Thinking](https://img.shields.io/badge/LLM-GLM--4.7_Thinking-6f42c1)
 
 </div>
 
@@ -32,6 +25,10 @@
 Seulgy AI Analyst is an AI-powered market-intelligence workspace that turns trusted research sources into topic recommendations, evidence-backed analysis plans, and structured analyst reports.
 
 It was built as a full-stack product, not a notebook demo: a FastAPI backend runs the research pipeline, a React interface manages topic discovery and report generation, and curated source archives keep the system grounded in reusable industry evidence — and it actually runs in production, serving real reports across four market domains.
+
+## Why I Built This
+
+I'm a market-intelligence analyst. Tracking a market means reading everything — broker notes, research-firm data, trade press — and every week the reading list outgrew the hours available. Worse, the whole process depended on one person having a quiet week. Seulgy is my answer: a system that monitors curated sources, surfaces what changed, and drafts the report — while the analyst stays in the loop to approve, reshape, or reject the plan before a single section is written. It doesn't replace the analyst. It frees the analyst to think.
 
 ## Live Preview
 
@@ -120,6 +117,8 @@ The system covers four market domains:
 - Space datacenter
 
 It is grounded in **66 curated source archives** under `data/archives/`, each with a dedicated builder script. Sources span market-research firms, investment-bank research, trade press, OEMs, and primary feeds — for example Counterpoint, Omdia, TrendForce, IDC, Yole, Gartner, Goldman Sachs, Morgan Stanley, BofA, McKinsey, BCG, Bloomberg, ABI Research, IDTechEx, IFR, IEEE Spectrum, TechCrunch, Boston Dynamics, Figure AI, Unitree, NVIDIA, SpaceNews, Data Center Frontier, JATO, AlixPartners, and arXiv.
+
+> 📦 The archive **contents** are built locally by those builder scripts and are **not committed** to this repo — only the builders and domain configs are. A fresh clone starts with empty archives; run `python scripts/build_all_archives.py` to populate them.
 
 ## Architecture
 
