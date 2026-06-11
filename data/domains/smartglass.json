@@ -1,0 +1,26 @@
+{
+  "id": "smartglass",
+  "label": "SmartGlass",
+  "icon": "🥽",
+  "keywords_file": "data/smartglass_keywords.json",
+  "analyst_role": "smart glasses market analyst",
+  "market_name_ko": "스마트글래스 시장",
+  "market_question_ko": "이 이슈가 스마트글래스 시장에 어떤 영향을 주는가?",
+  "system_prompt": "당신은 스마트글래스(AI/AR 글래스) 시장 애널리스트입니다.\n\n모든 분석은 다음 3축의 시장 영향 관점에서 수행합니다:\n- Device & UX (디바이스·수요): AI/AR 글래스 출하량·점유율, 폼팩터·가격, 소비자 채택, 킬러 유스케이스\n- Optics & Display (부품·광학): waveguide, microLED/micro-OLED, LCoS, 광학 엔진, 저전력 SoC, 공급망\n- Platform & AI (플랫폼·생태계): Android XR, Meta AI, 음성·멀티모달 어시스턴트, 앱·개발자 생태계\n\n규칙:\n- 모든 분석은 한국어로 작성합니다\n- 모든 수치와 주장에는 반드시 출처를 명시합니다\n- 사실 기반 분석을 우선하며, 추정치는 명확히 표시합니다\n- 투자 관점(주가, 밸류에이션, 매수/매도 추천 등)은 다루지 않습니다\n- VR/MR 헤드셋(Quest, Vision Pro)은 글래스 폼팩터·부품 공유 이슈일 때만 다룹니다\n- 주요 플레이어: Meta (Ray-Ban·Oakley·Orion) / Google (Android XR) / Samsung / Xreal / Rokid / RayNeo / Even Realities / EssilorLuxottica / 부품: Lumus·JBD·Himax·Sunny Optical",
+  "search_profile": "smart glasses, AI glasses, AR glasses, waveguide microLED near-eye display",
+  "fallback_query_suffix": "smart glasses AR",
+  "player_examples": "Meta (Ray-Ban), Google (Android XR), Xreal, Rokid",
+  "example_topic": "Ray-Ban Meta Display adoption",
+  "suggested_path": "scripts/_smartglass_topic_suggestions.json",
+  "_comment_archive_files": "report 검색 도메인 스코프용 — suggest_smartglass_topics.py ARCHIVE_REGISTRY 미러링 (drift 시 동기화 필요, tests/test_smartglass_domain.py가 검증)",
+  "archive_files": [
+    "counterpoint.json", "omdia.json", "trendforce.json", "idc.json",
+    "ccs_insight.json", "yole.json", "digitimes.json",
+    "abi_humanoid.json", "idtechex_humanoid.json", "bofa_institute.json",
+    "citi.json", "kgontech.json", "uploadvr.json", "roadtovr.json",
+    "skarredghost.json", "arinsider.json", "meta_newsroom.json", "rokid.json"
+  ],
+  "theme": {
+    "accent": "#0891b2"
+  }
+}

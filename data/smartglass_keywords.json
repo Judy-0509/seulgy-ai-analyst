@@ -1,0 +1,16 @@
+{
+  "description": "스마트글래스(AI/AR 글래스) 시장 필터링 키워드 — word-boundary 정규식 매칭 (_smartglass_research_helper.is_smartglass_relevant). 'vision pro' 등 VR 헤드셋 용어는 의도적으로 제외 (도메인 범위: 글래스 폼팩터).",
+  "keywords": [
+    "smart glasses", "smartglasses", "ai glasses", "ar glasses",
+    "smart eyewear", "display glasses", "xr glasses", "augmented reality glasses",
+    "ray-ban meta", "rayban meta", "ray-ban display", "oakley meta",
+    "meta orion", "meta glasses", "reality labs",
+    "xreal", "rokid", "rayneo", "even realities", "halliday", "vuzix",
+    "inmo", "snap spectacles", "brilliant labs",
+    "android xr", "neural band", "emg wristband",
+    "waveguide", "microled", "micro-led", "micro-oled", "microdisplay",
+    "near-eye", "lcos", "birdbath", "light engine", "optical engine", "pancake lens",
+    "essilorluxottica", "luxottica", "lumus", "digilens", "jbd", "himax",
+    "sunny optical", "goertek"
+  ]
+}

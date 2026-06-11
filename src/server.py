@@ -1088,7 +1088,7 @@ def _detect_domain(process_data: dict | None) -> str:
     if not process_data:
         return "smartphone"
     stored = process_data.get("domain", "")
-    if stored in ("smartphone", "humanoid", "automotive", "space_datacenter"):
+    if stored in ("smartphone", "humanoid", "automotive", "space_datacenter", "smartglass"):
         return stored
     counts = {"smartphone": 0, "humanoid": 0, "automotive": 0}
     for src in process_data.get("archive_sources", []):
