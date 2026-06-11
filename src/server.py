@@ -97,6 +97,15 @@ ARCHIVE_REGISTRY = [
     ("Data Center Frontier",  "datacenter_frontier.json"),
     ("TechCrunch (Space)",    "techcrunch_space.json"),
     ("arXiv (cs.DC)",         "arxiv_space.json"),
+    # Smartglass sources
+    ("UploadVR",        "uploadvr.json"),
+    ("The Ghost Howls", "skarredghost.json"),
+    ("Road to VR",      "roadtovr.json"),
+    ("AR Insider",      "arinsider.json"),
+    ("KGOnTech",        "kgontech.json"),
+    ("Meta Newsroom",   "meta_newsroom.json"),
+    ("Rokid",           "rokid.json"),
+    ("Citi Research",   "citi.json"),
 ]
 
 app = FastAPI()
@@ -829,6 +838,7 @@ async def api_topics_suggested(domain: str = "smartphone"):
         "humanoid":        "scripts/_humanoid_topic_suggestions_emerging.json",
         "automotive":      "scripts/_automotive_topic_suggestions_emerging.json",
         "space_datacenter": "scripts/_space_datacenter_topic_suggestions_emerging.json",
+        "smartglass":      "scripts/_smartglass_topic_suggestions_emerging.json",
     }
     em_rel = EMERGING_PATHS.get(domain)
     if em_rel:

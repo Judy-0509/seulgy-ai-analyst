@@ -1,5 +1,5 @@
 """
-43개 archive 빌더를 순차 실행하는 오케스트레이터.
+69개 archive 빌더를 순차 실행하는 오케스트레이터.
 
 각 빌더는 자체 incremental 로직을 갖고 있어서, 기존 JSON에 없는 URL만 새로 fetch한다.
 즉 이 스크립트를 다시 돌릴수록 DB가 누적된다.
@@ -96,6 +96,16 @@ BUILDERS = [
     ("TechCrunch (Space)",    "build_techcrunch_space_archive.py",      "techcrunch_space.json"),
     ("arXiv (cs.DC)",         "build_arxiv_space_archive.py",           "arxiv_space.json"),
     # NVIDIA (nvidia_news.json) — humanoid와 공유, 별도 빌더 없음
+    # ── Smartglass sources (2026-06-12) ────────────────────────────────
+    ("UploadVR",         "build_uploadvr_archive.py",      "uploadvr.json"),
+    ("The Ghost Howls",  "build_skarredghost_archive.py",  "skarredghost.json"),
+    ("Road to VR",       "build_roadtovr_archive.py",      "roadtovr.json"),
+    ("AR Insider",       "build_arinsider_archive.py",     "arinsider.json"),
+    ("KGOnTech",         "build_kgontech_archive.py",      "kgontech.json"),
+    ("Meta Newsroom",    "build_meta_newsroom_archive.py", "meta_newsroom.json"),
+    ("Rokid",            "build_rokid_archive.py",         "rokid.json"),
+    ("Citi Research",    "build_citi_archive.py",          "citi.json"),
+    # 트래커 7개 + ABI/IDTechEx/BofA — 기존 빌더 공유, 별도 빌더 없음
 ]
 
 PER_BUILDER_TIMEOUT_SEC = 900  # 빌더당 최대 15분

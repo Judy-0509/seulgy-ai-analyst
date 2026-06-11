@@ -44,3 +44,17 @@ def test_suggest_registry_taxonomy_complete():
     names = {n for n, _ in sst.ARCHIVE_REGISTRY}
     assert names == set(sst.SOURCE_TAXONOMY.keys())
     assert len(sst.ARCHIVE_REGISTRY) == 18
+
+
+def test_new_builders_registered_everywhere():
+    """8개 신규 빌더가 build_all_archives.BUILDERS와 server.ARCHIVE_REGISTRY에 등록됐는지."""
+    import build_all_archives as baa
+    from src import server
+    new_jsons = {
+        "uploadvr.json", "skarredghost.json", "roadtovr.json", "arinsider.json",
+        "kgontech.json", "meta_newsroom.json", "rokid.json", "citi.json",
+    }
+    baa_jsons = {j for _, _, j in baa.BUILDERS}
+    server_jsons = {j for _, j in server.ARCHIVE_REGISTRY}
+    assert new_jsons <= baa_jsons
+    assert new_jsons <= server_jsons
