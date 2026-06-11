@@ -32,7 +32,6 @@ import io
 import json
 import os
 import random
-import re
 import sys
 from contextlib import contextmanager
 from datetime import datetime
@@ -64,6 +63,12 @@ from run_report import (  # noqa: E402
     user_gate_1,
 )
 from src.models import SearchResult  # noqa: E402
+from src.services.fact_check import (  # noqa: E402
+    NUMBER_RE as _NUMBER_RE,  # noqa: F401
+    extract_numbers as _numbers,
+    extract_quote_spans,
+    normalize_text as _normalize_text,
+)
 
 if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
@@ -120,35 +125,17 @@ def load_snapshot(path: str | Path) -> dict[str, Any]:
     return data
 
 
-def _normalize_text(text: str) -> str:
-    text = (text or "").lower()
-    text = text.translate(str.maketrans({"’": "'", "‘": "'", "“": '"', "”": '"'}))
-    text = re.sub(r"[/\\]", " ", text)
-    text = re.sub(r"['\"]", "", text)
-    text = re.sub(r"\s+", " ", text)
-    return text.strip()
-
-
 def quote_match_rate(report: dict[str, Any], evidence_texts: list[str]) -> tuple[int, int, float]:
     evidence = _normalize_text(" ".join(evidence_texts))
     matched = 0
     total = 0
     for bullet in report.get("bullets", []) or []:
-        spans = re.findall(r"[“\"]([^”\"]+)[”\"]", str(bullet))
+        spans = extract_quote_spans(str(bullet))
         for span in spans:
             total += 1
             if _normalize_text(span) in evidence:
                 matched += 1
     return matched, total, matched / total if total else 1.0
-
-
-_NUMBER_RE = re.compile(
-    r"(?<![\d.])(?:\d{1,3}(?:,\d{3})+(?:\.\d+)?%?|\d{2,}(?:\.\d+)?%?)(?![\d.])"
-)
-
-
-def _numbers(text: str) -> set[str]:
-    return {m.group(0).replace(",", "") for m in _NUMBER_RE.finditer(text or "")}
 
 
 def number_support_rate(report: dict[str, Any], evidence_texts: list[str]) -> tuple[int, int, float]:

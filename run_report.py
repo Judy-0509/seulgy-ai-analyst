@@ -24,6 +24,7 @@ import markdown as md_lib
 from src.services.llm import LLMService
 from src.services.search import SearchService
 from src.services.body_fetcher import fetch_or_cached, FETCHABLE_SOURCES
+from src.services.fact_check import apply_verdicts, clip_evidence, deterministic_check, llm_check_bullets
 from src.prompts.system import ANALYST_SYSTEM_PROMPT, DOMAIN_SYSTEM_PROMPTS, DOMAIN_ANALYST_TYPES
 from src.domains import load_domain
 
@@ -60,6 +61,10 @@ def _strip_fence(text: str) -> str:
         text = re.sub(r"^```[a-z]*\n?", "", text)
         text = re.sub(r"\n?```$", "", text)
     return text.strip()
+
+
+def _env_truthy(name: str) -> bool:
+    return os.getenv(name, "").strip().lower() in {"1", "true", "yes", "on"}
 
 
 async def _ainput(prompt: str) -> str:
@@ -665,6 +670,36 @@ async def stage_ef(llm: LLMService, topic: str, sections: list[dict], progress_c
         if len(hl) > 80:
             data["headline"] = hl[:77] + "..."
 
+        sec["report"] = data
+        if _env_truthy("REPORT_FACTCHECK"):
+            bullet_list = [str(b) for b in (data.get("bullets", []) or [])]
+            det_verdicts, unresolved = deterministic_check(bullet_list, evidence)
+            verdict_by_index = {v.index: v for v in det_verdicts}
+            if unresolved:
+                items = [
+                    {
+                        "index": i,
+                        "bullet": bullet_list[i],
+                        "evidence_clip": clip_evidence(bullet_list[i], evidence),
+                    }
+                    for i in unresolved
+                    if i < len(bullet_list)
+                ]
+                for verdict in await llm_check_bullets(llm, items):
+                    verdict_by_index[verdict.index] = verdict
+            final_verdicts = [
+                verdict_by_index[i] for i in range(len(bullet_list)) if i in verdict_by_index
+            ]
+            # 판정 실패(unverified)는 조작 증거가 아니므로 보존하고, 명시적 unsupported만 제거한다.
+            summary = apply_verdicts(data, final_verdicts)
+            sec["fact_check"] = summary
+            print(
+                "      → fact-check: "
+                f"{summary['total']} bullets, {summary['verified']} verified, "
+                f"{summary['unsupported_dropped']} dropped, "
+                f"{summary['unverified_kept']} unverified"
+            )
+
         # 정량 fact 80% 검증
         bullets = data.get("bullets", [])
         if bullets:
@@ -674,7 +709,6 @@ async def stage_ef(llm: LLMService, topic: str, sections: list[dict], progress_c
                 print(f"      [!] 정량 fact {numeric}/{len(bullets)} ({int(ratio*100)}%) — 목표 80% 미달")
             cited_bullets.extend(bullets)  # 다음 섹션에 전달
 
-        sec["report"] = data
         print(f"      → 완료 ({round(time.time()-t0,1)}s)")
 
     # 가드레일 — valid 섹션 비율 체크 (insufficient_evidence omit이 너무 많으면 abort)
@@ -1035,6 +1069,24 @@ def _save_report(
                     {"source_name": r.source_name, "url": r.source_url, "title": r.article_title}
                     for r in s.get("results", [])
                 ],
+                **(
+                    {
+                        "fact_check": {
+                            k: v
+                            for k, v in (s.get("fact_check") or {}).items()
+                            if k
+                            in {
+                                "enabled",
+                                "total",
+                                "verified",
+                                "unsupported_dropped",
+                                "unverified_kept",
+                            }
+                        }
+                    }
+                    if s.get("fact_check")
+                    else {}
+                ),
             }
             for s in sections
         ],
