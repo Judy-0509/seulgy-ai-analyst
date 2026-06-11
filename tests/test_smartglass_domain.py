@@ -1,6 +1,5 @@
 # tests/test_smartglass_domain.py
 """Smartglass 도메인 등록 일관성 테스트 — 설정/레지스트리 drift 방지."""
-import json
 import sys
 from pathlib import Path
 
