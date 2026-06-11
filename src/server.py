@@ -1236,6 +1236,12 @@ def _parse_report_markdown(md_text: str, process_data: dict | None = None) -> di
                     existing_metrics.append(metric)
 
     references = list(references_by_key.values())
+    # 오래된 기사가 참고문헌 상단에 노출되지 않도록 최신순 정렬.
+    # 날짜 없는 항목은 최하단, 동일 날짜는 다인용(여러 섹션 인용) 우선.
+    references.sort(
+        key=lambda r: (r.get("date") or "", len(r.get("section_indices") or [])),
+        reverse=True,
+    )
 
     research_background = ""
     quick_brief: dict = {}
