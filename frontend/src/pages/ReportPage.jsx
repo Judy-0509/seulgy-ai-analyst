@@ -48,6 +48,13 @@ function makeR(domain) {
     emBg: "rgba(37,99,235,.07)",
     emBr: "rgba(37,99,235,.22)",
   };
+  if (domain === "smartglass") return {
+    ...BASE_R,
+    em:   "#0891b2",
+    emD:  "#0e7490",
+    emBg: "rgba(8,145,178,.07)",
+    emBr: "rgba(8,145,178,.22)",
+  };
   // smartphone — 차분한 forest green
   return {
     ...BASE_R,
@@ -62,6 +69,7 @@ const SOURCE_DOMAIN_ACCENTS = {
   smartphone: { emD: "#065f46", emBg: "rgba(6,95,70,.06)",  emBr: "rgba(6,95,70,.18)"  },
   humanoid:   { emD: "#b91c1c", emBg: "rgba(239,68,68,.08)", emBr: "rgba(239,68,68,.22)" },
   automotive: { emD: "#1d4ed8", emBg: "rgba(37,99,235,.08)", emBr: "rgba(37,99,235,.22)" },
+  smartglass: { emD: "#0e7490", emBg: "rgba(8,145,178,.08)", emBr: "rgba(8,145,178,.22)" },
 };
 
 const SOURCE_DOMAIN_BY_NAME = {
@@ -125,6 +133,14 @@ const SOURCE_DOMAIN_BY_NAME = {
   "RMI": "automotive",
   "Transport & Environment": "automotive",
   "IRENA": "automotive",
+  "UploadVR": "smartglass",
+  "Road to VR": "smartglass",
+  "The Ghost Howls": "smartglass",
+  "AR Insider": "smartglass",
+  "KGOnTech": "smartglass",
+  "Meta Newsroom": "smartglass",
+  "Rokid": "smartglass",
+  "Citi Research": "smartglass",
 };
 
 function sourceAccent(sourceName, R) {
