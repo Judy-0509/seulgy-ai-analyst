@@ -7,6 +7,7 @@ const DOMAINS = [
   { id: "smartphone", label: "Smartphone", accent: "#10b981", accentBg: "rgba(16,185,129,.08)", accentBr: "rgba(16,185,129,.28)" },
   { id: "humanoid",   label: "Humanoid",   accent: "#b73745", accentBg: "rgba(183,55,69,.08)",  accentBr: "rgba(183,55,69,.28)"  },
   { id: "automotive", label: "Automotive", accent: "#2563eb", accentBg: "rgba(37,99,235,.08)",  accentBr: "rgba(37,99,235,.28)"  },
+  { id: "smartglass", label: "SmartGlass", accent: "#0891b2", accentBg: "rgba(8,145,178,.08)",  accentBr: "rgba(8,145,178,.28)"  },
 ];
 
 export default function KeywordsPage() {

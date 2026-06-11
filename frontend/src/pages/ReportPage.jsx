@@ -16,6 +16,7 @@ const DOMAIN_LABEL = {
   humanoid: "Humanoid",
   automotive: "Automotive",
   space_datacenter: "Space Datacenter",
+  smartglass: "SmartGlass",
 };
 
 const BASE_R = {

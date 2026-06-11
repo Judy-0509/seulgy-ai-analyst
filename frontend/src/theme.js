@@ -65,6 +65,15 @@ export const SRC_COLOR_MAP = {
   "Toyota Newsroom":         "#dbeafe",
   "VW Group":                "#e0f2fe",
   "Mercedes-Benz Media":     "#f0f9ff",
+  // Smartglass (8 cyan shades, dark → light)
+  "UploadVR":        "#164e63",
+  "Road to VR":      "#155e75",
+  "The Ghost Howls": "#0e7490",
+  "AR Insider":      "#0891b2",
+  "KGOnTech":        "#06b6d4",
+  "Citi Research":   "#22d3ee",
+  "Meta Newsroom":   "#67e8f9",
+  "Rokid":           "#a5f3fc",
 };
 
 export const TAG_COLORS = {

@@ -4,7 +4,7 @@ import { C } from "../theme";
 import { authFetch } from "../lib/authFetch";
 import { useAuth } from "../contexts/AuthContext";
 
-const DOMAIN_IDS = ["smartphone", "humanoid", "automotive", "space_datacenter"];
+const DOMAIN_IDS = ["smartphone", "humanoid", "automotive", "space_datacenter", "smartglass"];
 const TARGET_TYPE_IDS = ["general", "keyword", "source", "report"];
 const STATUS_IDS = ["new", "reviewed", "applied", "dismissed"];
 
