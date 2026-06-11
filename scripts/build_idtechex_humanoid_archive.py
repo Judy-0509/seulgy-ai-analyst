@@ -21,6 +21,13 @@ ARCHIVE_PATH = ARCHIVE_DIR / "idtechex_humanoid.json"
 SOURCE_NAME = "IDTechEx"
 SITE_BASE = "https://www.idtechex.com"
 
+KEYWORDS = (
+    "humanoid", "humanoid robot", "humanoid robotics",
+    # smartglass 도메인 공유 (2026-06-12)
+    "smart glasses", "smart-glasses", "ar glasses", "ar-glasses",
+    "ai glasses", "ai-glasses", "augmented reality", "wearable",
+)
+
 SEED_URLS = [
     "https://www.idtechex.com/en/research-article/humanoid-robots-to-reach-nearly-us-30-billion-by-2036/34443",
     "https://www.idtechex.com/en/research-report/humanoid-robots-2026-2036-technologies-markets-and-opportunities/1094",
@@ -85,7 +92,7 @@ def extract_meta(html: str) -> tuple[str, str, str]:
 
 def relevant(title: str, desc: str, url: str) -> bool:
     text = f"{title} {desc} {url}".lower()
-    return "humanoid" in text and "fusion energy" not in text
+    return any(k in text for k in KEYWORDS) and "fusion energy" not in text
 
 
 def build() -> dict:

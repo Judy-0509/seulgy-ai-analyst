@@ -25,7 +25,12 @@ SITEMAP_URL = SITE_BASE + "/sitemap.xml"
 
 CONCURRENCY = 4
 REQUEST_TIMEOUT = 20
-KEYWORDS = ("humanoid", "humanoid robot", "humanoid robotics")
+KEYWORDS = (
+    "humanoid", "humanoid robot", "humanoid robotics",
+    # smartglass 도메인 공유 (2026-06-12)
+    "smart glasses", "smart-glasses", "ar glasses", "ar-glasses",
+    "ai glasses", "ai-glasses", "augmented reality", "wearable",
+)
 SEED_URLS = [
     SITE_BASE + "/news-resources/chart-data/humanoid-robot-installed-base",
 ]

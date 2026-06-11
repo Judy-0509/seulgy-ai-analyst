@@ -36,6 +36,8 @@ SITEMAP_URL  = ("https://institute.bankofamerica.com/content/institute/"
 URL_KEYWORDS = [
     "humanoid", "robot", "robotics", "physical-ai", "automation",
     "embodied", "industrial-ai",
+    # smartglass 도메인 공유 (2026-06-12): /transformation/smart-glasses.html 등
+    "smart-glasses", "smart-glass", "glasses", "wearable", "augmented-reality",
 ]
 
 HEADERS = {
