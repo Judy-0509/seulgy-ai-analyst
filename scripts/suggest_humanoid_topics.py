@@ -124,15 +124,18 @@ def _load_keywords() -> list[str]:
 
 def keyword_filter(entry: dict) -> bool:
     # 소스가 이미 로보틱스 특화인 경우 통과 (1차 OEM, 학술, 로보틱스 전문 매체)
+    # 주의: ABI Research / IDTechEx / Bank of America Institute는 2026-06-12부터
+    # smartglass 도메인과 아카이브를 공유(빌드 필터 union 확장)하므로 무조건 통과 대상에서
+    # 제외 — 아래 휴머노이드 키워드 필터를 적용해 비로보틱스 항목 유입을 차단한다.
     source = entry.get("source", "")
     if source in (
         "Boston Dynamics", "Figure AI", "Unitree", "Apptronik",
         "Agility Robotics", "1X Technologies",
         "TechCrunch Robotics", "IEEE Spectrum Robotics",
         "The Robot Report", "MIT Technology Review", "Humanoids Daily",
-        "RoboticsTomorrow", "IFR", "IDTechEx", "ABI Research", "Yano Research",
+        "RoboticsTomorrow", "IFR", "Yano Research",
         "Goldman Sachs Research", "Morgan Stanley Research", "Barclays Research",
-        "Bank of America Institute", "JPMorgan Research", "Deutsche Bank Research",
+        "JPMorgan Research", "Deutsche Bank Research",
     ):
         return True
     # 일반 매체(R&AN, Verge, NVIDIA blog)는 키워드 필터 적용
