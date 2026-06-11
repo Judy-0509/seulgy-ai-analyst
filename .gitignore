@@ -68,6 +68,7 @@ linkedin/
 
 # ── 내부 기획/검토 문서 (공개 repo 비노출 — ToS 위험수용 기록/내부 WIP) ──
 db_research/humanoid/
+db_research/smartglass/
 docs/crawling_robots_review.md
 docs/automotive_parity_plan_2026-05-30.md
 docs/topic_pipeline_review_2026-05-07.md
