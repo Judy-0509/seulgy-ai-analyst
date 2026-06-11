@@ -62,6 +62,8 @@ db_research/
 | 도메인 | 파일 | 내용 |
 |---|---|---|
 | Humanoid | [humanoid/2026-05-07_tier1_ib_research.md](humanoid/2026-05-07_tier1_ib_research.md) | Goldman Sachs · Morgan Stanley · BofA Institute 추가 근거 |
+| Humanoid | [humanoid/2026-06-11_analyst_feedback_ab_test.md](humanoid/2026-06-11_analyst_feedback_ab_test.md) | 애널리스트 피드백 반영 (JPM·DB·Omdia 추가, 키워드 5종) + 가중치 A/B 테스트 결과 |
+| Smartglass | [smartglass/2026-06-11_smartglass_sources.md](smartglass/2026-06-11_smartglass_sources.md) | 신규 도메인 Tier-1 소스 선정 — 재활용 10 + 신규 8 (18개 소스), Display Daily·Xreal·DSCC 등 제외 근거 |
 
 ---
 

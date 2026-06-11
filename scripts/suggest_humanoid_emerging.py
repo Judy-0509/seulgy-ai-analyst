@@ -122,9 +122,9 @@ B. First-party OEM: Boston Dynamics, Figure AI, Unitree, NVIDIA,
    Apptronik, Agility Robotics, 1X Technologies
 C. Technical Validation: arXiv (cs.RO)
 D. Market / Industry Intelligence:
-   IFR, Counterpoint Research, TrendForce, IDC, IDTechEx, ABI Research, Yano Research,
+   IFR, Counterpoint Research, TrendForce, IDC, Omdia, IDTechEx, ABI Research, Yano Research,
    Goldman Sachs Research, Morgan Stanley Research, Barclays Research,
-   Bank of America Institute"""
+   Bank of America Institute, JPMorgan Research, Deutsche Bank Research"""
 
 USER_PROMPT_TEMPLATE = """
 [MAJOR-PASS TOPICS ALREADY COVERED — REJECT any candidate signal that overlaps semantically]

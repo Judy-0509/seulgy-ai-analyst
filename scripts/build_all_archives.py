@@ -61,6 +61,8 @@ BUILDERS = [
     ("Morgan Stanley Research",    "build_morgan_stanley_archive.py",        "morgan_stanley.json"),
     ("Barclays Research",          "build_barclays_archive.py",              "barclays.json"),
     ("Bank of America Institute",  "build_bofa_institute_archive.py",        "bofa_institute.json"),
+    ("JPMorgan Research",          "build_jpmorgan_archive.py",              "jpmorgan.json"),
+    ("Deutsche Bank Research",     "build_deutsche_bank_archive.py",         "deutsche_bank.json"),
     # ── Automotive sources ─────────────────────────────────────────
     ("JATO Dynamics",       "build_jato_archive.py",             "jato.json"),
     ("AlixPartners",        "build_alixpartners_archive.py",     "alixpartners.json"),

@@ -33,6 +33,7 @@ ARCHIVE_REGISTRY = [
     ("Counterpoint Research",      "counterpoint.json"),
     ("TrendForce",                 "trendforce.json"),
     ("IDC",                        "idc.json"),
+    ("Omdia",                      "omdia.json"),
     ("IDTechEx",                   "idtechex_humanoid.json"),
     ("ABI Research",               "abi_humanoid.json"),
     ("Yano Research",              "yano_humanoid.json"),
@@ -40,6 +41,8 @@ ARCHIVE_REGISTRY = [
     ("Morgan Stanley Research",    "morgan_stanley.json"),
     ("Barclays Research",          "barclays.json"),
     ("Bank of America Institute",  "bofa_institute.json"),
+    ("JPMorgan Research",          "jpmorgan.json"),
+    ("Deutsche Bank Research",     "deutsche_bank.json"),
     ("The Verge",                  "verge_robotics.json"),
     # Tier B — first-party OEM / supplier announcements
     ("Boston Dynamics",            "boston_dynamics.json"),
@@ -58,8 +61,9 @@ ARCHIVE_REGISTRY = [
 SOURCE_LABEL = (
     "Robotics & Automation News, TechCrunch Robotics, IEEE Spectrum, "
     "The Robot Report, MIT Technology Review, Humanoids Daily, RoboticsTomorrow, The Verge, "
-    "Counterpoint Research, TrendForce, IDC, IDTechEx, ABI Research, Yano Research, "
+    "Counterpoint Research, TrendForce, IDC, Omdia, IDTechEx, ABI Research, Yano Research, "
     "Goldman Sachs Research, Morgan Stanley Research, Barclays Research, Bank of America Institute, "
+    "JPMorgan Research, Deutsche Bank Research, "
     "Boston Dynamics, Figure AI, Unitree, NVIDIA, Apptronik, Agility Robotics, 1X, "
     "arXiv, IFR"
 )
@@ -85,6 +89,9 @@ SOURCE_TAXONOMY = {
     "Morgan Stanley Research":    "D",
     "Barclays Research":          "D",
     "Bank of America Institute":  "D",
+    "JPMorgan Research":          "D",
+    "Deutsche Bank Research":     "D",
+    "Omdia":                      "D",
     "Boston Dynamics":            "B",  # First-party OEM
     "Figure AI":                  "B",
     "Unitree":                    "B",
@@ -125,7 +132,7 @@ def keyword_filter(entry: dict) -> bool:
         "The Robot Report", "MIT Technology Review", "Humanoids Daily",
         "RoboticsTomorrow", "IFR", "IDTechEx", "ABI Research", "Yano Research",
         "Goldman Sachs Research", "Morgan Stanley Research", "Barclays Research",
-        "Bank of America Institute",
+        "Bank of America Institute", "JPMorgan Research", "Deutsche Bank Research",
     ):
         return True
     # 일반 매체(R&AN, Verge, NVIDIA blog)는 키워드 필터 적용
