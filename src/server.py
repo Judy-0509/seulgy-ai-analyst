@@ -89,14 +89,6 @@ ARCHIVE_REGISTRY = [
     ("RMI",                "rmi.json"),
     ("Transport & Environment", "transport_environment.json"),
     ("IRENA",              "irena.json"),
-    # Space Datacenter sources
-    ("SpaceNews",             "spacenews.json"),
-    ("Space.com",             "spacecom.json"),
-    ("IEEE Spectrum (Space)", "ieee_spectrum_space.json"),
-    ("Data Center Knowledge", "datacenter_knowledge.json"),
-    ("Data Center Frontier",  "datacenter_frontier.json"),
-    ("TechCrunch (Space)",    "techcrunch_space.json"),
-    ("arXiv (cs.DC)",         "arxiv_space.json"),
     # Smartglass sources
     ("UploadVR",        "uploadvr.json"),
     ("The Ghost Howls", "skarredghost.json"),
@@ -837,7 +829,6 @@ async def api_topics_suggested(domain: str = "smartphone"):
         "smartphone":      "scripts/_topic_suggestions_emerging.json",
         "humanoid":        "scripts/_humanoid_topic_suggestions_emerging.json",
         "automotive":      "scripts/_automotive_topic_suggestions_emerging.json",
-        "space_datacenter": "scripts/_space_datacenter_topic_suggestions_emerging.json",
         "smartglass":      "scripts/_smartglass_topic_suggestions_emerging.json",
     }
     em_rel = EMERGING_PATHS.get(domain)
@@ -1098,7 +1089,7 @@ def _detect_domain(process_data: dict | None) -> str:
     if not process_data:
         return "smartphone"
     stored = process_data.get("domain", "")
-    if stored in ("smartphone", "humanoid", "automotive", "space_datacenter", "smartglass"):
+    if stored in ("smartphone", "humanoid", "automotive", "smartglass"):
         return stored
     counts = {"smartphone": 0, "humanoid": 0, "automotive": 0}
     for src in process_data.get("archive_sources", []):

@@ -114,9 +114,9 @@ Seulgy AI Analyst는 신뢰할 수 있는 리서치 소스를 주제 추천, 근
 - 스마트폰
 - 휴머노이드 로보틱스
 - 자동차
-- 스페이스 데이터센터
+- 스마트글래스
 
-`data/archives/` 아래 **66개의 큐레이션된 소스 아카이브**에 기반하며, 각각 전용 빌더 스크립트를 갖습니다. 소스는 시장조사 기관, 투자은행 리서치, 트레이드 프레스, OEM, 1차 피드를 아우릅니다 — 예: Counterpoint, Omdia, TrendForce, IDC, Yole, Gartner, Goldman Sachs, Morgan Stanley, BofA, McKinsey, BCG, Bloomberg, ABI Research, IDTechEx, IFR, IEEE Spectrum, TechCrunch, Boston Dynamics, Figure AI, Unitree, NVIDIA, SpaceNews, Data Center Frontier, JATO, AlixPartners, arXiv.
+`data/archives/` 아래 큐레이션된 소스 아카이브에 기반하며, 각각 전용 빌더 스크립트를 갖습니다. 소스는 시장조사 기관, 투자은행 리서치, 트레이드 프레스, OEM, 1차 피드를 아우릅니다 — 예: Counterpoint, Omdia, TrendForce, IDC, Yole, Gartner, Goldman Sachs, Morgan Stanley, BofA, McKinsey, BCG, Bloomberg, ABI Research, IDTechEx, IFR, IEEE Spectrum, TechCrunch, Boston Dynamics, Figure AI, Unitree, NVIDIA, JATO, AlixPartners, arXiv.
 
 > 📦 아카이브 **내용물**은 빌더 스크립트로 로컬에서 생성되며 이 레포에는 **커밋되지 않습니다** — 레포에는 빌더와 도메인 설정만 포함됩니다. 새로 클론하면 아카이브가 비어 있으니 `python scripts/build_all_archives.py`로 채우세요.
 

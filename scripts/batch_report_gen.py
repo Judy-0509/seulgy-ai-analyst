@@ -23,7 +23,6 @@ DOMAIN_TOPIC_FILES = {
     "smartphone":      "scripts/_topic_suggestions.json",
     "humanoid":        "scripts/_humanoid_topic_suggestions.json",
     "automotive":      "scripts/_automotive_topic_suggestions.json",
-    "space_datacenter":"scripts/_space_datacenter_topic_suggestions.json",
     "smartglass":      "scripts/_smartglass_topic_suggestions.json",
 }
 
@@ -31,7 +30,6 @@ DOMAIN_EMERGING_FILES = {
     "smartphone":      "scripts/_topic_suggestions_emerging.json",
     "humanoid":        "scripts/_humanoid_topic_suggestions_emerging.json",
     "automotive":      "scripts/_automotive_topic_suggestions_emerging.json",
-    "space_datacenter":"scripts/_space_datacenter_topic_suggestions_emerging.json",
     "smartglass":      "scripts/_smartglass_topic_suggestions_emerging.json",
 }
 

@@ -114,9 +114,9 @@ The system covers four market domains:
 - Smartphone
 - Humanoid robotics
 - Automotive
-- Space datacenter
+- Smartglass
 
-It is grounded in **66 curated source archives** under `data/archives/`, each with a dedicated builder script. Sources span market-research firms, investment-bank research, trade press, OEMs, and primary feeds — for example Counterpoint, Omdia, TrendForce, IDC, Yole, Gartner, Goldman Sachs, Morgan Stanley, BofA, McKinsey, BCG, Bloomberg, ABI Research, IDTechEx, IFR, IEEE Spectrum, TechCrunch, Boston Dynamics, Figure AI, Unitree, NVIDIA, SpaceNews, Data Center Frontier, JATO, AlixPartners, and arXiv.
+It is grounded in curated source archives under `data/archives/`, each with a dedicated builder script. Sources span market-research firms, investment-bank research, trade press, OEMs, and primary feeds — for example Counterpoint, Omdia, TrendForce, IDC, Yole, Gartner, Goldman Sachs, Morgan Stanley, BofA, McKinsey, BCG, Bloomberg, ABI Research, IDTechEx, IFR, IEEE Spectrum, TechCrunch, Boston Dynamics, Figure AI, Unitree, NVIDIA, JATO, AlixPartners, and arXiv.
 
 > 📦 The archive **contents** are built locally by those builder scripts and are **not committed** to this repo — only the builders and domain configs are. A fresh clone starts with empty archives; run `python scripts/build_all_archives.py` to populate them.
 

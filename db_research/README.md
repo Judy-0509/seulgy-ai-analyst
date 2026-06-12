@@ -19,7 +19,7 @@ db_research/
     └── YYYY-MM-DD_<topic>.md
 ```
 
-도메인 폴더 명: `smartphone/`, `humanoid/`, `automotive/`, `space_datacenter/` 등 ID와 일치.
+도메인 폴더 명: `smartphone/`, `humanoid/`, `automotive/`, `smartglass/` 등 ID와 일치.
 파일명: `YYYY-MM-DD_<topic>.md` 형식.
 
 ---

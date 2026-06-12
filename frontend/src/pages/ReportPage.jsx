@@ -15,7 +15,6 @@ const DOMAIN_LABEL = {
   smartphone: "Smartphone",
   humanoid: "Humanoid",
   automotive: "Automotive",
-  space_datacenter: "Space Datacenter",
   smartglass: "SmartGlass",
 };
 

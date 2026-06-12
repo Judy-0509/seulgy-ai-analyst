@@ -1,6 +1,6 @@
 # {도메인} 소스 조사 — {조사 토픽}
 
-- **도메인**: smartphone / humanoid / automotive / space_datacenter
+- **도메인**: smartphone / humanoid / automotive / smartglass
 - **조사일**: YYYY-MM-DD
 - **조사자**: (사람 / Claude 모델)
 - **트리거**: 어떤 질문/필요로 시작했는지

@@ -87,15 +87,6 @@ BUILDERS = [
     ("RMI",                 "build_rmi_archive.py",              "rmi.json"),
     ("Transport & Environment", "build_te_archive.py",           "transport_environment.json"),
     ("IRENA",               "build_irena_archive.py",            "irena.json"),
-    # ── Space Datacenter sources ───────────────────────────────────────
-    ("SpaceNews",             "build_spacenews_archive.py",             "spacenews.json"),
-    ("Space.com",             "build_spacecom_archive.py",              "spacecom.json"),
-    ("IEEE Spectrum (Space)", "build_ieee_spectrum_space_archive.py",   "ieee_spectrum_space.json"),
-    ("Data Center Knowledge", "build_datacenter_knowledge_archive.py",  "datacenter_knowledge.json"),
-    ("Data Center Frontier",  "build_datacenter_frontier_archive.py",   "datacenter_frontier.json"),
-    ("TechCrunch (Space)",    "build_techcrunch_space_archive.py",      "techcrunch_space.json"),
-    ("arXiv (cs.DC)",         "build_arxiv_space_archive.py",           "arxiv_space.json"),
-    # NVIDIA (nvidia_news.json) — humanoid와 공유, 별도 빌더 없음
     # ── Smartglass sources (2026-06-12) ────────────────────────────────
     ("UploadVR",         "build_uploadvr_archive.py",      "uploadvr.json"),
     ("The Ghost Howls",  "build_skarredghost_archive.py",  "skarredghost.json"),

@@ -43,21 +43,6 @@ AUTOMOTIVE_ANALYST_SYSTEM_PROMPT = """당신은 자동차 시장 애널리스트
 - 주요 플레이어: Toyota / Volkswagen Group / BYD / GM / Stellantis / Hyundai-Kia / Ford / Mercedes-Benz / BMW / Tesla / Rivian / NIO
 """
 
-SPACE_DATACENTER_ANALYST_SYSTEM_PROMPT = """당신은 우주·데이터센터 시장 애널리스트입니다.
-
-모든 분석은 다음 3축의 시장 영향 관점에서 수행합니다:
-- Infrastructure (인프라): 위성 발사 능력, 궤도 자원, 데이터센터 용량·전력·냉각
-- Connectivity (연결성): 위성 통신 속도·커버리지, D2D 서비스, 클라우드 연동
-- Demand (수요): 엔터프라이즈·정부·소비자 수요, AI 워크로드, 지역별 채택률
-
-규칙:
-- 모든 분석은 한국어로 작성합니다
-- 모든 수치와 주장에는 반드시 출처를 명시합니다
-- 사실 기반 분석을 우선하며, 추정치는 명확히 표시합니다
-- 투자 관점(주가, 밸류에이션, 매수/매도 추천 등)은 다루지 않습니다
-- 주요 플레이어: SpaceX (Starlink) / Amazon (Kuiper) / OneWeb / Telesat / AWS / Azure / Google Cloud
-"""
-
 SMARTGLASS_ANALYST_SYSTEM_PROMPT = """당신은 스마트글래스(AI/AR 글래스) 시장 애널리스트입니다.
 
 모든 분석은 다음 3축의 시장 영향 관점에서 수행합니다:
@@ -78,7 +63,6 @@ DOMAIN_SYSTEM_PROMPTS = {
     "smartphone": ANALYST_SYSTEM_PROMPT,
     "humanoid": HUMANOID_ANALYST_SYSTEM_PROMPT,
     "automotive": AUTOMOTIVE_ANALYST_SYSTEM_PROMPT,
-    "space_datacenter": SPACE_DATACENTER_ANALYST_SYSTEM_PROMPT,
     "smartglass": SMARTGLASS_ANALYST_SYSTEM_PROMPT,
 }
 
@@ -86,6 +70,5 @@ DOMAIN_ANALYST_TYPES = {
     "smartphone": "senior smartphone market analyst",
     "humanoid": "senior humanoid robotics market analyst",
     "automotive": "senior automotive market analyst",
-    "space_datacenter": "senior space & data center market analyst",
     "smartglass": "senior smart glasses market analyst",
 }

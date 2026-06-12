@@ -7,7 +7,6 @@ const DOMAINS = [
   { id: "automotive", label: "Automotive", icon: "🚗" },
   { id: "smartglass", label: "SmartGlass", icon: "🥽" },
   { id: "tablet",     label: "Tablet",     icon: "📲" },
-  { id: "space_datacenter", label: "Space Datacenter", icon: "◐" },
   { id: "macro",      label: "Macro",      icon: "📊" },
 ];
 
