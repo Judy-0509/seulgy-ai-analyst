@@ -110,6 +110,12 @@ BUILDERS = [
 
 PER_BUILDER_TIMEOUT_SEC = 900  # 빌더당 최대 15분
 
+# 개별 타임아웃 오버라이드 — AR Insider는 robots.txt Crawl-delay 10s 준수로
+# 첫 빌드가 ~90분 소요 (이후 증분 빌드는 빠르지만 빈 서버에서도 완주 가능해야 함)
+BUILDER_TIMEOUT_OVERRIDES = {
+    "AR Insider": 7200,
+}
+
 
 def emit(event: dict):
     print(json.dumps(event, ensure_ascii=False), flush=True)
@@ -132,13 +138,14 @@ def run_builder(name: str, script: str, json_name: str, idx: int) -> dict:
     t0 = time.time()
     ok = False
     err_tail = ""
+    timeout_sec = BUILDER_TIMEOUT_OVERRIDES.get(name, PER_BUILDER_TIMEOUT_SEC)
     try:
         r = subprocess.run(
             [sys.executable, str(SCRIPTS / script)],
             cwd=str(ROOT),
             capture_output=True,
             text=True,
-            timeout=PER_BUILDER_TIMEOUT_SEC,
+            timeout=timeout_sec,
             encoding="utf-8",
             errors="replace",
         )
@@ -146,7 +153,7 @@ def run_builder(name: str, script: str, json_name: str, idx: int) -> dict:
         if not ok:
             err_tail = (r.stderr or r.stdout or "")[-500:]
     except subprocess.TimeoutExpired:
-        err_tail = f"TIMEOUT after {PER_BUILDER_TIMEOUT_SEC}s"
+        err_tail = f"TIMEOUT after {timeout_sec}s"
     except Exception as e:
         err_tail = f"{type(e).__name__}: {e}"
 
