@@ -39,6 +39,7 @@ scripts/_humanoid_topic_suggestions.json
 scripts/_humanoid_topic_suggestions_emerging.json
 scripts/_automotive_topic_suggestions.json
 scripts/_space_datacenter_topic_suggestions.json
+scripts/_smartglass_topic_suggestions.json
 scripts/_*_topic_suggestions_emerging.json
 scripts/_topic_suggestions_*d.json
 scripts/_*_PREV.json
@@ -84,3 +85,4 @@ frontend/dist/
 .claude/
 ETC/
 frontend/src/.omc/
+.gstack/
