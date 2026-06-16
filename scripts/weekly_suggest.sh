@@ -73,14 +73,14 @@ uv run python scripts/suggest_smartglass_emerging.py --days 7 >> "$LOG" 2>&1
 log "=== 주제 선정 완료 — 보고서 생성 시작 ==="
 
 # ── 3. Batch report generation ───────────────────────────────────────
-uv run python scripts/batch_report_gen.py --domain smartphone --delay 60 >> "$LOG" 2>&1
-uv run python scripts/batch_report_gen.py --domain smartphone --include-emerging --delay 60 >> "$LOG" 2>&1
-uv run python scripts/batch_report_gen.py --domain humanoid --delay 60 >> "$LOG" 2>&1
-uv run python scripts/batch_report_gen.py --domain humanoid --include-emerging --delay 60 >> "$LOG" 2>&1
-uv run python scripts/batch_report_gen.py --domain automotive --delay 60 >> "$LOG" 2>&1
-uv run python scripts/batch_report_gen.py --domain automotive --include-emerging --delay 60 >> "$LOG" 2>&1
-uv run python scripts/batch_report_gen.py --domain smartglass --delay 60 >> "$LOG" 2>&1
-uv run python scripts/batch_report_gen.py --domain smartglass --include-emerging --delay 60 >> "$LOG" 2>&1
+uv run python scripts/batch_report_gen.py --domain smartphone --delay 60 >> "$LOG" 2>&1 || log "(batch smartphone 핵심 실패/빈 토픽 — 건너뜀)"
+uv run python scripts/batch_report_gen.py --domain smartphone --include-emerging --delay 60 >> "$LOG" 2>&1 || log "(batch smartphone 이머징 실패/빈 토픽 — 건너뜀)"
+uv run python scripts/batch_report_gen.py --domain humanoid --delay 60 >> "$LOG" 2>&1 || log "(batch humanoid 핵심 실패/빈 토픽 — 건너뜀)"
+uv run python scripts/batch_report_gen.py --domain humanoid --include-emerging --delay 60 >> "$LOG" 2>&1 || log "(batch humanoid 이머징 실패/빈 토픽 — 건너뜀)"
+uv run python scripts/batch_report_gen.py --domain automotive --delay 60 >> "$LOG" 2>&1 || log "(batch automotive 핵심 실패/빈 토픽 — 건너뜀)"
+uv run python scripts/batch_report_gen.py --domain automotive --include-emerging --delay 60 >> "$LOG" 2>&1 || log "(batch automotive 이머징 실패/빈 토픽 — 건너뜀)"
+uv run python scripts/batch_report_gen.py --domain smartglass --delay 60 >> "$LOG" 2>&1 || log "(batch smartglass 핵심 실패/빈 토픽 — 건너뜀)"
+uv run python scripts/batch_report_gen.py --domain smartglass --include-emerging --delay 60 >> "$LOG" 2>&1 || log "(batch smartglass 이머징 실패/빈 토픽 — 건너뜀)"
 
 # ── 3.5 EN 요약 백필 (신규 보고서 제목·핵심요약 자동 번역, 멱등 — 실패해도 보고서엔 영향 없음) ──
 log "[+] EN 요약 백필"

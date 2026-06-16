@@ -1,10 +1,13 @@
 from dataclasses import dataclass
 import asyncio
 import os
+import random
+import time
 from typing import Protocol, runtime_checkable
 
 from dotenv import load_dotenv
-from openai import APITimeoutError, AsyncOpenAI, RateLimitError
+import httpx
+from openai import APIConnectionError, APIStatusError, APITimeoutError, AsyncOpenAI
 
 from src.services.glm_limiter import async_glm47_slot, async_model_slot
 from src.services.token_logger import log_usage, usage_counts
@@ -18,7 +21,8 @@ GLM_ANALYSIS_MODEL = os.getenv("GLM_ANALYSIS_MODEL", "glm-4.7")
 GLM_EXTRACTION_MODEL = os.getenv("GLM_EXTRACTION_MODEL", "glm-4.5-flash")
 # 시사점 / 결론 등 품질 우선 단계에서 override 시 사용.
 GLM_FINAL_MODEL = os.getenv("GLM_FINAL_MODEL", "glm-5.1")
-GLM_REQUEST_TIMEOUT_SECONDS = float(os.getenv("GLM_REQUEST_TIMEOUT_SECONDS", "600"))
+GLM_REQUEST_TIMEOUT_SECONDS = float(os.getenv("GLM_REQUEST_TIMEOUT_SECONDS", "300"))
+GLM_RETRYABLE_STATUS_CODES = {408, 409, 429, 500, 502, 503, 504}
 
 
 @dataclass
@@ -43,18 +47,33 @@ class LLMBackend(Protocol):
 
 class GLMBackend:
     def __init__(self):
-        _key = os.getenv("ZHIPU_API_KEY")
-        if not _key:
+        self._api_key = os.getenv("ZHIPU_API_KEY")
+        if not self._api_key:
             raise RuntimeError(
                 "ZHIPU_API_KEY is not set — add it to your .env (LLM_BACKEND=glm)."
             )
-        self.client = AsyncOpenAI(
-            api_key=_key,
-            base_url=GLM_API_BASE_URL,
-            timeout=GLM_REQUEST_TIMEOUT_SECONDS,
-        )
+        self.client = self._build_client()
         self.analysis_model = GLM_ANALYSIS_MODEL
         self.extraction_model = GLM_EXTRACTION_MODEL
+
+    def _build_client(self) -> AsyncOpenAI:
+        timeout = httpx.Timeout(
+            connect=10.0,
+            read=GLM_REQUEST_TIMEOUT_SECONDS,
+            write=60.0,
+            pool=10.0,
+        )
+        http_client = httpx.AsyncClient(
+            timeout=timeout,
+            limits=httpx.Limits(max_connections=10, max_keepalive_connections=0),
+        )
+        return AsyncOpenAI(
+            api_key=self._api_key,
+            base_url=GLM_API_BASE_URL,
+            timeout=timeout,
+            max_retries=0,
+            http_client=http_client,
+        )
 
     async def complete(self, system: str, user: str, **kwargs) -> LLMResponse:
         max_tokens = kwargs.get("max_tokens", 2000)
@@ -125,12 +144,11 @@ class GLMBackend:
           알 수 없는 모델은 보수적 default (concurrency=1) slot.
         - `use_glm47_limit`: legacy 호환 — 모델 인자 없이 4.7 slot 강제 시 사용.
         """
-        retry_delays = [30, 60, 120]
+        retry_delays = [5, 15, 45]
         last_err = None
-        for attempt, delay in enumerate([0] + retry_delays):
-            if delay:
-                print(f"   [GLM retry] waiting {delay}s (attempt {attempt}/{len(retry_delays)})...")
-                await asyncio.sleep(delay)
+        total_attempts = len(retry_delays) + 1
+        for attempt in range(1, total_attempts + 1):
+            t0 = time.monotonic()
             try:
                 if use_glm47_limit and not model:
                     async with async_glm47_slot():
@@ -139,12 +157,52 @@ class GLMBackend:
                     async with async_model_slot(model):
                         return await self.client.chat.completions.create(**params)
                 return await self.client.chat.completions.create(**params)
-            except (APITimeoutError, RateLimitError) as e:
+            # InternalServerError: Zhipu가 일시 장애를 500 "网络错误…请稍后重试"로
+            # 반환하므로 재시도 대상에 포함 (코드 1234 등).
+            except (APITimeoutError, APIConnectionError, APIStatusError) as e:
                 last_err = e
-                if attempt == len(retry_delays):
+                status_code = getattr(e, "status_code", None)
+                if isinstance(e, APIStatusError) and not _is_retryable_status(status_code):
+                    raise
+                if attempt == total_attempts:
                     break
-                continue
+                body = _error_body_preview(e)
+                elapsed = time.monotonic() - t0
+                delay = retry_delays[attempt - 1]
+                delay_with_jitter = delay + random.uniform(0, delay * 0.3)
+                print(
+                    "   [GLM retry] "
+                    f"model={model or params.get('model', '')} "
+                    f"attempt={attempt}/{total_attempts} "
+                    f"elapsed={elapsed:.1f}s "
+                    f"error={e.__class__.__name__} "
+                    f"status={status_code or '-'} "
+                    f"body={body!r} "
+                    f"waiting={delay_with_jitter:.1f}s"
+                )
+                if isinstance(e, (APITimeoutError, APIConnectionError)):
+                    await self._rebuild_client_after_connection_error()
+                await asyncio.sleep(delay_with_jitter)
         raise last_err
+
+    async def _rebuild_client_after_connection_error(self) -> None:
+        try:
+            await self.client.close()
+        except Exception:
+            pass
+        self.client = self._build_client()
+
+
+def _is_retryable_status(status_code: int | None) -> bool:
+    return status_code in GLM_RETRYABLE_STATUS_CODES
+
+
+def _error_body_preview(exc: Exception) -> str:
+    response = getattr(exc, "response", None)
+    if response is None:
+        return str(exc)[:120]
+    body = getattr(response, "text", "") or str(exc)
+    return body.replace("\n", " ")[:120]
 
 
 class LLMService:

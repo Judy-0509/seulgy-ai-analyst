@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from src.services.llm import LLMService, GLMBackend
+from src.services.llm import GLMBackend, LLMService, _is_retryable_status
 
 
 @pytest.mark.asyncio
@@ -45,3 +45,18 @@ async def test_glm_backend_uses_min_2000_tokens():
         await backend.complete("sys", "user")
 
     assert captured_kwargs.get("max_tokens", 0) >= 2000
+
+
+def test_glm_retryable_status_classification():
+    assert _is_retryable_status(500) is True
+    assert _is_retryable_status(400) is False
+
+
+@pytest.mark.asyncio
+async def test_glm_backend_disables_openai_sdk_retries(monkeypatch):
+    monkeypatch.setenv("ZHIPU_API_KEY", "test-key")
+    backend = GLMBackend()
+    try:
+        assert backend.client.max_retries == 0
+    finally:
+        await backend.client.close()
