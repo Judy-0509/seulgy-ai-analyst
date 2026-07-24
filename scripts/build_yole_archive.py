@@ -229,7 +229,23 @@ async def build(cutoff: str) -> dict:
     existing_entries, known_urls = load_existing()
     print(f"\n  [0/3] 기존 archive 로드: {len(existing_entries)}건")
 
-    from playwright.async_api import async_playwright
+    # playwright 는 optional dependency (브라우저 다운로드 ~150MB). 미설치 환경에서는
+    # traceback 대신 한 줄 skip 으로 종료해 build_all_archives 가 clean skip 으로 집계한다.
+    try:
+        from playwright.async_api import async_playwright
+    except ImportError:
+        print("\n  [Yole] playwright 미설치 — skip "
+              "(활성화: uv add playwright && playwright install chromium)")
+        return {
+            "source": "Yole Group",
+            "site_base": SITE_BASE,
+            "built_at": datetime.now().isoformat(timespec="seconds"),
+            "cutoff_date": cutoff,
+            "entry_count": len(existing_entries),
+            "newly_added": 0,
+            "previously_known": len(existing_entries),
+            "entries": existing_entries,
+        }
 
     async with async_playwright() as pw:
         browser = await pw.chromium.launch(headless=True)

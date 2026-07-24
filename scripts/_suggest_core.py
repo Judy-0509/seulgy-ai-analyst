@@ -5,6 +5,7 @@
 """
 import json
 import os
+import random
 import re
 import sys
 import time as _time
@@ -18,6 +19,8 @@ ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 from src.services.token_logger import log_usage, usage_counts  # noqa: E402
 from src.services.glm_limiter import glm47_slot, flashx_slot  # noqa: E402
+# 재시도 정책은 src/services/llm.py 가 single source of truth — 여기서 재정의하지 않는다.
+from src.services.llm import _error_body_preview, _is_retryable_status  # noqa: E402
 
 _env = ROOT / ".env"
 if _env.exists():
@@ -27,11 +30,22 @@ if _env.exists():
             _k, _v = _line.split("=", 1)
             os.environ.setdefault(_k.strip(), _v.strip())
 
-from openai import OpenAI  # noqa: E402
+import httpx  # noqa: E402
+from openai import (  # noqa: E402
+    APIConnectionError,
+    APIStatusError,
+    APITimeoutError,
+    OpenAI,
+)
 
 ARCHIVES_DIR = ROOT / "data" / "archives"
 REPORTS_DIR  = ROOT / "reports"
 GLM_REQUEST_TIMEOUT_SECONDS = float(os.environ.get("GLM_REQUEST_TIMEOUT_SECONDS", "600"))
+
+
+class SuggestPipelineError(RuntimeError):
+    """파이프라인이 복구 불가 상태로 중단됨 — 호출자(entry script / shell)가 처리."""
+
 
 STOP_WORDS = {
     "the", "and", "for", "with", "from", "that", "this", "will", "have",
@@ -56,10 +70,24 @@ def make_client():
     glm-4.7 thinking 모드 유지. Pass 2 enrich 는 단일 JSON 재작성 작업이라
     enrich_topic() 내부에서 별도로 ENRICH_MODEL (glm-4.7-flashx) 사용.
     """
+    # llm.py:_build_client() 의 sync 대응물 — 세분화 타임아웃 + keep-alive 차단.
+    # max_retries=0: SDK 내장 재시도(기본 2회)가 app-level 재시도와 중첩되면
+    # 대기 시간이 곱해지므로 반드시 끈다.
+    timeout = httpx.Timeout(
+        connect=10.0,
+        read=GLM_REQUEST_TIMEOUT_SECONDS,
+        write=60.0,
+        pool=10.0,
+    )
     client = OpenAI(
         api_key=os.environ["ZHIPU_API_KEY"],
         base_url="https://open.bigmodel.cn/api/paas/v4/",
-        timeout=GLM_REQUEST_TIMEOUT_SECONDS,
+        timeout=timeout,
+        max_retries=0,
+        http_client=httpx.Client(
+            timeout=timeout,
+            limits=httpx.Limits(max_connections=10, max_keepalive_connections=0),
+        ),
     )
     model = os.getenv("GLM_PASS1_MODEL", "glm-4.7")
     thinking_body = {"thinking": {"type": "enabled"}}
@@ -68,6 +96,73 @@ def make_client():
 
 # Pass 2 enrichment 전용 모델 — flashx 가 ~10배 저렴하면서 JSON 재작성에 충분.
 ENRICH_MODEL = os.getenv("GLM_ENRICH_MODEL", "glm-4.7-flashx")
+
+
+# ── Retry policy ────────────────────────────────────────────────────────────
+# rate limit 은 분 단위로 회복되므로 긴 ladder 유지 (기존 동작 보존).
+RATE_LIMIT_DELAYS = (60, 120, 240, 480, 960)
+# 그 밖의 일시 장애(5xx / timeout / connection)는 초 단위로 회복 — llm.py 와 동일.
+TRANSIENT_DELAYS = (5, 15, 45)
+
+
+def _is_rate_limited(exc: Exception, status_code: int | None) -> bool:
+    """rate limit 여부. status 우선, Zhipu business code 1302 만 body 로 보강.
+
+    body 를 들여다보는 것은 1302 한정 — Zhipu 는 동시성 초과를 HTTP status 가 아닌
+    business code 로 알리는 경우가 있어 status 만으로는 판정할 수 없다.
+    """
+    if status_code == 429:
+        return True
+    response = getattr(exc, "response", None)
+    body = getattr(response, "text", "") if response is not None else ""
+    return "1302" in body or "1302" in str(exc)
+
+
+def glm_create_with_retries(client, params: dict, *, slot):
+    """GLM chat.completions.create 를 재시도 정책과 함께 호출.
+
+    재시도 여부는 **오직 status_code** 로 판정한다. 에러 문자열 substring 매칭은
+    금지 — 과거 `"rate" in str(e).lower()` 가 "generate"/"moderate" 에도 걸려
+    5xx 를 rate limit 으로 오분류(60~960s 대기)했고, 반대로 HTTP 502 는
+    "429"/"1302"/"rate" 중 어느 것도 포함하지 않아 재시도 없이 즉시 죽었다.
+
+    slot: limiter 컨텍스트 매니저 factory (glm47_slot / flashx_slot).
+    """
+    model = params.get("model", "")
+    attempt = 0
+    while True:
+        attempt += 1
+        t0 = _time.monotonic()
+        try:
+            with slot():
+                return client.chat.completions.create(**params)
+        except (APITimeoutError, APIConnectionError, APIStatusError) as e:
+            status_code = getattr(e, "status_code", None)
+            rate_limited = _is_rate_limited(e, status_code)
+            if (
+                isinstance(e, APIStatusError)
+                and not rate_limited
+                and not _is_retryable_status(status_code)
+            ):
+                raise
+            delays = RATE_LIMIT_DELAYS if rate_limited else TRANSIENT_DELAYS
+            total_attempts = len(delays) + 1
+            if attempt >= total_attempts:
+                raise
+            delay = delays[attempt - 1]
+            # rate limit ladder 는 기존 동작 유지(고정 대기), 일시 장애는 jitter 추가.
+            wait = delay if rate_limited else delay + random.uniform(0, delay * 0.3)
+            print(
+                "   [GLM retry] "
+                f"model={model} "
+                f"attempt={attempt}/{total_attempts} "
+                f"elapsed={_time.monotonic() - t0:.1f}s "
+                f"error={e.__class__.__name__} "
+                f"status={status_code or '-'} "
+                f"body={_error_body_preview(e)!r} "
+                f"waiting={wait:.1f}s"
+            )
+            _time.sleep(wait)
 
 
 # ── Article helpers ─────────────────────────────────────────────────────────
@@ -750,30 +845,30 @@ def enrich_topic(topic: dict, extra: list[dict], client,
         additional_articles = format_article_list(extra),
     )
     response = None
-    for _attempt in range(5):
-        try:
-            with flashx_slot():
-                response = client.chat.completions.create(
-                    model=ENRICH_MODEL,
-                    messages=[
-                        {"role": "system", "content": enrich_system},
-                        {"role": "user",   "content": prompt},
-                    ],
-                    # max_tokens 4000 → 2000: 실제 JSON 800-1000 토큰, thinking off 시 충분.
-                    max_tokens=2000,
-                    temperature=0.1,
-                    # enrich 는 단일 JSON 재작성 작업이라 reasoning 불필요.
-                    # thinking 명시적 disable → 출력 토큰 ~70% 감소 (median 2781 → ~900).
-                    extra_body={"thinking": {"type": "disabled"}},
-                )
-            break
-        except Exception as _e:
-            if "429" in str(_e) or "1302" in str(_e) or "rate" in str(_e).lower():
-                wait = 60 * (2 ** _attempt)
-                print(f"      [enrich] Rate limit, waiting {wait}s (attempt {_attempt+1}/5)...")
-                _time.sleep(wait)
-            else:
-                raise
+    try:
+        response = glm_create_with_retries(
+            client,
+            {
+                "model": ENRICH_MODEL,
+                "messages": [
+                    {"role": "system", "content": enrich_system},
+                    {"role": "user",   "content": prompt},
+                ],
+                # max_tokens 4000 → 2000: 실제 JSON 800-1000 토큰, thinking off 시 충분.
+                "max_tokens": 2000,
+                "temperature": 0.1,
+                # enrich 는 단일 JSON 재작성 작업이라 reasoning 불필요.
+                # thinking 명시적 disable → 출력 토큰 ~70% 감소 (median 2781 → ~900).
+                "extra_body": {"thinking": {"type": "disabled"}},
+            },
+            slot=flashx_slot,
+        )
+    except (APITimeoutError, APIConnectionError, APIStatusError) as _e:
+        # enrich 는 부가 단계 — 실패해도 원본 토픽으로 우아하게 강등한다.
+        print(
+            f"      [enrich] 호출 실패 — 원본 토픽 유지 "
+            f"({_e.__class__.__name__} status={getattr(_e, 'status_code', None) or '-'})"
+        )
     if response is None:
         return topic
     prompt_tokens, completion_tokens = usage_counts(getattr(response, "usage", None))
@@ -839,30 +934,27 @@ def run_pipeline(
     print(f"[3/5] Pass 1 — {model} thinking ({domain_label})...")
     topics = None
     for _parse_attempt in range(3):
-        for _attempt in range(5):
-            try:
-                with glm47_slot():
-                    response = client.chat.completions.create(
-                        model=model,
-                        messages=[
-                            {"role": "system", "content": system_prompt},
-                            {"role": "user",   "content": user_prompt},
-                        ],
-                        max_tokens=30000,
-                        temperature=0.1,
-                        extra_body=thinking_body,
-                    )
-                break
-            except Exception as _e:
-                if "429" in str(_e) or "1302" in str(_e) or "rate" in str(_e).lower():
-                    wait = 60 * (2 ** _attempt)
-                    print(f"      Rate limit, waiting {wait}s (attempt {_attempt+1}/5)...")
-                    _time.sleep(wait)
-                else:
-                    raise
-        else:
-            print("[!] Rate limit not resolved after 5 attempts")
-            sys.exit(1)
+        try:
+            response = glm_create_with_retries(
+                client,
+                {
+                    "model": model,
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user",   "content": user_prompt},
+                    ],
+                    "max_tokens": 30000,
+                    "temperature": 0.1,
+                    "extra_body": thinking_body,
+                },
+                slot=glm47_slot,
+            )
+        except (APITimeoutError, APIConnectionError, APIStatusError) as _e:
+            raise SuggestPipelineError(
+                f"Pass 1 LLM call failed (model={model}, "
+                f"error={_e.__class__.__name__}, "
+                f"status={getattr(_e, 'status_code', None) or '-'})"
+            ) from _e
         msg       = response.choices[0].message
         reasoning = getattr(msg, "reasoning_content", "") or ""
         content   = msg.content or ""
@@ -878,8 +970,7 @@ def run_pipeline(
             if _parse_attempt < 2:
                 print("      Retrying LLM call...")
     if topics is None:
-        print("[!] JSON parse failed after 3 attempts")
-        sys.exit(1)
+        raise SuggestPipelineError("JSON parse failed after 3 attempts")
     print(f"      → {len(topics)} topics identified")
 
     # Step 4 — Pass 2 enrichment

@@ -21,6 +21,7 @@ NOTIFY_EMAIL="${NOTIFY_EMAIL:-}"
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG"; }
 notify() {
   local msg="$1"
+  local subject="${2:-[Seulgy] 주간 주제 선정 완료}"
   # ntfy.sh push notification
   if [ -n "${NTFY_TOPIC:-}" ]; then
     curl -s -d "$msg" "https://ntfy.sh/$NTFY_TOPIC" > /dev/null || true
@@ -31,7 +32,7 @@ notify() {
 import smtplib, ssl
 from email.message import EmailMessage
 msg = EmailMessage()
-msg['Subject'] = '[Seulgy] 주간 주제 선정 완료'
+msg['Subject'] = '''${subject}'''
 msg['From'] = '${SMTP_USER}'
 msg['To'] = '${NOTIFY_EMAIL}'
 msg.set_content("""$msg""")
@@ -42,33 +43,51 @@ PY
   fi
 }
 
+# 예기치 않은 중단(가드되지 않은 명령 실패)도 반드시 알린다 — 2026-07-20 GLM 502
+# 장애가 월요일 밤부터 금요일까지 무음으로 방치된 원인.
+on_error() {
+  local rc=$?
+  log "[!] 예기치 않은 중단 (exit $rc)"
+  notify "[Seulgy] 주간 파이프라인 비정상 종료 (exit $rc)
+로그: $LOG" "[Seulgy] 주간 파이프라인 실패" || true
+}
+trap on_error ERR
+
+# 실패해도 나머지 단계를 계속 진행하는 단계 실행 helper.
+# set -e 하에서 $? 를 신뢰할 수 없으므로 set +e 로 감싸 rc 를 명시적으로 캡처한다.
+FAILED_STEPS=()
+run_step() {
+  local label="$1"; shift
+  log "$label"
+  set +e
+  "$@" >> "$LOG" 2>&1
+  local rc=$?
+  set -e
+  if [ $rc -ne 0 ]; then
+    log "  [!] 실패 (exit $rc) — 건너뜀: $label"
+    FAILED_STEPS+=("$label")
+  fi
+  return 0
+}
+
 cd "$ROOT"
 
 log "=== 주간 주제 선정 시작 ==="
 
 # ── 0. Archive build ─────────────────────────────────────────────────
-log "[0/4] 전체 아카이브 빌드"
-uv run python scripts/build_all_archives.py >> "$LOG" 2>&1
+run_step "[0/4] 전체 아카이브 빌드" uv run python scripts/build_all_archives.py
 
 # ── 1. Core 30-day pass ──────────────────────────────────────────────
-log "[1/8] 스마트폰 핵심 주제 (14일)"
-uv run python scripts/suggest_smartphone_topics.py --days 14 >> "$LOG" 2>&1
-log "[2/8] 휴머노이드 핵심 주제 (30일)"
-uv run python scripts/suggest_humanoid_topics.py --days 30 >> "$LOG" 2>&1
-log "[3/8] 자동차 핵심 주제 (30일)"
-uv run python scripts/suggest_automotive_topics.py --days 30 >> "$LOG" 2>&1
-log "[4/8] 스마트글래스 핵심 주제 (30일)"
-uv run python scripts/suggest_smartglass_topics.py --days 30 >> "$LOG" 2>&1
+run_step "[1/8] 스마트폰 핵심 주제 (14일)" uv run python scripts/suggest_smartphone_topics.py --days 14
+run_step "[2/8] 휴머노이드 핵심 주제 (30일)" uv run python scripts/suggest_humanoid_topics.py --days 30
+run_step "[3/8] 자동차 핵심 주제 (30일)" uv run python scripts/suggest_automotive_topics.py --days 30
+run_step "[4/8] 스마트글래스 핵심 주제 (30일)" uv run python scripts/suggest_smartglass_topics.py --days 30
 
 # ── 2. Emerging 7-day pass ───────────────────────────────────────────
-log "[5/8] 스마트폰 이머징 주제 (7일)"
-uv run python scripts/suggest_smartphone_emerging.py --days 7 >> "$LOG" 2>&1
-log "[6/8] 휴머노이드 이머징 주제 (7일)"
-uv run python scripts/suggest_humanoid_emerging.py --days 7 >> "$LOG" 2>&1
-log "[7/8] 자동차 이머징 주제 (7일)"
-uv run python scripts/suggest_automotive_emerging.py --days 7 >> "$LOG" 2>&1
-log "[8/8] 스마트글래스 이머징 주제 (7일)"
-uv run python scripts/suggest_smartglass_emerging.py --days 7 >> "$LOG" 2>&1
+run_step "[5/8] 스마트폰 이머징 주제 (7일)" uv run python scripts/suggest_smartphone_emerging.py --days 7
+run_step "[6/8] 휴머노이드 이머징 주제 (7일)" uv run python scripts/suggest_humanoid_emerging.py --days 7
+run_step "[7/8] 자동차 이머징 주제 (7일)" uv run python scripts/suggest_automotive_emerging.py --days 7
+run_step "[8/8] 스마트글래스 이머징 주제 (7일)" uv run python scripts/suggest_smartglass_emerging.py --days 7
 
 log "=== 주제 선정 완료 — 보고서 생성 시작 ==="
 
@@ -99,11 +118,27 @@ HM_EM=$(python3 -c "import json; d=json.load(open('$ROOT/scripts/_humanoid_topic
 AU_EM=$(python3 -c "import json; d=json.load(open('$ROOT/scripts/_automotive_topic_suggestions_emerging.json')); print(len(d.get('topics',[])))" 2>/dev/null || echo "?")
 SG_EM=$(python3 -c "import json; d=json.load(open('$ROOT/scripts/_smartglass_topic_suggestions_emerging.json')); print(len(d.get('topics',[])))" 2>/dev/null || echo "?")
 
-notify "[$WEEK] 주간 주제 선정 완료 ✓
-스마트폰: 핵심 ${SP_COUNT}개 + 이머징 ${SP_EM}개
+SUMMARY="스마트폰: 핵심 ${SP_COUNT}개 + 이머징 ${SP_EM}개
 휴머노이드: 핵심 ${HM_COUNT}개 + 이머징 ${HM_EM}개
 자동차: 핵심 ${AU_COUNT}개 + 이머징 ${AU_EM}개
 스마트글래스: 핵심 ${SG_COUNT}개 + 이머징 ${SG_EM}개
 로그: $LOG"
+
+# ${#FAILED_STEPS[@]} 는 빈 배열에도 안전 — bash 3.2 + set -u 에서
+# ${FAILED_STEPS[@]} 직접 전개는 unbound variable 오류이므로 개수로 먼저 게이트한다.
+if [ ${#FAILED_STEPS[@]} -eq 0 ]; then
+  notify "[$WEEK] 주간 주제 선정 완료 ✓
+$SUMMARY"
+else
+  FAILED_LIST=""
+  for step in "${FAILED_STEPS[@]}"; do
+    FAILED_LIST="$FAILED_LIST
+  · $step"
+  done
+  notify "[$WEEK] 주간 주제 선정 부분 완료 ⚠ (실패 ${#FAILED_STEPS[@]}건)
+$SUMMARY
+
+실패 단계:$FAILED_LIST" "[Seulgy] 주간 주제 선정 부분 완료 (실패 ${#FAILED_STEPS[@]}건)"
+fi
 
 log "알림 전송 완료"
