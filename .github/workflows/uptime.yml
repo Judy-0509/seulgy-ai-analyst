@@ -1,0 +1,131 @@
+name: External uptime monitor
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+
+concurrency:
+  group: uptime
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+      EVENT_SCHEDULE: ${{ github.event.schedule }}
+    steps:
+      - name: Check uptime and send alerts
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          send_ntfy() {
+            local title=$1 priority=$2 tags=$3 body=$4
+            [[ -n "$NTFY_TOPIC" ]] || return 0
+            curl -sS -m 15 \
+              -H "Title: $title" \
+              -H "Priority: $priority" \
+              -H "Tags: $tags" \
+              -H "Click: https://seulgy.com" \
+              -d "$body" "https://ntfy.sh/$NTFY_TOPIC" >/dev/null || echo '::warning::ntfy push failed'
+          }
+
+          if [[ -z "${NTFY_TOPIC:-}" ]]; then
+            echo '::warning::NTFY_TOPIC secret not set'
+          fi
+
+          http_code=000
+          up=false
+          for attempt in 1 2 3; do
+            code="$(curl -sS -o /dev/null -w '%{http_code}' -m 20 https://seulgy.com/api/archives/status || true)"
+            http_code="${code:-000}"
+            if [[ "$http_code" == 200 ]]; then
+              up=true
+              break
+            fi
+            if (( attempt < 3 )); then sleep 20; fi
+          done
+
+          previous="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow uptime.yml --status completed --limit 1 --json conclusion -q '.[0].conclusion' || true)"
+          if [[ "$up" == false && "$previous" != failure ]]; then
+            send_ntfy 'seulgy.com DOWN' urgent rotating_light "seulgy.com DOWN
+          HTTP $http_code — Mac Mini 전원/네트워크(Wi-Fi) 또는 cloudflared 확인 필요"
+          elif [[ "$up" == true && "$previous" == failure ]]; then
+            send_ntfy 'seulgy.com UP' default white_check_mark 'seulgy.com 복구됨'
+          fi
+
+          oldest_days='not checked'
+          if [[ "${GITHUB_EVENT_NAME:-}" == workflow_dispatch || "${EVENT_SCHEDULE:-}" == '0 0 * * *' ]]; then
+            topic_report="$(python3 - <<'PY'
+          import json
+          from datetime import datetime, timedelta, timezone
+          from urllib.parse import urlencode
+          from urllib.request import Request, urlopen
+
+          domains = ("smartphone", "humanoid", "automotive", "smartglass")
+          records = []
+          unknown = []
+          for domain in domains:
+              url = "https://seulgy.com/api/topics/suggested?" + urlencode({"domain": domain})
+              try:
+                  with urlopen(Request(url, headers={"User-Agent": "Mozilla/5.0"}), timeout=10) as response:
+                      generated_at = json.load(response).get("generated_at")
+                  if not generated_at:
+                      raise ValueError("generated_at is empty")
+                  generated = datetime.fromisoformat(generated_at.replace("Z", "+00:00"))
+                  date = generated.strftime("%Y-%m-%d")
+                  if generated.tzinfo is None:
+                      generated = (generated - timedelta(hours=9)).replace(tzinfo=timezone.utc)
+                  else:
+                      generated = generated.astimezone(timezone.utc)
+                  age = max(0.0, (datetime.now(timezone.utc) - generated).total_seconds() / 86400)
+                  records.append((domain, date, age))
+              except Exception:
+                  unknown.append(domain)
+
+          if unknown:
+              print(f"{unknown[0]}\tunknown\tunknown\ttrue")
+          else:
+              domain, date, age = max(records, key=lambda record: record[2])
+              print(f"{domain}\t{date}\t{age:.1f}\t{str(age > 8).lower()}")
+          PY
+            )"
+            IFS=$'\t' read -r oldest_domain oldest_date oldest_days topics_stale <<<"$topic_report"
+
+            if [[ "$topics_stale" == true ]]; then
+              if [[ "$oldest_days" == unknown ]]; then
+                topic_message="추천 주제 갱신 시점 확인 불가 (가장 오래된 도메인: $oldest_domain, $oldest_date) — Mac 주간 작업(com.seulgy.weekly-suggest) 로그 확인"
+              else
+                topic_message="추천 주제가 ${oldest_days}일째 갱신 안 됨 (가장 오래된 도메인: $oldest_domain, $oldest_date) — Mac 주간 작업(com.seulgy.weekly-suggest) 로그 확인"
+              fi
+            else
+              topic_message="추천 주제 최신화 ${oldest_days}일 전 ($oldest_date)"
+            fi
+
+            if [[ "$up" == false ]]; then
+              send_ntfy 'Seulgy ALERT' high warning "Seulgy 이상
+          사이트 DOWN(HTTP $http_code) · $topic_message"
+            elif [[ "$topics_stale" == true ]]; then
+              send_ntfy 'Seulgy TOPICS STALE' high warning "Seulgy 주제 갱신 멈춤
+          $topic_message"
+            else
+              send_ntfy 'Seulgy STATUS' low white_check_mark "Seulgy 정상
+          사이트 UP · $topic_message"
+            fi
+
+            # ponytail: keepalive — GitHub disables scheduled workflows after 60 days without repo activity.
+            gh api -X PUT "repos/$GITHUB_REPOSITORY/actions/workflows/uptime.yml/enable" || true
+          fi
+
+          status=UP
+          if [[ "$up" == false ]]; then status=DOWN; fi
+          printf '%s\n' "- Status: $status · HTTP $http_code · oldest topic age: $oldest_days" >>"$GITHUB_STEP_SUMMARY"
+          if [[ "$up" == false ]]; then exit 1; fi
