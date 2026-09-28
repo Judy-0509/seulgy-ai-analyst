@@ -171,16 +171,25 @@ async def build() -> dict:
 
     async with httpx.AsyncClient(headers=HEADERS, follow_redirects=True) as client:
         all_pairs: list[tuple[str, str, str]] = []
+        listing_tried = listing_successes = 0
+        last_error = "no listing fetches were attempted"
         for idx_url in INDEX_URLS:
             print(f"\n  [1/3] 인덱스 수집: {idx_url}")
+            listing_tried += 1
             status, html = await fetch(client, idx_url)
-            if status != 200:
+            if not (200 <= status < 300 and html.strip()):
+                last_error = html[:200] or f"HTTP {status} (empty body)"
                 print(f"  ⚠ 인덱스 실패: HTTP {status}")
                 continue
+            listing_successes += 1
             ps = parse_index(html)
             print(f"  → 발견: {len(ps)}건")
             all_pairs.extend(ps)
 
+        if not listing_successes:
+            raise RuntimeError(
+                f"all listing fetches failed ({listing_tried} tried): {last_error}"
+            )
         # 중복 제거
         uniq: dict[str, tuple[str, str, str]] = {}
         for u, t, d in all_pairs:

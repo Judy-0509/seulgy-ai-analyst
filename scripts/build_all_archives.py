@@ -21,6 +21,8 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
+from urllib.error import HTTPError
+from urllib.request import urlopen
 
 ROOT     = Path(__file__).parent.parent
 SCRIPTS  = ROOT / "scripts"
@@ -112,6 +114,14 @@ def emit(event: dict):
     print(json.dumps(event, ensure_ascii=False), flush=True)
 
 
+def network_probe():
+    try:
+        with urlopen("https://open.bigmodel.cn", timeout=10) as response:
+            response.read(1)
+    except HTTPError:
+        pass  # Any HTTP status confirms DNS, TCP, and TLS worked.
+
+
 def count_entries(p: Path) -> int:
     if not p.exists():
         return 0
@@ -164,11 +174,35 @@ def run_builder(name: str, script: str, json_name: str, idx: int) -> dict:
 
 def main():
     emit({"type": "start", "total": len(BUILDERS), "ts": datetime.now().isoformat()})
+    try:
+        network_probe()
+    except Exception as e:
+        error = f"{type(e).__name__}: {e}"
+        emit({"type": "network_down", "error": error, "ts": datetime.now().isoformat()})
+        summary = []
+        for i, (name, _, json_name) in enumerate(BUILDERS, 1):
+            before = count_entries(ARCHIVES / json_name)
+            result = {
+                "type": "builder_done", "idx": i, "name": name, "ok": False,
+                "before": before, "after": before, "added": 0,
+                "elapsed_sec": 0.0, "error": error,
+            }
+            summary.append(result)
+            emit(result)
+        emit({
+            "type": "complete", "summary": summary, "total_added": 0,
+            "succeeded": 0, "failed": len(BUILDERS),
+            "ts": datetime.now().isoformat(),
+        })
+        print("FAILED builders: " + ", ".join(s["name"] for s in summary), file=sys.stderr)
+        sys.exit(1)
+
     summary = []
     for i, (name, script, json_name) in enumerate(BUILDERS, 1):
         result = run_builder(name, script, json_name, i)
         summary.append(result)
         emit(result)
+    failed = [s["name"] for s in summary if not s["ok"]]
     emit({
         "type": "complete",
         "summary": summary,
@@ -177,6 +211,9 @@ def main():
         "failed":      sum(1 for s in summary if not s["ok"]),
         "ts": datetime.now().isoformat(),
     })
+    if failed:
+        print("FAILED builders: " + ", ".join(failed), file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

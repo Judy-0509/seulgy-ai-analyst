@@ -131,7 +131,7 @@ async def build() -> dict:
 
     async with httpx.AsyncClient(headers=HEADERS, follow_redirects=True) as client:
         status, xml = await fetch(client, SITEMAP_URL)
-        if status != 200:
+        if not (200 <= status < 300 and xml.strip()):
             raise RuntimeError(f"sitemap fetch failed: HTTP {status}")
         pairs = parse_sitemap(xml)
         new_pairs = [(u, lm) for u, lm in pairs if u not in known_urls]

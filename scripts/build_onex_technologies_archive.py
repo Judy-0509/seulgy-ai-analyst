@@ -180,12 +180,11 @@ async def build() -> dict:
     async with httpx.AsyncClient(headers=HEADERS, follow_redirects=True) as client:
         print(f"\n  [1/3] 인덱스 수집: {INDEX_URL}")
         status, html = await fetch(client, INDEX_URL)
-        if status != 200:
-            print(f"  ⚠ 인덱스 실패: HTTP {status}")
-            pairs = []
-        else:
-            pairs = parse_index(html)
-            print(f"  → 발견: {len(pairs)}건")
+        if not (200 <= status < 300 and html.strip()):
+            error = html[:200] or f"HTTP {status} (empty body)"
+            raise RuntimeError(f"all listing fetches failed (1 tried): {error}")
+        pairs = parse_index(html)
+        print(f"  → 발견: {len(pairs)}건")
 
         new_pairs = [(u, t, d) for u, t, d in pairs if u not in known_urls]
         skipped   = len(pairs) - len(new_pairs)

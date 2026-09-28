@@ -103,9 +103,19 @@ async def build():
 
     async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT, follow_redirects=True, headers=HEADERS) as client:
         new_entries = []
+        listing_tried = 1
+        listing_successes = 0
+        last_error = "no listing fetches were attempted"
 
         print(f"\n  [1/3] RSS 수집: {RSS_URL}")
         feed = feedparser.parse(RSS_URL, agent=HEADERS["User-Agent"])
+        feed_status = getattr(feed, "status", None)
+        if not feed.entries and not (feed_status == 200 and not getattr(feed, "bozo", False)):
+            last_error = str(getattr(feed, "bozo_exception", None) or (
+                f"HTTP {feed_status}" if feed_status is not None else "no status or entries"
+            ))
+        else:
+            listing_successes += 1
         rss_added = 0
         for e in feed.entries:
             url = e.get("link", "").strip()
@@ -122,9 +132,11 @@ async def build():
         print(f"      RSS 신규 {rss_added}건 (2026년)")
 
         print(f"\n  [2/3] sitemap 수집: {SITEMAP_URL}")
+        listing_tried += 1
         st, body = await fetch(client, SITEMAP_URL)
         sitemap_added = 0
-        if st == 200:
+        if 200 <= st < 300 and body.strip():
+            listing_successes += 1
             pairs = [(u, lm) for u, lm in parse_sitemap(body) if is_2026(lm)][:MAX_ARTICLES]
             new_pairs = [(u, lm) for u, lm in pairs if u not in known_urls]
             print(f"      sitemap 2026년 {len(pairs)}건, fetch 대상 {len(new_pairs)}건")
@@ -144,8 +156,14 @@ async def build():
                 if r and is_2026(r["lastmod"]):
                     new_entries.append(r); sitemap_added += 1
         else:
+            last_error = body[:200] or f"HTTP {st} (empty body)"
             print(f"      sitemap 실패 [{st}]")
         print(f"      sitemap 신규 {sitemap_added}건")
+
+        if not listing_successes:
+            raise RuntimeError(
+                f"all listing fetches failed ({listing_tried} tried): {last_error}"
+            )
 
     all_entries = existing_entries + new_entries
     seen = set(); merged = []

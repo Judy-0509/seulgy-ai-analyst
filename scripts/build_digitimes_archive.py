@@ -100,9 +100,10 @@ async def build() -> dict:
     async with httpx.AsyncClient(headers=HEADERS, follow_redirects=True, timeout=20) as c:
         print("\n  [1/2] RSS fetch")
         r = await c.get(RSS_URL)
-        if r.status_code != 200:
-            print(f"  ! RSS HTTP {r.status_code} — abort")
-            return {}
+        if not (200 <= r.status_code < 300 and r.text.strip()):
+            raise RuntimeError(
+                f"all listing fetches failed (1 tried): HTTP {r.status_code}"
+            )
         items = parse_rss(r.text)
         print(f"  → RSS {len(items)}건 파싱")
 

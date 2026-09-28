@@ -137,6 +137,8 @@ async def build(months: int) -> dict:
     print(f"\n  [1/3] sitemap 수집 ({len(target_months)}개월)")
 
     pairs: list[tuple[str, str]] = []
+    listing_successes = 0
+    last_error = "no listing fetches were attempted"
     async with httpx.AsyncClient(
         timeout=REQUEST_TIMEOUT, follow_redirects=True, headers=HEADERS
     ) as client:
@@ -145,12 +147,19 @@ async def build(months: int) -> dict:
             t0 = time.time()
             status, body = await fetch(client, url)
             dt = round(time.time() - t0, 2)
-            if status == 200:
+            if 200 <= status < 300 and body.strip():
+                listing_successes += 1
                 month_pairs = parse_sitemap(body)
                 pairs.extend(month_pairs)
                 print(f"    [{status}] {ym}: {len(month_pairs):3d}건 ({dt}s)")
             else:
+                last_error = body[:200] or f"HTTP {status} (empty body)"
                 print(f"    [{status}] {ym}: skip ({dt}s)")
+
+        if not listing_successes:
+            raise RuntimeError(
+                f"all listing fetches failed ({len(target_months)} tried): {last_error}"
+            )
 
         # 중복 제거 (lastmod 기준 최신순)
         seen = set()

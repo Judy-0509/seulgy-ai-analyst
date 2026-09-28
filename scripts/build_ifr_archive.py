@@ -152,12 +152,17 @@ async def build() -> dict:
 
     async with httpx.AsyncClient(headers=HEADERS, follow_redirects=True) as client:
         all_pairs: dict[str, str] = {}
+        listing_tried = listing_successes = 0
+        last_error = "no listing fetches were attempted"
         for sm_url in SITEMAP_URLS:
             print(f"\n  [1/3] sitemap: {sm_url}")
+            listing_tried += 1
             status, xml = await fetch(client, sm_url)
-            if status != 200:
+            if not (200 <= status < 300 and xml.strip()):
+                last_error = xml[:200] or f"HTTP {status} (empty body)"
                 print(f"  ⚠ sitemap 실패: HTTP {status}")
                 continue
+            listing_successes += 1
             pairs = parse_sitemap(xml)
             print(f"  → 발견: {len(pairs)}건")
             for u, lm in pairs:
@@ -167,6 +172,10 @@ async def build() -> dict:
                 elif lm and not all_pairs[u]:
                     all_pairs[u] = lm
 
+        if not listing_successes:
+            raise RuntimeError(
+                f"all listing fetches failed ({listing_tried} tried): {last_error}"
+            )
         pairs_list = [(u, lm) for u, lm in all_pairs.items()]
         new_pairs = [(u, lm) for u, lm in pairs_list if u not in known_urls]
         skipped   = len(pairs_list) - len(new_pairs)

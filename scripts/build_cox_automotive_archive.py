@@ -103,9 +103,9 @@ def extract_meta(html: str) -> tuple[str, str]:
 
 async def collect_urls(client: httpx.AsyncClient) -> list[tuple[str, str]]:
     status, body = await fetch(client, SITEMAP_INDEX)
-    if status != 200:
-        print(f"  ✗ sitemap index 실패 [{status}]: {SITEMAP_INDEX}")
-        return []
+    if not (200 <= status < 300 and body.strip()):
+        error = body[:200] or f"HTTP {status} (empty body)"
+        raise RuntimeError(f"all listing fetches failed (1 tried): {error}")
 
     sub_sitemaps, _ = parse_sitemap(body)
     # insight-sitemap.xml 계열 + page-sitemap.xml 만 처리
@@ -116,7 +116,7 @@ async def collect_urls(client: httpx.AsyncClient) -> list[tuple[str, str]]:
     articles: list[tuple[str, str]] = []
     for sm_url in target_sitemaps:
         s, b = await fetch(client, sm_url)
-        if s == 200:
+        if 200 <= s < 300 and b.strip():
             _, more = parse_sitemap(b)
             articles.extend(more)
 

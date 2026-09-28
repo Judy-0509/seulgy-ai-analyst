@@ -67,6 +67,12 @@ def build() -> dict:
 
     print(f"\n  [1/2] RSS 수집: {RSS_URL}")
     feed = feedparser.parse(RSS_URL)
+    status = getattr(feed, "status", None)
+    if not feed.entries and not (status == 200 and not getattr(feed, "bozo", False)):
+        error = getattr(feed, "bozo_exception", None) or (
+            f"HTTP {status}" if status is not None else "no status or entries"
+        )
+        raise RuntimeError(f"all listing fetches failed (1 tried): {error}")
     print(f"  → 피드 항목: {len(feed.entries)}건")
 
     new_entries: list[dict] = []

@@ -94,9 +94,9 @@ def extract_meta(html):
 async def collect_urls(client):
     """sitemap_index → 사용 가능한 sub-sitemap → article URLs 수집."""
     st, body = await fetch(client, SITEMAP_URL)
-    if st != 200:
-        print(f"  ✗ sitemap_index 실패 [{st}]")
-        return []
+    if not (200 <= st < 300 and body.strip()):
+        error = body[:200] or f"HTTP {st} (empty body)"
+        raise RuntimeError(f"all listing fetches failed (1 tried): {error}")
     sub_sitemaps, _ = parse_sitemap(body)
     use_subs = [s for s in sub_sitemaps if any(k in s for k in SUB_SITEMAP_INCLUDE)]
     print(f"  → sub-sitemap: 전체 {len(sub_sitemaps)}, 사용 {len(use_subs)}")
@@ -108,7 +108,7 @@ async def collect_urls(client):
         # ACEA의 일부 sub-sitemap이 http://를 사용 — https로 강제 업그레이드
         sm_url = sm_url.replace("http://", "https://")
         s, b = await fetch(client, sm_url)
-        if s == 200:
+        if 200 <= s < 300 and b.strip():
             _, more = parse_sitemap(b)
             pairs.extend(more)
 

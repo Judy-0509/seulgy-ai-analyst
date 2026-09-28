@@ -123,9 +123,11 @@ async def build() -> dict:
     async with httpx.AsyncClient(headers=HEADERS, follow_redirects=True) as client:
         print("\n  [1/3] sitemap index 수집")
         s, xml = await fetch(client, SITEMAP_INDEX)
-        if s != 200:
-            print(f"  ! sitemap HTTP {s}")
-            return {}
+        if not (200 <= s < 300 and xml.strip()):
+            error = xml[:200] or f"HTTP {s} (empty body)"
+            raise RuntimeError(
+                f"all listing fetches failed (1 tried): {error}"
+            )
         sub_sitemaps = parse_sitemap_index(xml)
         print(f"  → 자식 post/press-sitemap {len(sub_sitemaps)}개")
 

@@ -143,17 +143,26 @@ async def build(months: int) -> dict:
     async with httpx.AsyncClient(headers=HEADERS, follow_redirects=True) as client:
         print("\n  [1/3] sitemap 수집")
         all_pairs: list[tuple[str, str]] = []
+        listing_tried = listing_successes = 0
+        last_error = "no listing fetches were attempted"
 
         for n in range(1, MAX_SITEMAP_N + 1):
             sm_url = SITEMAP_FMT.format(n=n)
+            listing_tried += 1
             st, xml = await fetch(client, sm_url)
-            if st != 200:
+            if not (200 <= st < 300 and xml.strip()):
+                last_error = xml[:200] or f"HTTP {st} (empty body)"
                 print(f"    sitemap_{n}: skip (HTTP {st})")
                 continue
+            listing_successes += 1
             pairs = parse_sitemap(xml, cutoff)
             all_pairs.extend(pairs)
             print(f"    sitemap_{n}: {len(pairs):4d}건 (cutoff 이후, 미디어 제외)")
 
+        if not listing_successes:
+            raise RuntimeError(
+                f"all listing fetches failed ({listing_tried} tried): {last_error}"
+            )
         # 중복 제거
         seen_u: set[str] = set()
         unique = []

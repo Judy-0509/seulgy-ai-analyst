@@ -81,8 +81,9 @@ async def collect_sitemap_urls(client: httpx.AsyncClient) -> list[tuple[str, str
     out: list[tuple[str, str]] = []
     seen: set[str] = set()
     status, body = await fetch(client, SITEMAP_URL)
-    if status != 200:
-        return out
+    if not (200 <= status < 300 and body.strip()):
+        error = body[:200] or f"HTTP {status} (empty body)"
+        raise RuntimeError(f"all listing fetches failed (1 tried): {error}")
     for url, lm in re.findall(
         r"<loc>([^<]+)</loc>\s*(?:<lastmod>([^<]*)</lastmod>)?", body
     ):

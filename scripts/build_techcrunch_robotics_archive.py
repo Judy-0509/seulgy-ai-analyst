@@ -125,6 +125,8 @@ async def build(months: int) -> dict:
     # 1. 카테고리 페이지 순회
     print(f"\n  [1/3] 카테고리 페이지 순회 (최대 {MAX_PAGES}페이지)")
     all_urls: list[str] = []
+    listing_tried = listing_successes = 0
+    last_error = "no listing fetches were attempted"
 
     async with httpx.AsyncClient(headers=HEADERS, follow_redirects=True) as client:
         stop_flag = False
@@ -132,13 +134,17 @@ async def build(months: int) -> dict:
             if stop_flag:
                 break
             page_url = CATEGORY_BASE.format(page)
+            listing_tried += 1
             st, html = await fetch(client, page_url)
             if st == 404 or st == 0:
+                last_error = html[:200] or f"HTTP {st} (empty body)"
                 print(f"    page {page:3d}: 종료 (HTTP {st})")
                 break
-            if st != 200:
+            if not (200 <= st < 300 and html.strip()):
+                last_error = html[:200] or f"HTTP {st} (empty body)"
                 print(f"    page {page:3d}: skip (HTTP {st})")
                 continue
+            listing_successes += 1
 
             links = parse_article_links(html)
             if not links:
@@ -160,6 +166,10 @@ async def build(months: int) -> dict:
             if stop_flag:
                 print(f"    → cutoff {cutoff} 도달 → 순회 종료")
 
+        if not listing_successes:
+            raise RuntimeError(
+                f"all listing fetches failed ({listing_tried} tried): {last_error}"
+            )
         print(f"  → 수집 URL: {len(all_urls)}건")
 
         # 기존 URL 스킵

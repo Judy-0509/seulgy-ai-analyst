@@ -129,14 +129,19 @@ async def collect_urls(client: httpx.AsyncClient, year: int, months_back: int | 
 
     pairs: list[tuple[str, str]] = []
     seen = set()
+    listing_tried = listing_successes = 0
+    last_error = "no listing fetches were attempted"
 
     # 월별 archive sitemap (om{ID} 패턴)
     for mname in targets:
         url = MONTHLY_SITEMAP_TEMPLATE.format(mname=mname, year=year)
+        listing_tried += 1
         s, body = await fetch(client, url)
-        if s != 200:
+        if not (200 <= s < 300 and body.strip()):
+            last_error = body[:200] or f"HTTP {s} (empty body)"
             print(f"    [{s}] {mname}-{year}: skip")
             continue
+        listing_successes += 1
         month_pairs = parse_sitemap(body, url_filter=lambda u: bool(ARTICLE_PATTERN.search(u)))
         added = 0
         for u, lm in month_pairs:
@@ -149,8 +154,10 @@ async def collect_urls(client: httpx.AsyncClient, year: int, months_back: int | 
 
     # /insights URL 보강 (sitemap-general)
     print("\n    /insights 보강 (sitemap-general)")
+    listing_tried += 1
     s, body = await fetch(client, GENERAL_SITEMAP)
-    if s == 200:
+    if 200 <= s < 300 and body.strip():
+        listing_successes += 1
         ins_pairs = parse_sitemap(
             body,
             url_filter=lambda u: f"/insights/{year}/" in u
@@ -163,7 +170,13 @@ async def collect_urls(client: httpx.AsyncClient, year: int, months_back: int | 
             pairs.append((u, lm))
             added += 1
         print(f"    /insights/{year}: {added}건 추가")
+    else:
+        last_error = body[:200] or f"HTTP {s} (empty body)"
 
+    if not listing_successes:
+        raise RuntimeError(
+            f"all listing fetches failed ({listing_tried} tried): {last_error}"
+        )
     print(f"\n  → 총 URL: {len(pairs)}건")
     return pairs
 

@@ -102,9 +102,9 @@ def extract_meta(html: str) -> tuple[str, str]:
 async def collect_urls(client: httpx.AsyncClient) -> list[tuple[str, str]]:
     """sitemap(index) → [(url, lastmod)] 수집."""
     status, body = await fetch(client, SITEMAP_URL)
-    if status != 200:
-        print(f"  ✗ sitemap 실패 [{status}]: {SITEMAP_URL}")
-        return []
+    if not (200 <= status < 300 and body.strip()):
+        error = body[:200] or f"HTTP {status} (empty body)"
+        raise RuntimeError(f"all listing fetches failed (1 tried): {error}")
 
     sub_sitemaps, articles = parse_sitemap(body)
 
@@ -112,7 +112,7 @@ async def collect_urls(client: httpx.AsyncClient) -> list[tuple[str, str]]:
         print(f"  → sitemap index: sub-sitemap {len(sub_sitemaps)}개")
         for sm_url in sub_sitemaps:
             s, b = await fetch(client, sm_url)
-            if s == 200:
+            if 200 <= s < 300 and b.strip():
                 _, more = parse_sitemap(b)
                 articles.extend(more)
 

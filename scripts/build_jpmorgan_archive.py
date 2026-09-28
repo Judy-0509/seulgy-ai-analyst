@@ -89,10 +89,15 @@ async def fetch(client: httpx.AsyncClient, url: str) -> tuple[int, str]:
 async def collect_sitemap_urls(client: httpx.AsyncClient) -> list[tuple[str, str]]:
     out: list[tuple[str, str]] = []
     seen: set[str] = set()
+    tried = successes = 0
+    last_error = "no listing fetches were attempted"
     for sm_url in SITEMAP_URLS:
+        tried += 1
         status, body = await fetch(client, sm_url)
-        if status != 200:
+        if not (200 <= status < 300 and body.strip()):
+            last_error = body[:200] or f"HTTP {status} (empty body)"
             continue
+        successes += 1
         for url, lm in re.findall(
             r"<loc>([^<]+)</loc>\s*(?:<lastmod>([^<]*)</lastmod>)?", body
         ):
@@ -102,6 +107,8 @@ async def collect_sitemap_urls(client: httpx.AsyncClient) -> list[tuple[str, str
             seen.add(url)
             if is_humanoid_url(url):
                 out.append((url, (lm or "").strip()))
+    if not successes:
+        raise RuntimeError(f"all listing fetches failed ({tried} tried): {last_error}")
     return out
 
 

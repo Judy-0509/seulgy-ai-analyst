@@ -99,13 +99,19 @@ async def collect_urls_until(client: httpx.AsyncClient, cutoff_date: str, max_pa
     """페이지 1, 2, 3... 순회하며 cutoff_date 이전 기사가 나타날 때까지 URL 수집."""
     collected: dict[str, str] = {}
     last_seen_date = None
+    listing_tried = 0
+    listing_successes = 0
+    last_error = "no listing fetches were attempted"
     print(f"\n  [1/3] 페이지네이션 크롤 (cutoff: {cutoff_date}, max_pages: {max_pages})")
     for page in range(1, max_pages + 1):
         url = INDEX_TEMPLATE.format(n=page)
+        listing_tried += 1
         s, html = await fetch(client, url)
-        if s != 200:
+        if not (200 <= s < 300 and html.strip()):
+            last_error = html[:200] or f"HTTP {s} (empty body)"
             print(f"    [page {page:3d}] HTTP {s} — 종료")
             break
+        listing_successes += 1
         links = extract_article_links(html)
         if not links:
             print(f"    [page {page:3d}] article 0건 — 종료")
@@ -131,6 +137,10 @@ async def collect_urls_until(client: httpx.AsyncClient, cutoff_date: str, max_pa
             print(f"    → 페이지 {page}의 최노 {page_oldest} < cutoff {cutoff_date} → 종료")
             break
 
+    if not listing_successes:
+        raise RuntimeError(
+            f"all listing fetches failed ({listing_tried} tried): {last_error}"
+        )
     return list(collected.items())
 
 

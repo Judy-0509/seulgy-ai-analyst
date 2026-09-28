@@ -80,9 +80,19 @@ def build() -> dict:
     print(f"\n  [0/2] 기존 archive: {len(existing_entries)}건")
 
     new_entries: list[dict] = []
+    listing_tried = listing_successes = 0
+    last_error = "no listing fetches were attempted"
     for rss_url in RSS_URLS:
         print(f"\n  [1/2] RSS 수집: {rss_url}")
         feed = feedparser.parse(rss_url)
+        listing_tried += 1
+        status = getattr(feed, "status", None)
+        if not feed.entries and not (status == 200 and not getattr(feed, "bozo", False)):
+            last_error = str(getattr(feed, "bozo_exception", None) or (
+                f"HTTP {status}" if status is not None else "no status or entries"
+            ))
+        else:
+            listing_successes += 1
         print(f"  → 피드 항목: {len(feed.entries)}건")
         filtered = 0
         for entry in feed.entries:
@@ -106,6 +116,10 @@ def build() -> dict:
         if filtered:
             print(f"  → robotics 필터링: {filtered}건 제외")
 
+    if not listing_successes:
+        raise RuntimeError(
+            f"all listing fetches failed ({listing_tried} tried): {last_error}"
+        )
     all_entries = existing_entries + new_entries
     seen: set[str] = set()
     merged: list[dict] = []

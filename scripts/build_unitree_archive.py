@@ -128,17 +128,26 @@ async def build() -> dict:
     print(f"\n  [0/3] 기존 archive: {len(existing_entries)}건")
 
     pairs: list[tuple[str, str, str]] = []
+    listing_tried = listing_successes = 0
+    last_error = "no listing fetches were attempted"
     async with httpx.AsyncClient(headers=HEADERS, follow_redirects=True) as client:
         for news_url in NEWS_URLS:
             print(f"\n  [1/3] 뉴스 목록 수집: {news_url}")
+            listing_tried += 1
             status, html = await fetch(client, news_url)
-            if status != 200:
+            if not (200 <= status < 300 and html.strip()):
+                last_error = html[:200] or f"HTTP {status} (empty body)"
                 print(f"  ⚠ 접근 실패: HTTP {status}")
                 continue
+            listing_successes += 1
             found = parse_article_links(html, news_url)
             print(f"  → 발견: {len(found)}건")
             pairs.extend(found)
 
+        if not listing_successes:
+            raise RuntimeError(
+                f"all listing fetches failed ({listing_tried} tried): {last_error}"
+            )
         # 중복 제거
         seen_pair: set[str] = set()
         unique_pairs = []

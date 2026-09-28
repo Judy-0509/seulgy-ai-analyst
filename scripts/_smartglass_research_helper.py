@@ -152,6 +152,8 @@ async def build_sitemap_archive(
     print(f"  [0/3] 기존 archive: {len(existing_entries)}건")
 
     url_re = re.compile(url_include_re) if url_include_re else None
+    listing_tried = listing_successes = 0
+    last_error = "no listing sources were attempted"
 
     async with httpx.AsyncClient(
         timeout=REQUEST_TIMEOUT, follow_redirects=True, headers=HEADERS
@@ -159,13 +161,16 @@ async def build_sitemap_archive(
         # 1) sitemap 수집 (index → 서브 1단계)
         target_maps = list(sitemaps or [])
         if sitemap_index:
+            listing_tried += 1
             status, body = await fetch(client, sitemap_index)
-            if status == 200:
+            if 200 <= status < 300 and body.strip():
+                listing_successes += 1
                 subs, direct_pairs = parse_sitemap(body)
                 if sub_include:
                     subs = [s for s in subs if sub_include in s]
                 target_maps.extend(subs)
             else:
+                last_error = body[:200] or f"HTTP {status} (empty body)"
                 print(f"  [WARN] sitemap index {status}: {sitemap_index}")
                 direct_pairs = []
         else:
@@ -173,15 +178,23 @@ async def build_sitemap_archive(
 
         pairs: list[tuple[str, str]] = list(direct_pairs)
         for sm_url in target_maps:
+            listing_tried += 1
             status, body = await fetch(client, sm_url)
-            if status != 200:
+            if not (200 <= status < 300 and body.strip()):
+                last_error = body[:200] or f"HTTP {status} (empty body)"
                 print(f"    [{status}] skip {sm_url}")
                 continue
+            listing_successes += 1
             _, p = parse_sitemap(body)
             pairs.extend(p)
             print(f"    [200] {sm_url}: {len(p)}건")
             if delay_sec:
                 await asyncio.sleep(delay_sec)
+
+        if not listing_successes:
+            raise RuntimeError(
+                f"all listing fetches failed ({listing_tried} tried): {last_error}"
+            )
 
         # 2) URL 필터 + 날짜 floor + 증분 스킵
         seen: set[str] = set()

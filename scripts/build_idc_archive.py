@@ -140,26 +140,36 @@ async def collect_urls(client: httpx.AsyncClient, cutoff: str) -> list[tuple[str
     """post-sitemap + promo-sitemap에서 (url, lastmod) 수집."""
     print(f"\n  [1/3] sitemap 수집 (cutoff: {cutoff})")
     pairs: list[tuple[str, str]] = []
+    listing_successes = 0
+    last_error = "no listing fetches were attempted"
 
     # 1) post-sitemap — cutoff 이후 기사만
     s, xml = await fetch(client, POST_SITEMAP)
-    if s == 200:
+    if 200 <= s < 300 and xml.strip():
+        listing_successes += 1
         posts = parse_sitemap(xml)
         filtered = [(u, lm) for u, lm in posts if lm >= cutoff]
         pairs.extend(filtered)
         print(f"    post-sitemap: 전체 {len(posts)}건 → cutoff 이후 {len(filtered)}건")
     else:
+        last_error = xml[:200] or f"HTTP {s} (empty body)"
         print(f"    post-sitemap: [{s}] 실패")
 
     # 2) promo-sitemap — 전부 (마켓 트래커, 날짜 필터 없음)
     s, xml = await fetch(client, PROMO_SITEMAP)
-    if s == 200:
+    if 200 <= s < 300 and xml.strip():
+        listing_successes += 1
         promos = parse_sitemap(xml)
         pairs.extend(promos)
         print(f"    promo-sitemap: {len(promos)}건 (전부 포함)")
     else:
+        last_error = xml[:200] or f"HTTP {s} (empty body)"
         print(f"    promo-sitemap: [{s}] 실패")
 
+    if not listing_successes:
+        raise RuntimeError(
+            f"all listing fetches failed (2 tried): {last_error}"
+        )
     # 중복 제거 (lastmod 최신 우선)
     seen: set[str] = set()
     deduped: list[tuple[str, str]] = []

@@ -115,15 +115,24 @@ async def build_async() -> dict:
     async with httpx.AsyncClient(headers=HEADERS, timeout=REQUEST_TIMEOUT,
                                  follow_redirects=True) as client:
         print(f"  [1/2] 리스팅 페이지 {len(LISTING_URLS)}개 순회 중...")
+        listing_tried = listing_successes = 0
+        last_error = "no listing fetches were attempted"
         for listing_url in LISTING_URLS:
+            listing_tried += 1
             status, body = await fetch(client, listing_url)
-            if status != 200 or body.startswith("ERR:"):
+            if not (200 <= status < 300 and body.strip()):
+                last_error = body[:200] or f"HTTP {status} (empty body)"
                 print(f"        skip ({status}): {listing_url}")
                 continue
+            listing_successes += 1
             for url, title in extract_doc_links(body):
                 if url not in candidates and is_humanoid_title(title):
                     candidates[url] = title
 
+    if not listing_successes:
+        raise RuntimeError(
+            f"all listing fetches failed ({listing_tried} tried): {last_error}"
+        )
     print(f"        humanoid/robot 후보: {len(candidates)}건")
     now_iso = datetime.now().isoformat(timespec="seconds")
     new_entries = [

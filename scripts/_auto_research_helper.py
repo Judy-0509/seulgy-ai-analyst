@@ -58,6 +58,15 @@ def parse_rss_date(entry) -> str:
     return ""
 
 
+def _feed_error(feed) -> str | None:
+    status = getattr(feed, "status", None)
+    if not feed.entries and not (status == 200 and not getattr(feed, "bozo", False)):
+        return str(getattr(feed, "bozo_exception", None) or (
+            f"HTTP {status}" if status is not None else "no status or entries"
+        ))
+    return None
+
+
 def load_existing(archive_path: Path) -> tuple[list[dict], set[str]]:
     if not archive_path.exists():
         return [], set()
@@ -125,6 +134,8 @@ async def build_rss_only(*, source_name: str, site_base: str, rss_url: str,
 
     print(f"\n  [1/2] RSS 수집: {rss_url}")
     feed = feedparser.parse(rss_url, agent=HEADERS_BROWSER["User-Agent"])
+    if error := _feed_error(feed):
+        raise RuntimeError(f"all listing fetches failed (1 tried): {error}")
     new_entries = []
     skip_yr = skip_kw = added = 0
     for e in feed.entries:
@@ -164,12 +175,19 @@ async def build_sitemap(*, source_name: str, site_base: str, sitemap_url: str,
     print(f"\n  [0/3] 기존 archive: {len(existing)}건")
 
     new_entries = []
+    listing_tried = listing_successes = 0
+    last_error = "no listing sources were attempted"
 
     async with httpx.AsyncClient(timeout=90, follow_redirects=True, headers=HEADERS_BROWSER) as client:
         # Optional RSS first
         if rss_url:
             print(f"\n  [pre/3] RSS 수집: {rss_url}")
             feed = feedparser.parse(rss_url, agent=HEADERS_BROWSER["User-Agent"])
+            listing_tried += 1
+            if error := _feed_error(feed):
+                last_error = error
+            else:
+                listing_successes += 1
             rss_added = 0
             for e in feed.entries:
                 url = e.get("link", "").strip()
@@ -187,11 +205,18 @@ async def build_sitemap(*, source_name: str, site_base: str, sitemap_url: str,
             print(f"      RSS 신규 {rss_added}건")
 
         print(f"\n  [1/3] sitemap 수집: {sitemap_url}")
+        listing_tried += 1
         st, body = await fetch(client, sitemap_url)
-        if st != 200:
+        if not (200 <= st < 300 and body.strip()):
+            last_error = body[:200] or f"HTTP {st} (empty body)"
             print(f"      sitemap 실패 [{st}]")
+            if not listing_successes:
+                raise RuntimeError(
+                    f"all listing fetches failed ({listing_tried} tried): {last_error}"
+                )
             return _save(existing, new_entries, archive_path, source_name, site_base,
                           sitemap_url=sitemap_url, rss_url=rss_url)
+        listing_successes += 1
 
         sub_sitemaps, pairs = parse_sitemap(body)
 
@@ -204,10 +229,14 @@ async def build_sitemap(*, source_name: str, site_base: str, sitemap_url: str,
             print(f"      sub-sitemap: 전체 {len(sub_sitemaps)}, 사용 {len(use_subs)}")
             for sm_url in use_subs:
                 sm_url2 = sm_url.replace("http://", "https://")
+                listing_tried += 1
                 s, b = await fetch(client, sm_url2)
-                if s == 200:
+                if 200 <= s < 300 and b.strip():
+                    listing_successes += 1
                     _, more = parse_sitemap(b)
                     pairs.extend(more)
+                else:
+                    last_error = b[:200] or f"HTTP {s} (empty body)"
 
         # Filter pairs
         def url_ok(u):

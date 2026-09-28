@@ -130,13 +130,22 @@ async def build(months: int) -> dict:
     async with httpx.AsyncClient(headers=HEADERS, follow_redirects=True) as client:
         # 1. sitemap 수집 (2단계 중첩: index → sub-index → 실제 sitemaps)
         print("\n  [1/3] sitemap index 수집")
+        listing_tried = 1
         st, xml = await fetch(client, SITEMAP_SUB_INDEX)
-        if st != 200:
+        listing_successes = int(200 <= st < 300 and bool(xml.strip()))
+        last_error = xml[:200] or f"HTTP {st} (empty body)"
+        if not listing_successes:
             # fallback: 최상위 index
+            listing_tried += 1
             st, xml = await fetch(client, SITEMAP_INDEX)
-        if st != 200:
-            print(f"  ⚠ sitemap 접근 실패: HTTP {st}")
-            return {}
+            if 200 <= st < 300 and xml.strip():
+                listing_successes += 1
+            else:
+                last_error = xml[:200] or f"HTTP {st} (empty body)"
+        if not listing_successes:
+            raise RuntimeError(
+                f"all listing fetches failed ({listing_tried} tried): {last_error}"
+            )
 
         sitemap_urls = parse_sitemap_index(xml)
         # 기사 sitemap만 (sitemap-N.xml 형태)
@@ -153,10 +162,13 @@ async def build(months: int) -> dict:
         for i, sm_url in enumerate(sitemap_urls):
             if stop_flag:
                 break
+            listing_tried += 1
             st, xml = await fetch(client, sm_url)
-            if st != 200:
+            if not (200 <= st < 300 and xml.strip()):
+                last_error = xml[:200] or f"HTTP {st} (empty body)"
                 print(f"    [{i+1:2d}] skip (HTTP {st}): {sm_url}")
                 continue
+            listing_successes += 1
             pairs = parse_sitemap(xml, cutoff)
             all_pairs.extend(pairs)
             oldest = min((d for _, d in pairs if d), default="?") if pairs else "?"

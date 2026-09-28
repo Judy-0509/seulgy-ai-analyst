@@ -74,6 +74,23 @@ cd "$ROOT"
 
 log "=== 주간 주제 선정 시작 ==="
 
+network_started=$SECONDS
+network_ok=0
+while [ "$((SECONDS - network_started))" -lt 1800 ]; do
+  attempt_started=$SECONDS
+  if curl -sS -o /dev/null -m 10 https://open.bigmodel.cn 2>/dev/null; then network_ok=1; break; fi
+  log "[!] 네트워크 확인 실패 (${SECONDS}s 경과)"
+  remaining=$((60 - (SECONDS - attempt_started)))
+  if [ "$remaining" -gt 0 ]; then sleep "$remaining"; fi
+done
+if [ "$network_ok" -eq 0 ]; then
+  log "[!] 네트워크 불가 30분 — 이번 주 작업 건너뜀"
+  trap - ERR
+  notify "[Seulgy] 네트워크 불가 30분 — 이번 주 작업 건너뜀
+로그: $LOG" || true
+  exit 1
+fi
+
 # ── 0. Archive build ─────────────────────────────────────────────────
 run_step "[0/4] 전체 아카이브 빌드" uv run python scripts/build_all_archives.py
 

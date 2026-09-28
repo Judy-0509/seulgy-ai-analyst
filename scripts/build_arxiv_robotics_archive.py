@@ -112,12 +112,14 @@ def is_humanoid_relevant(title: str, desc: str) -> bool:
     return True
 
 
-def collect_query(query: str, cutoff: str, known_urls: set[str]) -> list[dict] | None:
+def collect_query(query: str, cutoff: str, known_urls: set[str]) -> tuple[list[dict] | None, int, int, str]:
     """단일 쿼리에 대해 arXiv API 페이지네이션으로 최근 데이터 수집.
     429 rate limit 시 None 반환."""
     entries: list[dict] = []
     start = 0
     stop_flag = False
+    tried = successes = 0
+    last_error = ""
 
     while not stop_flag:
         params = {
@@ -129,18 +131,25 @@ def collect_query(query: str, cutoff: str, known_urls: set[str]) -> list[dict] |
         }
         url = f"{API_BASE}?{urlencode(params)}"
         feed = feedparser.parse(url)
+        tried += 1
 
         # 429 Rate Limit 감지
-        status = getattr(feed, "status", 200)
+        status = getattr(feed, "status", None)
         if status == 429:
             print("  ⚠ arXiv API 429 Rate Limit — IP 쿨다운 필요. 수 시간 후 재시도.")
-            return None
+            return None, tried, successes, "HTTP 429"
+
+        if not feed.entries and not (status == 200 and not getattr(feed, "bozo", False)):
+            error = getattr(feed, "bozo_exception", None) or (
+                f"HTTP {status}" if status is not None else "no status or entries"
+            )
+            last_error = str(error)
+            if not successes:
+                return [], tried, successes, last_error
+            break
+        successes += 1
 
         if not feed.entries:
-            # bozo_exception 으로 오류 여부 확인
-            exc = getattr(feed, "bozo_exception", None)
-            if exc:
-                print(f"  ⚠ feedparser 오류: {exc}")
             break
 
         for entry in feed.entries:
@@ -172,7 +181,7 @@ def collect_query(query: str, cutoff: str, known_urls: set[str]) -> list[dict] |
         start += BATCH_SIZE
         time.sleep(CRAWL_DELAY)
 
-    return entries
+    return entries, tried, successes, last_error
 
 
 def build(months: int) -> dict:
@@ -188,9 +197,15 @@ def build(months: int) -> dict:
 
     new_entries: list[dict] = []
     rate_limited = False
+    listing_tried = listing_successes = 0
+    last_error = "no listing fetches were attempted"
     for i, query in enumerate(QUERIES, 1):
         print(f"\n  [1/2] 쿼리 {i}/{len(QUERIES)}: {query[:60]}...")
-        batch = collect_query(query, cutoff, known_urls)
+        batch, tried, successes, error = collect_query(query, cutoff, known_urls)
+        listing_tried += tried
+        listing_successes += successes
+        if error:
+            last_error = error
         if batch is None:
             rate_limited = True
             print(f"  → 쿼리 {i} 중단 (rate limit)")
@@ -200,6 +215,10 @@ def build(months: int) -> dict:
         if i < len(QUERIES):
             time.sleep(CRAWL_DELAY)
 
+    if not listing_successes:
+        raise RuntimeError(
+            f"all listing fetches failed ({listing_tried} tried): {last_error}"
+        )
     if rate_limited and not new_entries:
         print("\n  ⚠ arXiv API rate limit으로 신규 수집은 중단. 기존 archive 필터 정리는 계속 진행.")
 
