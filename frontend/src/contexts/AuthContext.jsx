@@ -1,7 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { supabase } from "../lib/supabase";
-import { authFetch } from "../lib/authFetch";
 
 const AuthCtx = createContext(null);
 
@@ -107,13 +106,6 @@ export function AuthProvider({ children }) {
     if (token) _applyMe(token);
   }
 
-  /** 애널리스트(team) 권한 신청 후 /api/me 를 갱신해 role/roleRequested 를 반영한다. */
-  async function requestAnalyst() {
-    const res = await authFetch("/api/roles/request", { method: "POST" });
-    await refreshMe();
-    return { ok: res.ok };
-  }
-
   /** isAdmin 이거나 해당 page 가 부여된 경우 true. */
   function hasPageAccess(page) {
     return isAdmin || pages.includes(page);
@@ -134,7 +126,6 @@ export function AuthProvider({ children }) {
       isTeam,
       canFeedback,
       refreshMe,
-      requestAnalyst,
       accessToken,
       loading,
       signInWithGoogle,

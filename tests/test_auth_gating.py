@@ -1,4 +1,4 @@
-"""Auth gating tests: verify 3-tier access control on key endpoints.
+"""Public reads work without a token; private and admin APIs remain gated.
 
 Mocking strategy:
 - `src.auth.verify_token` is patched with AsyncMock so async await works.
@@ -34,30 +34,24 @@ def _mock_verify(token: str):
     return None
 
 
-# ── MEMBER-gated: GET /api/reports/{slug} ─────────────────────────────────
+# ── Public read endpoints ────────────────────────────────────────────────────
 
-class TestReportDetailGating:
-    def test_no_token_returns_401(self):
-        resp = client.get("/api/reports/some-slug")
-        assert resp.status_code == 401
+class TestPublicReadEndpoints:
+    def test_report_detail_without_token(self):
+        assert client.get("/api/reports/nonexistent").status_code in (200, 404)
 
-    def test_invalid_token_returns_401(self):
-        with patch("src.auth.verify_token", new=AsyncMock(return_value=None)):
-            resp = client.get("/api/reports/some-slug",
-                              headers={"Authorization": "Bearer bad-token"})
-        assert resp.status_code == 401
+    def test_report_html_without_token(self):
+        assert client.get("/reports/nonexistent-public-test.html").status_code in (200, 404)
 
-    def test_member_token_passes_auth(self):
-        with patch("src.auth.verify_token", new=AsyncMock(side_effect=_mock_verify)):
-            resp = client.get("/api/reports/nonexistent", headers=MEMBER_HEADERS)
-        # auth passes → 404 (report doesn't exist) rather than 401/403
+    def test_archive_entries_without_token(self):
+        resp = client.get("/api/archives/entries?source=Counterpoint+Research")
         assert resp.status_code in (200, 404)
 
-    def test_admin_token_also_passes(self):
-        with patch("src.auth.verify_token", new=AsyncMock(side_effect=_mock_verify)):
-            with patch("src.auth.ADMIN_EMAILS", {ADMIN_EMAIL}):
-                resp = client.get("/api/reports/nonexistent", headers=ADMIN_HEADERS)
-        assert resp.status_code in (200, 404)
+    def test_keywords_without_token(self):
+        assert client.get("/api/keywords").status_code in (200, 404)
+
+    def test_topics_mine_without_token(self):
+        assert client.get("/api/topics/mine").status_code in (200, 404)
 
 
 # ── ADMIN-gated: POST /api/archives/refresh ───────────────────────────────
@@ -145,6 +139,24 @@ class TestPublicEndpointsUnchanged:
         assert resp.status_code == 200
 
 
+class TestAdminReadEndpointsRequireAuth:
+    def test_usage_requires_auth(self):
+        assert client.get("/api/usage").status_code == 401
+
+    def test_feedback_requires_auth(self):
+        assert client.get("/api/feedback").status_code == 401
+
+    def test_role_requests_require_auth(self):
+        assert client.get("/api/roles/requests").status_code == 401
+
+    def test_member_feedback_endpoints_remain_protected(self):
+        assert client.get("/api/feedback/mine").status_code == 401
+        assert client.post("/api/feedback", json={"message": "test"}).status_code == 401
+
+    def test_role_request_remains_protected(self):
+        assert client.post("/api/roles/request").status_code == 401
+
+
 # ── GET /api/me ────────────────────────────────────────────────────────────
 
 class TestMeEndpoint:
@@ -175,15 +187,12 @@ class TestMeEndpoint:
 
 class TestReportFileTraversal:
     def test_encoded_traversal_does_not_leak_files(self):
-        """A member must never read files outside reports/ via encoded ../ .
+        """A public request must never read files outside reports/ via encoded ../ .
 
         Asserts on response CONTENT (not status), since an escaped path may be
         normalized by the client or fall through to the SPA index.html — either
         way the actual source/secret file contents must never be returned.
         """
-        with patch("src.auth.verify_token", new=AsyncMock(side_effect=_mock_verify)):
-            resp = client.get(
-                "/reports/..%2f..%2fpyproject.toml", headers=MEMBER_HEADERS
-            )
+        resp = client.get("/reports/..%2f..%2fpyproject.toml")
         assert "[build-system]" not in resp.text
         assert "requires-python" not in resp.text

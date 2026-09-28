@@ -28,16 +28,18 @@ cd frontend && npm run dev                              # 프론트엔드
 | URL | 내용 |
 |-----|------|
 | `http://localhost:5173/` | 랜딩/도메인 선택/추천 주제 화면 (공개) |
-| `http://localhost:5173/login` | Google 로그인 화면 (Supabase OAuth) |
-| `http://localhost:5173/app` | 보고서 생성 파이프라인 UI (인증 필요) |
-| `http://localhost:5173/db` | 아카이브 DB 화면 (인증 필요) |
+| `http://localhost:5173/login` | 관리자 직접 로그인 (Supabase Google OAuth) |
+| `http://localhost:5173/app` | 보고서 생성 파이프라인 UI (관리자) |
+| `http://localhost:5173/usage` | API 사용량 (관리자) |
+| `http://localhost:5173/db` | 공개 아카이브 DB 조회 |
 | `http://localhost:5173/news` | 뉴스 피드 화면 (공개) |
-| `http://localhost:5173/archive` | 과거 보고서 아카이브 (인증 필요) |
-| `http://localhost:5173/archive/:slug` | 보고서 상세 뷰 (인증 필요) |
-| `http://localhost:5173/keywords` | 도메인별 필터링 키워드 뷰어 (인증 필요) |
+| `http://localhost:5173/archive` | 과거 보고서 아카이브 (공개) |
+| `http://localhost:5173/archive/:slug` | 보고서 상세 뷰 (공개) |
+| `http://localhost:5173/keywords` | 도메인별 필터링 키워드 조회 (공개, 수정은 관리자 API) |
+| `http://localhost:5173/admin/feedback` | 피드백 검토·역할 승인 (관리자) |
 | `http://localhost:8000/` | React 앱 — Vite 빌드(`frontend/dist/`) 서빙 또는 API 안내 |
 | `http://localhost:8000/dashboard` | 아카이브 빌드 대시보드 |
-| `http://localhost:8000/reports/{파일명}` | 생성된 보고서 HTML 서빙 |
+| `http://localhost:8000/reports/{파일명}` | 생성된 보고서 HTML (공개) |
 
 ---
 
@@ -408,11 +410,9 @@ QWEN_FAST_MODEL=qwen3-8b
 
 - **Supabase Google OAuth** — 이메일/비밀번호 없이 Google 계정으로 로그인
 - **역할 4단계**: 비로그인 → 로그인(member) → 애널리스트(team) → 관리자(admin). 역할은 `data/roles.json` + `ADMIN_EMAILS` 환경변수로 결정
-- **공개 라우트**: `/`, `/news`, `/login`
-- **로그인 필요 (MemberRoute)**: `/archive/:slug`, `/feedback`
-- **애널리스트 (TeamRoute)**: `/db`, `/keywords`
-- **관리자 (AdminRoute)**: `/app`, `/usage`
-- 백엔드는 Supabase 액세스 토큰을 검증하는 `require_member` / `require_team` / `require_admin` 의존성으로 API를 게이팅
+- **공개 조회**: `/`, `/news`, `/archive`, `/archive/:slug`, `/db`, `/keywords` 및 보고서 HTML
+- **관리자**: `/app`, `/usage`, `/admin/feedback` — `/login`에 직접 접속해 Google 로그인
+- 공개 GET은 토큰 없이 읽고, 수정·삭제·작업 실행·개인정보 API는 `require_admin` 등으로 보호
 
 ---
 

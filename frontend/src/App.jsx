@@ -13,17 +13,6 @@ import KeywordsPage from "./pages/KeywordsPage";
 import UsagePage from "./pages/UsagePage";
 import FeedbackPage from "./pages/FeedbackPage";
 
-/** 로그인 필요 (멤버 이상) — 미인증 시 /login 으로 리디렉트 */
-function MemberRoute({ children }) {
-  const { isAuthenticated, loading } = useAuth();
-  const location = useLocation();
-  if (loading) return null;
-  if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
-  return children;
-}
-
 /** 관리자 전용 — 미인증 시 /login, 비관리자 시 / 으로 리디렉트 */
 function AdminRoute({ children }) {
   const { isAuthenticated, isAdmin, loading } = useAuth();
@@ -35,16 +24,6 @@ function AdminRoute({ children }) {
   if (!isAdmin) {
     return <Navigate to="/" replace />;
   }
-  return children;
-}
-
-/** 애널리스트(team) 전용 — 미인증 시 /login, 비애널리스트 시 / 으로 리디렉트 */
-function TeamRoute({ children }) {
-  const { isAuthenticated, isTeam, loading } = useAuth();
-  const location = useLocation();
-  if (loading) return null;
-  if (!isAuthenticated) return <Navigate to="/login" state={{ from: location }} replace />;
-  if (!isTeam) return <Navigate to="/" replace />;
   return children;
 }
 
@@ -67,17 +46,15 @@ function RouterContent() {
           <Route path="/news"   element={<NewsPage />} />
           <Route path="/archive" element={<ReportsArchivePage />} />
 
-          {/* MEMBER */}
-          <Route path="/archive/:slug" element={<MemberRoute><ReportPage /></MemberRoute>} />
-          <Route path="/feedback" element={<MemberRoute><FeedbackPage /></MemberRoute>} />
+          {/* PUBLIC READ PAGES */}
+          <Route path="/archive/:slug" element={<ReportPage />} />
+          <Route path="/db"       element={<DbPage />} />
+          <Route path="/keywords" element={<KeywordsPage />} />
 
           {/* ADMIN */}
           <Route path="/app"      element={<AdminRoute><AppPage /></AdminRoute>} />
           <Route path="/usage"    element={<AdminRoute><UsagePage /></AdminRoute>} />
-
-          {/* ANALYST (team) — isAdmin 또는 team */}
-          <Route path="/db"       element={<TeamRoute><DbPage /></TeamRoute>} />
-          <Route path="/keywords" element={<TeamRoute><KeywordsPage /></TeamRoute>} />
+          <Route path="/admin/feedback" element={<AdminRoute><FeedbackPage /></AdminRoute>} />
 
           {/* Redirects */}
           <Route path="/reports"      element={<Navigate to="/archive" replace />} />

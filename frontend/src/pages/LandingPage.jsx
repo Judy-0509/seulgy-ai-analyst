@@ -247,7 +247,7 @@ function TopicMessage({ status, fallback, theme }) {
 }
 
 /* ── Topic row ── */
-function TopicRow({ item, right, onStart, index, theme, isAuthenticated }) {
+function TopicRow({ item, right, onStart, index, theme, isAdmin }) {
   const E = theme;
   const [hov, setHov] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -355,19 +355,24 @@ function TopicRow({ item, right, onStart, index, theme, isAuthenticated }) {
             {item.rationale || "선정 근거 정보가 없습니다."}
           </p>
           <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <button
-              onClick={e => { e.stopPropagation(); onStart(item.title, { rationale: item.rationale, key_data: item.key_data, articles: item.articles, report_slug: item.report_slug }); }}
-              style={{
-                background: E.emBg, border: `1px solid ${E.emBr}`,
-                color: E.emLL, borderRadius: 10, padding: "7px 16px",
-                fontSize: 12, fontWeight: 700, cursor: "pointer",
-                transition: "background .15s",
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = E.rowBgStrong}
-              onMouseLeave={e => e.currentTarget.style.background = E.emBg}
-            >
-              {isAuthenticated ? "상세 분석으로 들어가기" : "작성된 리포트 보기"}
-            </button>
+            {(item.report_slug || isAdmin) && (
+              <button
+                onClick={e => { e.stopPropagation(); onStart(item.title, { rationale: item.rationale, key_data: item.key_data, articles: item.articles, report_slug: item.report_slug }); }}
+                style={{
+                  background: E.emBg, border: `1px solid ${E.emBr}`,
+                  color: E.emLL, borderRadius: 10, padding: "7px 16px",
+                  fontSize: 12, fontWeight: 700, cursor: "pointer",
+                  transition: "background .15s",
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = E.rowBgStrong}
+                onMouseLeave={e => e.currentTarget.style.background = E.emBg}
+              >
+                {item.report_slug ? "리포트 보기" : "리포트 생성"}
+              </button>
+            )}
+            {!item.report_slug && !isAdmin && (
+              <span style={{ fontSize: 12, color: E.t4 }}>작성된 리포트가 없습니다</span>
+            )}
           </div>
         </div>
       </div>
@@ -376,7 +381,7 @@ function TopicRow({ item, right, onStart, index, theme, isAuthenticated }) {
 }
 
 /* ── Previous-week topic group ── */
-function WeekGroup({ weekOf, topics, onStart, theme, isAuthenticated }) {
+function WeekGroup({ weekOf, topics, onStart, theme, isAdmin }) {
   const E = theme;
   const [open, setOpen] = useState(false);
   const d = new Date(weekOf + "T00:00:00");
@@ -400,7 +405,7 @@ function WeekGroup({ weekOf, topics, onStart, theme, isAuthenticated }) {
           {[...topics]
             .sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999))
             .map((item, i) => (
-              <TopicRow key={item.title || i} item={item} onStart={onStart} index={i} theme={E} isAuthenticated={isAuthenticated} />
+              <TopicRow key={item.title || i} item={item} onStart={onStart} index={i} theme={E} isAdmin={isAdmin} />
             ))}
         </div>
       )}
@@ -412,7 +417,7 @@ function WeekGroup({ weekOf, topics, onStart, theme, isAuthenticated }) {
 export default function LandingPage() {
   const nav = useNavigate();
   const { domain } = useDomain();
-  const { isAuthenticated, isAdmin, isTeam, signOut } = useAuth();
+  const { isAdmin, signOut } = useAuth();
   const isMobile = useIsMobile();
   const E = THEMES[domain.id] || THEMES.smartphone;
   const [monthlyHot, setMonthlyHot] = useState([]);
@@ -463,7 +468,7 @@ export default function LandingPage() {
       nav(`/archive/${encodeURIComponent(topicInfo.report_slug)}`);
       return;
     }
-    if (isAuthenticated) {
+    if (isAdmin) {
       nav("/app", { state: { startTopic, topicInfo } });
       return;
     }
@@ -490,33 +495,28 @@ export default function LandingPage() {
         <nav style={{ position: "sticky", top: 0, zIndex: 10, display: "flex", justifyContent: "flex-end",
           gap: 8, padding: isMobile ? "10px 12px 0 72px" : "18px clamp(16px, 4vw, 48px) 0", flexWrap: isMobile ? "wrap" : "nowrap", pointerEvents: "none" }}>
           {[
-            ["Onboarding", "/onboarding", false],
-            ...(isAuthenticated ? [
-              ["Archive", "/archive", false],
-              ["News", "/news", false],
-              ["Feedback", "/feedback", false],
-              ["DB", "/db", !isTeam],
-              ["Keywords", "/keywords", !isTeam],
-              ...(isAdmin ? [
-                ["Usage", "/usage", false],
-              ] : []),
-              ["Logout", "__logout__", false],
-            ] : [
-              ["Login", "/login", false],
-            ]),
-          ].map(([label, path, locked]) => (
+            ["Onboarding", "/onboarding"],
+            ["Archive", "/archive"],
+            ["News", "/news"],
+            ["DB", "/db"],
+            ["Keywords", "/keywords"],
+            ...(isAdmin ? [
+              ["Feedback", "/admin/feedback"],
+              ["Usage", "/usage"],
+              ["Logout", "__logout__"],
+            ] : []),
+          ].map(([label, path]) => (
             <button
               key={path}
               onClick={() => {
                 if (path === "/onboarding") { window.location.href = path; return; }
                 if (path === "__logout__") { signOut(); return; }
-                if (locked) { nav("/feedback"); return; }
                 nav(path);
               }}
               style={{ pointerEvents: "auto", height: 34, minHeight: 34, borderRadius: 99,
-                border: `1px solid ${locked ? "rgba(255,255,255,.10)" : E.border}`,
+                border: `1px solid ${E.border}`,
                 background: E.navBg,
-                color: locked ? E.t4 : E.emLL,
+                color: E.emLL,
                 padding: isMobile ? "0 11px" : "0 14px", fontFamily: '"Cabinet Grotesk", "Pretendard Variable", Pretendard, sans-serif',
                 fontSize: 12, fontWeight: 700, letterSpacing: "0.02em", cursor: "pointer",
                 backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
@@ -527,20 +527,10 @@ export default function LandingPage() {
               }}
               onMouseLeave={e => {
                 e.currentTarget.style.background = E.navBg;
-                e.currentTarget.style.color = locked ? E.t4 : E.emLL;
+                e.currentTarget.style.color = E.emLL;
               }}
             >
-              {locked ? (
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
-                    style={{ display: "block" }}>
-                    <rect x="5" y="11" width="14" height="10" rx="2" />
-                    <path d="M8 11V7a4 4 0 0 1 8 0v4" />
-                  </svg>
-                  {label}
-                </span>
-              ) : label}
+              {label}
             </button>
           ))}
         </nav>
@@ -582,7 +572,7 @@ export default function LandingPage() {
                 {monthlyHot.length === 0
                   ? <TopicMessage status={topicStatus} fallback="이번 주 핵심 기준에 해당하는 주제가 없습니다" theme={E} />
                   : monthlyHot.map((item, i) => (
-                      <TopicRow key={item.title || `${item.org}-${i}`} item={item} onStart={handleStart} index={i} theme={E} isAuthenticated={isAuthenticated} />
+                      <TopicRow key={item.title || `${item.org}-${i}`} item={item} onStart={handleStart} index={i} theme={E} isAdmin={isAdmin} />
                     ))
                 }
               </div>
@@ -600,7 +590,7 @@ export default function LandingPage() {
                 {monthlyNew.length === 0
                   ? <TopicMessage status={topicStatus} fallback="이번 주 신규 기준에 해당하는 주제가 없습니다" theme={E} />
                   : monthlyNew.map((item, i) => (
-                      <TopicRow key={item.title || `${item.org}-${i}`} item={item} right onStart={handleStart} index={i} theme={E} isAuthenticated={isAuthenticated} />
+                      <TopicRow key={item.title || `${item.org}-${i}`} item={item} right onStart={handleStart} index={i} theme={E} isAdmin={isAdmin} />
                     ))
                 }
               </div>
@@ -621,7 +611,7 @@ export default function LandingPage() {
               <p style={{ fontSize: 11, color: E.t4, margin: "0 0 8px" }}>주 1회 선정 기록 — 최근 8주</p>
               {historyByWeek.map(({ week_of, topics }) => (
                 <WeekGroup key={week_of} weekOf={week_of} topics={topics}
-                  onStart={handleStart} theme={E} isAuthenticated={isAuthenticated} />
+                  onStart={handleStart} theme={E} isAdmin={isAdmin} />
               ))}
             </div>
           </section>

@@ -320,7 +320,7 @@ def _is_smartphone(entry: dict) -> bool:
 
 
 @app.get("/api/keywords")
-async def api_keywords_get(domain: str = "smartphone", _user: dict = Depends(require_team)):
+async def api_keywords_get(domain: str = "smartphone"):
     """도메인별 필터링 키워드 목록 반환."""
     cfg = load_domain(domain)
     kw_path = ROOT / cfg["keywords_file"]
@@ -351,7 +351,7 @@ async def api_keywords_put(req: Request, domain: str = "smartphone", _user: dict
 
 
 @app.get("/api/topics/mine")
-async def api_topics_mine(days: int = 30, domain: str = "smartphone", _user: dict = Depends(require_team)):
+async def api_topics_mine(days: int = 30, domain: str = "smartphone"):
     """최근 N일 Tier-1 소스의 도메인 관련 기사를 소스별로 묶어 반환."""
     import re as _re
 
@@ -417,7 +417,7 @@ async def api_topics_mine(days: int = 30, domain: str = "smartphone", _user: dic
 
 
 @app.get("/api/archives/entries")
-async def api_archives_entries(source: str, limit: int = 300, _user: dict = Depends(require_team)):
+async def api_archives_entries(source: str, limit: int = 300):
     """특정 소스의 전체 아카이브 기사 반환. 키워드 필터 없음."""
     import re as _re
 
@@ -1314,7 +1314,7 @@ async def api_reports_list():
 
 
 @app.get("/api/reports/{slug}")
-async def api_report_detail(slug: str, _user: dict = Depends(require_member)):
+async def api_report_detail(slug: str):
     safe_slug = Path(slug).name
     md_path = ROOT / "reports" / f"{safe_slug}_report.md"
     process_path = ROOT / "reports" / f"{safe_slug}_process.json"
@@ -1353,7 +1353,7 @@ async def api_report_delete(slug: str, _user: dict = Depends(require_admin)):
 
 
 @app.get("/reports/{filename}")
-async def serve_report_file(filename: str, _user: dict = Depends(require_member)):
+async def serve_report_file(filename: str):
     reports_dir = (ROOT / "reports").resolve()
     path = (reports_dir / filename).resolve()
     # Prevent path traversal (e.g. encoded ../) escaping the reports directory.

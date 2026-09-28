@@ -137,6 +137,9 @@ class TestAccessRequestEndpoint:
 # ── API: GET /api/access/requests ─────────────────────────────────────────────
 
 class TestAccessRequestsListEndpoint:
+    def test_unauthenticated_returns_401(self, store_path):
+        assert client.get("/api/access/requests").status_code == 401
+
     def test_member_returns_403(self, store_path):
         with patch("src.auth.verify_token", new=AsyncMock(side_effect=_mock_verify)):
             with patch("src.auth.ADMIN_EMAILS", set()):
@@ -157,6 +160,10 @@ class TestAccessRequestsListEndpoint:
 # ── API: POST /api/access/approve ─────────────────────────────────────────────
 
 class TestAccessApproveEndpoint:
+    def test_unauthenticated_returns_401(self, store_path):
+        resp = client.post("/api/access/approve", json={"email": "x@x.com", "page": "db"})
+        assert resp.status_code == 401
+
     def test_member_returns_403(self, store_path):
         with patch("src.auth.verify_token", new=AsyncMock(side_effect=_mock_verify)):
             with patch("src.auth.ADMIN_EMAILS", set()):
@@ -176,72 +183,28 @@ class TestAccessApproveEndpoint:
         assert page_access_mod.has_access("x@x.com", "db") is True
 
 
-# ── API: page-gated endpoints ─────────────────────────────────────────────────
+# ── API: public read endpoints ─────────────────────────────────────────────────
 
-class TestPageGatedEndpoints:
-    """DB·Keywords 게이팅이 require_team으로 이관됨(4536688):
-    member → 403 (page-access grant가 있어도), team/admin → 허용."""
+class TestPublicReadEndpoints:
+    def test_keywords_without_token(self):
+        assert client.get("/api/keywords").status_code in (200, 404)
 
-    def test_keywords_member_no_grant_returns_403(self, store_path):
+    def test_keywords_member_without_grant(self):
         with patch("src.auth.verify_token", new=AsyncMock(side_effect=_mock_verify)):
             with patch("src.auth.ADMIN_EMAILS", set()):
                 resp = client.get("/api/keywords", headers=MEMBER_HEADERS)
-        assert resp.status_code == 403
+        assert resp.status_code in (200, 404)
 
-    def test_keywords_admin_always_allowed(self, store_path):
-        with patch("src.auth.verify_token", new=AsyncMock(side_effect=_mock_verify)):
-            with patch("src.auth.ADMIN_EMAILS", {ADMIN_EMAIL}):
-                resp = client.get("/api/keywords", headers=ADMIN_HEADERS)
-        assert resp.status_code not in (401, 403)
+    def test_archives_entries_without_token(self):
+        resp = client.get("/api/archives/entries?source=Counterpoint+Research")
+        assert resp.status_code in (200, 404)
 
-    def test_keywords_member_with_grant_still_403(self, store_path):
-        """page-access grant는 더 이상 keywords 접근을 열지 않는다 (team 권한 필요)."""
-        page_access_mod.approve("member@example.com", "keywords")
-        with patch("src.auth.verify_token", new=AsyncMock(side_effect=_mock_verify)):
-            with patch("src.auth.ADMIN_EMAILS", set()):
-                resp = client.get("/api/keywords", headers=MEMBER_HEADERS)
-        assert resp.status_code == 403
-
-    def test_keywords_team_member_passes(self, store_path):
-        with patch("src.auth.verify_token", new=AsyncMock(side_effect=_mock_verify)):
-            with patch("src.auth.ADMIN_EMAILS", set()):
-                with patch("src.roles.is_team", return_value=True):
-                    resp = client.get("/api/keywords", headers=MEMBER_HEADERS)
-        assert resp.status_code not in (401, 403)
-
-    def test_archives_entries_member_no_grant_returns_403(self, store_path):
+    def test_archives_entries_member_without_grant(self):
         with patch("src.auth.verify_token", new=AsyncMock(side_effect=_mock_verify)):
             with patch("src.auth.ADMIN_EMAILS", set()):
                 resp = client.get("/api/archives/entries?source=Counterpoint+Research",
                                   headers=MEMBER_HEADERS)
-        assert resp.status_code == 403
-
-    def test_archives_entries_member_with_grant_still_403(self, store_path):
-        """page-access grant는 더 이상 DB 접근을 열지 않는다 (team 권한 필요)."""
-        page_access_mod.approve("member@example.com", "db")
-        with patch("src.auth.verify_token", new=AsyncMock(side_effect=_mock_verify)):
-            with patch("src.auth.ADMIN_EMAILS", set()):
-                resp = client.get("/api/archives/entries?source=Counterpoint+Research",
-                                  headers=MEMBER_HEADERS)
-        assert resp.status_code == 403
-
-    def test_archives_entries_team_member_passes(self, store_path):
-        with patch("src.auth.verify_token", new=AsyncMock(side_effect=_mock_verify)):
-            with patch("src.auth.ADMIN_EMAILS", set()):
-                with patch("src.roles.is_team", return_value=True):
-                    resp = client.get("/api/archives/entries?source=Counterpoint+Research",
-                                      headers=MEMBER_HEADERS)
-        assert resp.status_code not in (401, 403)
-
-    def test_archives_entries_admin_always_allowed(self, store_path):
-        with patch("src.auth.verify_token", new=AsyncMock(side_effect=_mock_verify)):
-            with patch("src.auth.ADMIN_EMAILS", {ADMIN_EMAIL}):
-                resp = client.get("/api/archives/entries?source=Counterpoint+Research",
-                                  headers=ADMIN_HEADERS)
-        assert resp.status_code not in (401, 403)
-
-
-# ── API: /api/me includes pages ───────────────────────────────────────────────
+        assert resp.status_code in (200, 404)
 
 class TestMeIncludesPages:
     def test_member_pages_empty_by_default(self, store_path):

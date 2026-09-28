@@ -189,10 +189,11 @@ Every API-driven area should distinguish `loading` / `empty` / `error` / `ready`
 ## 14. Auth & Protected Routes
 
 - 인증은 Supabase Google OAuth (`VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` — 루트 `.env`).
-- `AuthContext`가 Supabase 세션을 구독하고 역할(member/team/admin)을 제공. `App.jsx`의 `MemberRoute` / `TeamRoute` / `AdminRoute`가 권한 미달 시 `/login` 또는 홈으로 리디렉트.
-- **공개**: `/`, `/news`, `/login` / **member**: `/archive/:slug`, `/feedback` / **team**: `/db`, `/keywords` / **admin**: `/app`, `/usage`
+- `AuthContext`가 Supabase 세션과 관리자 여부를 제공. `App.jsx`의 `AdminRoute`가 관리자 경로를 보호한다.
+- **공개 조회**: `/`, `/news`, `/archive`, `/archive/:slug`, `/db`, `/keywords` 및 보고서 HTML
+- **관리자**: `/app`, `/usage`, `/admin/feedback`. 로그인은 `/login`에 직접 접속한다.
 - 로그인 화면은 `C` 토큰 기반 흰색/크림 톤 — 큰 `<Wordmark size={42} />` + Google 로그인 버튼.
-- 새 보호 라우트 추가 시 `App.jsx`에서 역할에 맞는 라우트 래퍼(`MemberRoute`/`TeamRoute`/`AdminRoute`)로 감쌀 것.
+- 새 관리자 라우트는 `App.jsx`의 `AdminRoute`로 감싼다.
 
 ## 15. Source Color Map
 
